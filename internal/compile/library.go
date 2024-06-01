@@ -3,6 +3,7 @@ package compile
 import (
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/x86"
+	"math"
 	"runtime"
 )
 
@@ -105,6 +106,13 @@ func buildMovStaticString(ctxt *program, link *objLink, width int, b1 []byte, of
 		Type:   obj.TYPE_CONST,
 		Offset: bytes2Int64(b1),
 	}
+	to := obj.Addr{
+		Type:   obj.TYPE_MEM,
+		Reg:    x86.REG_AX,
+		Index:  x86.REG_DX,
+		Scale:  1,
+		Offset: offset,
+	}
 	switch width {
 	case 1:
 		level = "byte"
@@ -113,15 +121,9 @@ func buildMovStaticString(ctxt *program, link *objLink, width int, b1 []byte, of
 	case 4:
 		level = "long"
 	case 8:
-		level = "quad"
+		return buildQuadMovOnConst(ctxt, link, offsetFrom.Offset, to)
 	}
-	return buildMov(ctxt, link, level, offsetFrom, obj.Addr{
-		Type:   obj.TYPE_MEM,
-		Reg:    x86.REG_AX,
-		Index:  x86.REG_DX,
-		Scale:  1,
-		Offset: offset,
-	})
+	return buildMov(ctxt, link, level, offsetFrom, to)
 }
 
 func buildMov(ctxt *program, link *objLink, level string, from, to obj.Addr) *objLink {
@@ -132,9 +134,6 @@ func buildMov(ctxt *program, link *objLink, level string, from, to obj.Addr) *ob
 		link.Prog.As = x86.AMOVW
 	case "long":
 		link.Prog.As = x86.AMOVL
-	case "quad":
-		link.Prog.As = x86.AMOVQ
-	default:
 		panic("unknown instruction")
 	}
 	link.Prog.From = from
@@ -143,9 +142,33 @@ func buildMov(ctxt *program, link *objLink, level string, from, to obj.Addr) *ob
 	return link
 }
 
+// movq不支持64位立即数, 所以需要movabs中转
+// 以下生成的指令等于: movabs rcx, $val
+//
+//	mov	rcx, [to_addr]
+func buildQuadMovOnConst(ctxt *program, link *objLink, val int64, to obj.Addr) *objLink {
+	link.Prog.As = x86.AWORD
+	link.Prog.From = obj.Addr{
+		Type:   obj.TYPE_CONST,
+		Offset: 0xb948,
+	}
+	link, _ = ctxt.AppendP(link)
+	link.Prog.As = x86.AQUAD
+	link.Prog.From = obj.Addr{
+		Type:   obj.TYPE_CONST,
+		Offset: val,
+	}
+	link, _ = ctxt.AppendP(link)
+	link.Prog.As = x86.AMOVQ
+	link.Prog.From = _RCX
+	link.Prog.To = to
+	link, _ = ctxt.AppendP(link)
+	return link
+}
+
 func buildACALL(ctxt *program, objl *objLink, desc funcDesc) *objLink {
 	var (
-		AbleUsage = []int{x86.REG_CX, x86.REG_DX, x86.REG_DI, x86.REG_SI}
+		AbleUsage = []int{x86.REG_DX, x86.REG_R12, x86.REG_R13}
 	)
 	if ctxt == nil && objl == nil {
 		ctxt = newProgram()
@@ -178,6 +201,108 @@ func buildACALL(ctxt *program, objl *objLink, desc funcDesc) *objLink {
 	objl.Prog = &obj.Prog{
 		As: obj.ACALL,
 		To: to,
+	}
+	objl, _ = ctxt.AppendP(objl)
+	return objl
+}
+
+func buildSimd32Memmove(ctxt *program, objl *objLink, startPtr uintptr, baseLen, n int) *objLink {
+	if startPtr+uintptr(n*32) > uintptr(math.MaxUint32) {
+		objl = buildQuadMovOnConst(ctxt, objl, int64(startPtr), _RCX)
+	} else {
+		objl = buildMov(ctxt, objl, "long", obj.Addr{
+			Type:   obj.TYPE_CONST,
+			Offset: int64(startPtr),
+		}, _RCX)
+	}
+	for i := 0; i < 16; i++ {
+		if i == n {
+			break
+		}
+		objl.Prog = &obj.Prog{
+			As: x86.AVMOVDQU,
+			From: obj.Addr{
+				Type:   obj.TYPE_MEM,
+				Reg:    x86.REG_CX,
+				Offset: int64(i * 32),
+			},
+			To: obj.Addr{
+				Type: obj.TYPE_REG,
+				Reg:  int16(x86.REG_Y0 + i),
+			},
+		}
+		objl, _ = ctxt.AppendP(objl)
+	}
+	for i := 0; i < 16; i++ {
+		if i == n {
+			break
+		}
+		objl.Prog = &obj.Prog{
+			As: x86.AVMOVDQU,
+			From: obj.Addr{
+				Type: obj.TYPE_REG,
+				Reg:  int16(x86.REG_Y0 + i),
+			},
+			To: obj.Addr{
+				Type:   obj.TYPE_MEM,
+				Reg:    x86.REG_AX,
+				Index:  x86.REG_DX,
+				Scale:  1,
+				Offset: int64(baseLen + i*32),
+			},
+		}
+		objl, _ = ctxt.AppendP(objl)
+	}
+	if n > 16 {
+		return buildSimd32Memmove(ctxt, objl, startPtr+uintptr(16*32), baseLen+16*32, n-16)
+	}
+	return objl
+}
+
+func buildGrowSlice(ctxt *program, objl *objLink, from obj.Addr, incr int64) *objLink {
+	objl.Prog = &obj.Prog{
+		As:   x86.AMOVQ,
+		From: from,
+		To:   _RCX,
+	}
+	objl, _ = ctxt.AppendP(objl)
+	objl.Prog = &obj.Prog{
+		As: x86.AADDQ,
+		From: obj.Addr{
+			Type:   obj.TYPE_CONST,
+			Offset: incr,
+		},
+		To: _RCX,
+	}
+	objl, _ = ctxt.AppendP(objl)
+	objl.Prog = &obj.Prog{
+		As:   x86.AADDQ,
+		From: _RDX,
+		To:   _RCX,
+	}
+	objl, _ = ctxt.AppendP(objl)
+	objl.Prog = &obj.Prog{
+		As:   x86.ACMPQ,
+		From: _RCX,
+		To:   _RSI,
+	}
+	objl.Prog = &obj.Prog{}
+	// jge ?
+	objl, _ = ctxt.AppendP(objl)
+	objl.Prog = &obj.Prog{
+		As: x86.AWORD,
+		From: obj.Addr{
+			Type:   obj.TYPE_CONST,
+			Offset: 0x8d0f, // 0f 8d on little-endian
+		},
+	}
+	objl, _ = ctxt.AppendP(objl)
+	objl.Prog = &obj.Prog{
+		As: x86.ALONG,
+		From: obj.Addr{
+			Type:   obj.TYPE_CONST,
+			Offset: int64(0x12345678),
+		},
 	}
 	objl, _ = ctxt.AppendP(objl)
 	return objl

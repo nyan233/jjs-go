@@ -1,0 +1,53 @@
+package compiler
+
+import (
+	"github.com/twitchyliquid64/golang-asm/obj"
+	"github.com/twitchyliquid64/golang-asm/obj/x86"
+)
+
+var AllReg = []obj.Addr{
+	JitStackReg,
+	BufferPtrReg,
+	CusPtrReg,
+	JitTempReg,
+	{Type: obj.TYPE_REG, Reg: x86.REG_R12},
+}
+
+var GoFuncBaseReg = []obj.Addr{
+	GoAbiArg1,
+	GoAbiArg2,
+	GoAbiArg3,
+	GoAbiArg4,
+	GoAbiArg5,
+}
+
+var GoAbiArg1 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_AX}
+var GoAbiArg2 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_BX}
+var GoAbiArg3 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_CX}
+var GoAbiArg4 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_DI}
+var GoAbiArg5 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SI}
+
+var GoStackReg = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SP}
+var FramePointerReg = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_BP}
+var JitStackReg = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R8}
+var BufferPtrReg = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R9}
+var CusPtrReg = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R10}
+var JitTempReg = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R11}
+
+var (
+	BufferSlicePtrAddr = obj.Addr{
+		Type:   obj.TYPE_MEM,
+		Reg:    BufferPtrReg.Reg,
+		Offset: 0,
+	}
+	BufferSliceLenAddr = obj.Addr{
+		Type:   obj.TYPE_MEM,
+		Reg:    BufferPtrReg.Reg,
+		Offset: 8,
+	}
+	BufferSliceCapAddr = obj.Addr{
+		Type:   obj.TYPE_MEM,
+		Reg:    BufferPtrReg.Reg,
+		Offset: 16,
+	}
+)

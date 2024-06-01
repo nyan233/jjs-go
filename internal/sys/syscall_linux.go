@@ -22,8 +22,20 @@ func ModifyPermissions2Exec(code []byte) []byte {
 	return newSpace
 }
 
+func SetExecPermissions(ptr unsafe.Pointer, size uintptr) {
+	s := *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
+		Data: uintptr(ptr),
+		Len:  int(size),
+		Cap:  int(size),
+	}))
+	err := unix.Mprotect(s, unix.PROT_READ|unix.PROT_WRITE|unix.PROT_EXEC)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func VMalloc(size uintptr) unsafe.Pointer {
-	data, err := unix.Mmap(0, 0, int(size), unix.PROT_READ|unix.PROT_WRITE|unix.PROT_EXEC, unix.MAP_SHARED)
+	data, err := unix.Mmap(0, 0, int(size), unix.PROT_READ|unix.PROT_WRITE, unix.MAP_ANON|unix.MAP_PRIVATE)
 	if err != nil {
 		panic(err)
 	}

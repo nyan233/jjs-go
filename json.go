@@ -2,31 +2,35 @@ package jjs_go
 
 import (
 	"errors"
-	"github.com/nyan233/jjs-go/internal/asm"
-	"github.com/nyan233/jjs-go/internal/mempool"
+	"github.com/nyan233/jjs-go/core/compiler"
+	"github.com/nyan233/jjs-go/core/mempool"
 	"github.com/nyan233/jjs-go/internal/rtype"
 	"reflect"
 	"runtime"
 	"unsafe"
 )
 
-func Marshal(data interface{}) ([]byte, error) {
+func Marshal(data interface{}) (buf []byte, err error) {
 	if data == nil {
 		return nil, errors.New("data is nil")
 	}
 	ef := (*rtype.EmptyFace)(unsafe.Pointer(&data))
-	pg := go_GobalJitCompiler.Compile(reflect.TypeOf(data), true)
-	if pg == nil {
-		panic("program is null")
+	function, err := compiler.CompileEncoder(reflect.TypeOf(data), 0)
+	if err != nil {
+		panic(err)
 	}
 	// TODO grow
-	newBytes := make([]byte, pg.MinSize+1024*16, pg.MinSize+1024*16)
+	newBytes := make([]byte, 0, 512)
 	stack := mempool.StackPool.Get().(*mempool.Stack)
-	write, reason := asm.CallMFunc(pg.MFunc, uintptr(stack.High), unsafe.Pointer(&newBytes[0]), ef.Val)
-	newBytes = newBytes[:write+pg.MinSize]
-	_ = reason
+	defer func() {
+		rErr := recover()
+		if rErr != nil {
+			err, _ = rErr.(error)
+		}
+	}()
+	function(stack.High, &newBytes, ef.Val, 0)
 	runtime.KeepAlive(stack)
-	runtime.KeepAlive(newBytes)
+	runtime.KeepAlive(&newBytes)
 	runtime.KeepAlive(ef.Val)
 	return newBytes, nil
 }

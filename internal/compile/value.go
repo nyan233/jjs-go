@@ -1,6 +1,7 @@
 package compile
 
 import (
+	"encoding/binary"
 	"github.com/nyan233/jjs-go/internal/rtype"
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/x86"
@@ -30,8 +31,8 @@ const (
 	IRCallUnmarshaller
 )
 
-type Marshaller func(stackHi uintptr, dest, data unsafe.Pointer) (write int64, reason int64)
-type Unmarshaller func(stackHi uintptr, bytes, data unsafe.Pointer, len int64) (reason int64)
+type Marshaller func(stackHi uintptr, dest *[]byte, data unsafe.Pointer) (reason int64)
+type Unmarshaller func(stackHi uintptr, bytes *[]byte, data unsafe.Pointer) (reason int64)
 
 var (
 	_RSP = obj.Addr{
@@ -70,6 +71,18 @@ var (
 		Type: obj.TYPE_REG,
 		Reg:  x86.REG_R10,
 	}
+	_RDI = obj.Addr{
+		Type: obj.TYPE_REG,
+		Reg:  x86.REG_DI,
+	}
+	_RSI = obj.Addr{
+		Type: obj.TYPE_REG,
+		Reg:  x86.REG_SI,
+	}
+)
+
+var (
+	BinaryEncoder binary.ByteOrder
 )
 
 func getFunctionCodeAddress(fn interface{}, code bool) uintptr {
@@ -78,4 +91,8 @@ func getFunctionCodeAddress(fn interface{}, code bool) uintptr {
 		return *(*uintptr)(efac.Val)
 	}
 	return (uintptr)(efac.Val)
+}
+
+func init() {
+	BinaryEncoder = binary.LittleEndian
 }

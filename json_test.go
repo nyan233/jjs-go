@@ -13,9 +13,10 @@ type JsonT1 struct {
 }
 
 type JsonT2 struct {
-	Uid1 string
-	Uid4 string
-	UID5 string
+	Uid1                                                  string
+	Uid4                                                  string
+	UID5                                                  string
+	MyUidUIdUUUUUIIIIIIDDDDDD222323827873HHHH5555634ggfwe string
 }
 
 func TestJsonMarshaller(t *testing.T) {
@@ -23,6 +24,7 @@ func TestJsonMarshaller(t *testing.T) {
 		Uid1: "xiaoming233",
 		Uid4: "zhouzhoujun666",
 		UID5: "lixiaomei666",
+		MyUidUIdUUUUUIIIIIIDDDDDD222323827873HHHH5555634ggfwe: "hehe",
 	}
 	b, err := Marshal(td1)
 	if err != nil {
@@ -41,9 +43,10 @@ func TestJsonMarshaller(t *testing.T) {
 func BenchmarkMarshal(b *testing.B) {
 	debug.SetGCPercent(-1)
 	td1 := &JsonT2{
-		Uid1: gen(2048 + 1024),
-		Uid4: gen(4096),
-		UID5: gen(4096),
+		Uid1: gen(64),
+		Uid4: gen(64),
+		UID5: gen(64),
+		MyUidUIdUUUUUIIIIIIDDDDDD222323827873HHHH5555634ggfwe: gen(64),
 	}
 	b.Run("Stdlib", func(b *testing.B) {
 		b.ReportAllocs()
@@ -66,6 +69,13 @@ func BenchmarkMarshal(b *testing.B) {
 			_ = b
 		}
 	})
+	b.Run("Static", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			bytes := make([]byte, 0, 256)
+			staticMarshall(td1, &bytes)
+		}
+	})
 }
 
 func gen(size int) string {
@@ -74,4 +84,20 @@ func gen(size int) string {
 		b = append(b, 'h')
 	}
 	return string(b)
+}
+
+func staticMarshall(j *JsonT2, bytes *[]byte) {
+	*bytes = append(*bytes, "{\"Uid1\" : "...)
+	*bytes = append(*bytes, j.Uid1...)
+	*bytes = append(*bytes, ',')
+	*bytes = append(*bytes, "{\"Uid4\" : "...)
+	*bytes = append(*bytes, j.Uid4...)
+	*bytes = append(*bytes, ',')
+	*bytes = append(*bytes, "{\"UID5\" : "...)
+	*bytes = append(*bytes, j.UID5...)
+	*bytes = append(*bytes, '}')
+	*bytes = append(*bytes, ',')
+	*bytes = append(*bytes, "{\"MyUidUIdUUUUUIIIIIIDDDDDD222323827873HHHH5555634ggfwe\" : "...)
+	*bytes = append(*bytes, j.UID5...)
+	*bytes = append(*bytes, '}')
 }
