@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	golangasm "github.com/twitchyliquid64/golang-asm"
@@ -61,8 +62,16 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 			return nil
 		}
 		ctx := jitEncodeContextPool.Get().(*jitEncodeContext)
+		capacity := program.initialCapacity
+		if hint := int(program.capacityHint.Load()); hint > capacity {
+			capacity = hint
+		}
+		dst := (*buf)[:0]
+		if cap(dst) < capacity {
+			dst = make([]byte, 0, capacity)
+		}
 		*ctx = jitEncodeContext{
-			dst:     make([]byte, 0, program.initialCapacity),
+			dst:     dst,
 			data:    data,
 			program: program.program,
 		}
@@ -76,6 +85,9 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 		}()
 		program.function(ctx)
 		*buf = ctx.dst
+		if ctx.err == nil {
+			program.capacityHint.Store(uint64(len(ctx.dst)))
+		}
 		runtime.KeepAlive(ctx)
 		runtime.KeepAlive(program)
 		return ctx.err
@@ -89,6 +101,7 @@ type jitCompiledEncoder struct {
 	function        func(*jitEncodeContext) uintptr
 	initialCapacity int
 	rootKind        reflect.Kind
+	capacityHint    atomic.Uint64 // last successful output size for the next allocation
 }
 
 func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {

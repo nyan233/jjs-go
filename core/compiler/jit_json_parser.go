@@ -38,6 +38,10 @@ type jitJSONParser struct {
 	depth int
 }
 
+// Keep short keys and values out of AVX2; decode the remaining unescaped
+// portion as one direct string conversion.
+const jitDecodeStringScalarBytes = 256
+
 func parseJITJSON(data []byte) (*jitJSONNode, error) {
 	parser := jitJSONParser{data: data}
 	parser.skipSpace()
@@ -160,22 +164,102 @@ func (p *jitJSONParser) parseObject() (*jitJSONNode, error) {
 
 func (p *jitJSONParser) parseString() (string, error) {
 	p.index++
-	out := make([]byte, 0, 32)
+	start := p.index
+	scalarEnd := start + jitDecodeStringScalarBytes
+	if scalarEnd > len(p.data) {
+		scalarEnd = len(p.data)
+	}
+	hasNonASCII := false
+
+	for p.index < scalarEnd {
+		c := p.data[p.index]
+		switch {
+		case c == '"':
+			end := p.index
+			p.index++
+			return p.rawString(start, end, hasNonASCII)
+		case c == '\\':
+			return p.parseStringSlow(start)
+		case c < 0x20:
+			return "", p.errorf("invalid control character in string")
+		case c < utf8.RuneSelf:
+			p.index++
+		default:
+			hasNonASCII = true
+			r, size := utf8.DecodeRune(p.data[p.index:])
+			if r == utf8.RuneError && size == 1 {
+				return p.parseStringSlow(start)
+			}
+			p.index += size
+		}
+	}
+
+	useVector := true
 	for p.index < len(p.data) {
-		if remaining := len(p.data) - p.index; remaining >= 32 {
+		if remaining := len(p.data) - p.index; useVector && remaining >= jitDecodeStringScalarBytes {
 			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(p.data)), p.index))
-			special := avx2FindJSONEscape(ptr, remaining)
+			special := avx2FindJSONStringEnd(ptr, remaining)
 			if special < 0 {
-				out = append(out, p.data[p.index:]...)
-				p.index = len(p.data)
-				break
+				return "", p.errorf("unexpected end of string")
 			}
 			if special > 0 {
-				out = append(out, p.data[p.index:p.index+special]...)
 				p.index += special
 				continue
 			}
 		}
+		c := p.data[p.index]
+		if c == '"' {
+			end := p.index
+			p.index++
+			return p.rawString(start, end, hasNonASCII)
+		}
+		if c == '\\' {
+			return p.parseStringSlow(start)
+		}
+		if c < 0x20 {
+			return "", p.errorf("invalid control character in string")
+		}
+		if c >= utf8.RuneSelf {
+			hasNonASCII = true
+			useVector = false
+			r, size := utf8.DecodeRune(p.data[p.index:])
+			if r == utf8.RuneError && size == 1 {
+				return p.parseStringSlow(start)
+			}
+			p.index += size
+			continue
+		}
+		p.index++
+	}
+	return "", p.errorf("unexpected end of string")
+}
+
+func (p *jitJSONParser) rawString(start, end int, hasNonASCII bool) (string, error) {
+	raw := p.data[start:end]
+	if !hasNonASCII {
+		return string(raw), nil
+	}
+	if utf8.Valid(raw) {
+		return string(raw), nil
+	}
+	out := make([]byte, 0, len(raw))
+	for len(raw) > 0 {
+		r, size := utf8.DecodeRune(raw)
+		if r == utf8.RuneError && size == 1 {
+			out = utf8.AppendRune(out, utf8.RuneError)
+			raw = raw[1:]
+			continue
+		}
+		out = append(out, raw[:size]...)
+		raw = raw[size:]
+	}
+	return string(out), nil
+}
+
+func (p *jitJSONParser) parseStringSlow(start int) (string, error) {
+	p.index = start
+	out := make([]byte, 0, 32)
+	for p.index < len(p.data) {
 		c := p.data[p.index]
 		if c == '"' {
 			p.index++

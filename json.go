@@ -24,7 +24,7 @@ func Marshal(data any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 0, 256)
+	var buf []byte
 	if err := encoder(&buf, face.data); err != nil {
 		return nil, err
 	}

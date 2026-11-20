@@ -36,6 +36,31 @@ func TestAVX2FindJSONEscape(t *testing.T) {
 	}
 }
 
+func TestAVX2FindJSONStringEnd(t *testing.T) {
+	tests := []string{
+		"",
+		"short",
+		strings.Repeat("a", 31),
+		strings.Repeat("a", 32),
+		strings.Repeat("a", 33),
+		strings.Repeat("a", 63) + `"`,
+		strings.Repeat("a", 64) + `\`,
+		strings.Repeat("a", 95) + "\n",
+		"safe <html> & punctuation",
+		"中文 UTF-8 text",
+	}
+	for _, value := range tests {
+		got := -1
+		if len(value) > 0 {
+			got = avx2FindJSONStringEnd((*byte)(unsafe.Pointer(unsafe.StringData(value))), len(value))
+		}
+		want := firstJSONStringEnd(value)
+		if got != want {
+			t.Fatalf("value length %d: got %d, want %d", len(value), got, want)
+		}
+	}
+}
+
 func TestAVX2QuotedMatchesEncodingJSON(t *testing.T) {
 	values := []string{
 		strings.Repeat("a", 1024),
@@ -69,6 +94,16 @@ func firstJSONSpecial(value string) int {
 		}
 		_, size := utf8.DecodeRuneInString(value[i:])
 		i += size
+	}
+	return -1
+}
+
+func firstJSONStringEnd(value string) int {
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if c < 0x20 || c >= utf8.RuneSelf || c == '"' || c == '\\' {
+			return i
+		}
 	}
 	return -1
 }

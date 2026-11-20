@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"slices"
 	"strconv"
 	"sync"
 	"unsafe"
@@ -65,13 +64,34 @@ func (c *jitEncodeContext) setError(err error) {
 	}
 }
 
+func (c *jitEncodeContext) ensureCapacity(additional int) {
+	if additional <= 0 {
+		return
+	}
+	required := len(c.dst) + additional
+	if required <= cap(c.dst) {
+		return
+	}
+	// Grow exponentially so a large output does not repeatedly copy the buffer.
+	capacity := cap(c.dst) * 2
+	if capacity < required {
+		capacity = required
+	}
+	if capacity < 1024 {
+		capacity = 1024
+	}
+	dst := make([]byte, len(c.dst), capacity)
+	copy(dst, c.dst)
+	c.dst = dst
+}
+
 //go:noinline
 func jitReserveRaw(ctx *jitEncodeContext, n int) unsafe.Pointer {
 	if ctx == nil || n <= 0 {
 		return nil
 	}
 	start := len(ctx.dst)
-	ctx.dst = slices.Grow(ctx.dst, n)
+	ctx.ensureCapacity(n)
 	ctx.dst = ctx.dst[:start+n]
 	return unsafe.Add(unsafe.Pointer(unsafe.SliceData(ctx.dst)), start)
 }
@@ -85,6 +105,7 @@ func jitAppendString(ctx *jitEncodeContext, ptr unsafe.Pointer, n int) {
 		ctx.setError(errors.New("json: nil string pointer"))
 		return
 	}
+	ctx.ensureCapacity(n + 2)
 	ctx.dst = appendQuoted(ctx.dst, unsafe.String((*byte)(ptr), n))
 }
 

@@ -16,3 +16,9 @@ func init() {
 //
 //go:noescape
 func avx2FindJSONEscape(ptr *byte, n int) int
+
+// avx2FindJSONStringEnd returns the first byte that requires scalar decoding:
+// a quote, a backslash, a control byte, or a non-ASCII byte.
+//
+//go:noescape
+func avx2FindJSONStringEnd(ptr *byte, n int) int

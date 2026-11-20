@@ -13,6 +13,10 @@ not considered allocatable.
 Encode and decode contexts are reused through `sync.Pool`. The generated code
 reserves output capacity once per static segment and writes compiled literals
 directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
+Short and medium strings stay on a scalar path; AVX2 is used only where its
+fixed setup cost is amortized. Unescaped decode strings are converted directly
+from the input slice, and encoders use the previous output size as a capacity
+hint to avoid repeated growth copies.
 
 `Unmarshal` parses the input into a non-reflective JSON AST, then executes a
 generated assignment function that writes fields by their compiled offsets.

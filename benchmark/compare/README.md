@@ -67,4 +67,6 @@ fails fast otherwise.
 
 The latest local results, raw output, and bottleneck notes are in
 [`RESULTS.md`](RESULTS.md) and
-[`results-windows-amd64.txt`](results-windows-amd64.txt).
+[`results-windows-amd64-optimized.txt`](results-windows-amd64-optimized.txt).
+The pre-optimization run remains in
+[`results-windows-amd64.txt`](results-windows-amd64.txt) for comparison.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -128,6 +129,29 @@ func TestUnmarshalJITScalarsAndArrays(t *testing.T) {
 	}
 	if values != [2]uint16{1, 65535} {
 		t.Fatalf("unexpected array: %v", values)
+	}
+}
+
+func TestUnmarshalJITStringPaths(t *testing.T) {
+	inputs := [][]byte{
+		[]byte(`"short"`),
+		[]byte(`"` + strings.Repeat("a", 80) + `"`),
+		[]byte(`"<html>&` + strings.Repeat("b", 80) + `"`),
+		[]byte(`"中文-` + strings.Repeat("世界", 30) + `"`),
+		[]byte(`"prefix-` + strings.Repeat("c", 40) + `\n\u4e16\u754c"`),
+		append(append([]byte{'"', 'a'}, 0xff), '"'),
+	}
+	for _, input := range inputs {
+		var got, want string
+		if err := Unmarshal(input, &got); err != nil {
+			t.Fatalf("Unmarshal(%q): %v", input, err)
+		}
+		if err := json.Unmarshal(input, &want); err != nil {
+			t.Fatalf("encoding/json.Unmarshal(%q): %v", input, err)
+		}
+		if got != want {
+			t.Fatalf("Unmarshal(%q) = %q, want %q", input, got, want)
+		}
 	}
 }
 
