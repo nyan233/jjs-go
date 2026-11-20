@@ -1,4 +1,4 @@
-//go:build go1.18 || go.19 || go.1.20
+//go:build go1.18
 
 package container
 
@@ -6,9 +6,9 @@ import (
 	"sync"
 )
 
-type RWMutexMap[Key any, Value any] struct {
+type RWMutexMap[Key comparable, Value any] struct {
 	mu sync.RWMutex
-	mp map[any]Value
+	mp map[Key]Value
 }
 
 func (m *RWMutexMap[Key, Value]) LoadOk(k Key) (Value, bool) {
@@ -40,7 +40,7 @@ func (m *RWMutexMap[Key, Value]) Store(k Key, v Value) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.mp == nil {
-		m.mp = make(map[any]Value)
+		m.mp = make(map[Key]Value)
 	}
 	m.mp[k] = v
 }

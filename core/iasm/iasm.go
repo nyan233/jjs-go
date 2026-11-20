@@ -5,6 +5,8 @@ import (
 	"unsafe"
 )
 
+func jitgrowslice()
+
 var BytesEtype = func() unsafe.Pointer {
 	eface := any([]byte{})
 	return (*[2]unsafe.Pointer)(unsafe.Pointer(&eface))[0]

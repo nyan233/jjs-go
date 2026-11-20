@@ -25,12 +25,12 @@ TEXT ·exitgocall(SB),NOSPLIT,$8-0
     CALL runtime·procUnpin(SB)
     RET
 
-TEXT ·jitstack(SB),NOSPLIT,$24-25
+TEXT ·jitstack(SB),NOSPLIT,$32-32
     NO_LOCAL_POINTERS
     MOVQ    ss_lo+0(FP), AX
     MOVQ    ss_hi+8(FP), BX
-    MOVQ    func+16(FP), R9
-    MOVQ    lock_flag+24(FP), CX
+    MOVQ    fn+16(FP), R9
+    MOVQ    lockflag+24(FP), CX
     TESTQ   CX, CX
     JZ      no_lock
     CALL    ·procPin(SB)
@@ -73,7 +73,7 @@ TEXT ·jitstack_switch(SB),NOSPLIT,$0-0
     ADDQ    $48, R8
     RET
 
-TEXT ·stacksave<>(SB),NOSPLIT,$0-0
+TEXT ·stacksave<>(SB),NOSPLIT,$16-0
     MOVQ	$jitstack_switch(SB), R9
 	MOVQ	R9, (g_sched+gobuf_pc)(R14)
 	LEAQ	8(SP), R9

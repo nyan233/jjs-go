@@ -11,15 +11,15 @@ func TestProgram(t *testing.T) {
 	t.Run("OrderLink", func(t *testing.T) {
 		p := newProgram()
 		link := buildCallMemoryCopy(p, p.progRoot)
-		link = buildCallOnConst(p, link, "jjs_memmove", nil, nil)
+		link = buildCallOnConst(p, link, "rt_memory_copy", nil, nil)
 		link = buildBytes2String(p, link, _RDX, _RBX, _RAX, _RCX)
 		t.Log(hex.EncodeToString(p.BuildOnFunc(-1, -1)))
 	})
 	t.Run("InsertLink", func(t *testing.T) {
 		p := newProgram()
 		link := buildCallMemoryCopy(p, p.progRoot)
-		link = buildCallOnConst(p, link, "jjs_memmove", nil, nil)
-		link = buildMov(p, link.forward, "quad", _RDX, _RSP)
+		link = buildCallOnConst(p, link, "rt_memory_copy", nil, nil)
+		link = buildQuadMovOnConst(p, link, 0, _RDX)
 		link = buildBytes2String(p, link, _RDX, _RBX, _RAX, _RCX)
 		t.Log(hex.EncodeToString(p.BuildOnFunc(-1, -1)))
 	})

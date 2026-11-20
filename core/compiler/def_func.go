@@ -7,6 +7,7 @@ import (
 	"github.com/nyan233/jjs-go/core/mempool"
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/x86"
+	"os"
 	"unsafe"
 )
 
@@ -141,5 +142,7 @@ func buildJitGrowSlice() (string, []byte) {
 }
 
 func init() {
-	_RegisterDefFunc(buildJitGrowSlice())
+	if os.Getenv("JJS_ENABLE_EXPERIMENTAL_JIT") == "1" {
+		_RegisterDefFunc(buildJitGrowSlice())
+	}
 }

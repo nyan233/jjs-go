@@ -1,43 +1,39 @@
 package jjs_go
 
 import (
-	"errors"
-	"github.com/nyan233/jjs-go/core/compiler"
-	"github.com/nyan233/jjs-go/core/mempool"
-	"github.com/nyan233/jjs-go/internal/rtype"
+	"encoding/json"
 	"reflect"
-	"runtime"
-	"unsafe"
+
+	"github.com/nyan233/jjs-go/core/compiler"
 )
 
-func Marshal(data interface{}) (buf []byte, err error) {
-	if data == nil {
-		return nil, errors.New("data is nil")
+// Marshal returns the JSON encoding of data.
+func Marshal(data any) ([]byte, error) {
+	value := reflect.ValueOf(data)
+	if !value.IsValid() {
+		return []byte("null"), nil
 	}
-	ef := (*rtype.EmptyFace)(unsafe.Pointer(&data))
-	function, err := compiler.CompileEncoder(reflect.TypeOf(data), 0)
+	encoder, err := compiler.CompileEncoder(value.Type(), 0)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	// TODO grow
-	newBytes := make([]byte, 0, 512)
-	stack := mempool.StackPool.Get().(*mempool.Stack)
-	defer func() {
-		rErr := recover()
-		if rErr != nil {
-			err, _ = rErr.(error)
-		}
-	}()
-	function(stack.High, &newBytes, ef.Val, 0)
-	runtime.KeepAlive(stack)
-	runtime.KeepAlive(&newBytes)
-	runtime.KeepAlive(ef.Val)
-	return newBytes, nil
+	buf := make([]byte, 0, 256)
+	if err := encoder(&buf, value); err != nil {
+		return nil, err
+	}
+	return buf, nil
 }
 
-func Unmarshal(bytes []byte, data interface{}) error {
-	if data == nil {
-		return errors.New("data is nil")
+// Unmarshal parses JSON data and stores the result in the value pointed to by
+// data. data must be a non-nil pointer.
+func Unmarshal(bytes []byte, data any) error {
+	target := reflect.ValueOf(data)
+	if !target.IsValid() || target.Kind() != reflect.Pointer || target.IsNil() {
+		return &json.InvalidUnmarshalError{Type: reflect.TypeOf(data)}
 	}
-	return nil
+	decoder, err := compiler.CompileDecoder(target.Elem().Type())
+	if err != nil {
+		return err
+	}
+	return decoder(bytes, target.Elem())
 }

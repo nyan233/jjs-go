@@ -22,9 +22,11 @@ func (s *SyncMap118[Key, Value]) LoadOk(k Key) (Value, bool) {
 
 func (s *SyncMap118[Key, Value]) Store(k Key, v Value) {
 	_, loaded := s.SMap.LoadOrStore(k, v)
-	if !loaded {
-		atomic.AddInt64(&s.length, 1)
+	if loaded {
+		s.SMap.Store(k, v)
+		return
 	}
+	atomic.AddInt64(&s.length, 1)
 }
 
 func (s *SyncMap118[Key, Value]) Delete(k Key) {

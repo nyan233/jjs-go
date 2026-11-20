@@ -85,7 +85,7 @@ func (m *SliceMap[K, V]) Delete(key K) {
 func (m *SliceMap[K, V]) Range(fn func(K, V) (next bool)) {
 	var count int
 	for _, node := range m.nodes {
-		if node.StoreOk && count <= m.length {
+		if node.StoreOk && count < m.length {
 			count++
 			if !fn(node.Key, node.Value) {
 				return

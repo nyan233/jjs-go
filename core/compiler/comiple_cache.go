@@ -3,21 +3,20 @@ package compiler
 import (
 	"github.com/nyan233/jjs-go/core/container"
 	"reflect"
-	"unsafe"
 )
 
-type baseCache struct {
-	rcuMap *container.RCUMap[reflect.Type, unsafe.Pointer]
+type baseCache[V any] struct {
+	rcuMap *container.RCUMap[reflect.Type, V]
 }
 
-func (b *baseCache) init() {
-	b.rcuMap = container.NewRCUMap[reflect.Type, unsafe.Pointer](128)
+func (b *baseCache[V]) init() {
+	b.rcuMap = container.NewRCUMap[reflect.Type, V](128)
 }
 
-func (b *baseCache) setCompileResult(typ reflect.Type, function unsafe.Pointer) {
-	b.rcuMap.Store(typ, function)
+func (b *baseCache[V]) setCompileResult(typ reflect.Type, value V) {
+	b.rcuMap.Store(typ, value)
 }
 
-func (b *baseCache) getCompileResult(typ reflect.Type) (unsafe.Pointer, bool) {
+func (b *baseCache[V]) getCompileResult(typ reflect.Type) (V, bool) {
 	return b.rcuMap.LoadOk(typ)
 }

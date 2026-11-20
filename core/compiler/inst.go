@@ -30,22 +30,22 @@ func ParseUList[T UINT](arg uint64) (val []T) {
 	case 8:
 		val = []T{T(arg)}
 	case 4:
-		val = []T{T(arg << 32), T(arg)}
+		val = []T{T(arg >> 32), T(arg)}
 	case 2:
-		val = make([]T, 0, 64/size)
-		val[0] = T(arg << 48)
-		val[1] = T(arg << 32)
-		val[2] = T(arg << 16)
-		val[3] = T(arg << 0)
+		val = make([]T, 8/size)
+		val[0] = T(arg >> 48)
+		val[1] = T(arg >> 32)
+		val[2] = T(arg >> 16)
+		val[3] = T(arg)
 	case 1:
-		val = make([]T, 0, 64/size)
-		val[0] = T(arg << 56)
-		val[1] = T(arg << 48)
-		val[2] = T(arg << 40)
-		val[3] = T(arg << 32)
-		val[4] = T(arg << 24)
-		val[5] = T(arg << 16)
-		val[6] = T(arg << 8)
+		val = make([]T, 8/size)
+		val[0] = T(arg >> 56)
+		val[1] = T(arg >> 48)
+		val[2] = T(arg >> 40)
+		val[3] = T(arg >> 32)
+		val[4] = T(arg >> 24)
+		val[5] = T(arg >> 16)
+		val[6] = T(arg >> 8)
 		val[7] = T(arg)
 	}
 	return

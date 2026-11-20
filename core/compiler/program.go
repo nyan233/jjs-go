@@ -7,7 +7,6 @@ import (
 	"github.com/twitchyliquid64/golang-asm"
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/x86"
-	"slices"
 	"unsafe"
 )
 
@@ -83,8 +82,8 @@ func (p *Program) saveRegs(regs ...obj.Addr) {
 }
 
 func (p *Program) recoverRegs(regs ...obj.Addr) {
-	slices.Reverse(regs)
-	for _, reg := range regs {
+	for i := len(regs) - 1; i >= 0; i-- {
+		reg := regs[i]
 		if reg.Type != obj.TYPE_REG {
 			panic("recover reg type not is REG")
 		}

@@ -38,7 +38,7 @@ func (iter *Iterator[Elem]) Take() Elem {
 }
 
 func (iter *Iterator[Elem]) Forward() (Elem, bool) {
-	if !iter.forward {
+	if !iter.forward || iter.current <= 0 {
 		return *new(Elem), false
 	}
 	iter.current -= 1
@@ -49,7 +49,7 @@ func (iter *Iterator[Elem]) Index(i int) (Elem, bool) {
 	if !iter.forward {
 		return *new(Elem), false
 	}
-	if i > iter.tail {
+	if i < 0 || i >= iter.tail {
 		return *new(Elem), false
 	}
 	return iter.iterate(i), true
@@ -57,5 +57,7 @@ func (iter *Iterator[Elem]) Index(i int) (Elem, bool) {
 
 func (iter *Iterator[Elem]) Reset() {
 	iter.current = 0
-	iter.reset()
+	if iter.reset != nil {
+		iter.reset()
+	}
 }

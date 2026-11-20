@@ -51,11 +51,11 @@ TEXT ·JitRecover(SB), NOSPLIT, $0-0
     ADDQ    $48, R8
     RET
 
-TEXT ·CallMFunc(SB), NOSPLIT, $0-56
+TEXT ·CallMFunc(SB), NOSPLIT, $0-48
     MOVQ    text+0(FP), DX
-    MOVQ    stack+8(FP), R8
-    MOVQ    dest_ptr+16(FP), AX
-    MOVQ    data_ptr+24(FP), BX
+    MOVQ    stackHi+8(FP), R8
+    MOVQ    dest+16(FP), AX
+    MOVQ    data+24(FP), BX
     MOVQ    0(DX), SI
     XORQ    DX, DX
     CALL    SI
