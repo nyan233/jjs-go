@@ -236,19 +236,3 @@ func BenchmarkJITMarshal(b *testing.B) {
 		}
 	})
 }
-
-func staticMarshall(j *JsonT2, bytes *[]byte) {
-	*bytes = append(*bytes, "{\"Uid1\" : "...)
-	*bytes = append(*bytes, j.Uid1...)
-	*bytes = append(*bytes, ',')
-	*bytes = append(*bytes, "{\"Uid4\" : "...)
-	*bytes = append(*bytes, j.Uid4...)
-	*bytes = append(*bytes, ',')
-	*bytes = append(*bytes, "{\"UID5\" : "...)
-	*bytes = append(*bytes, j.UID5...)
-	*bytes = append(*bytes, '}')
-	*bytes = append(*bytes, ',')
-	*bytes = append(*bytes, "{\"MyUidUIdUUUUUIIIIIIDDDDDD222323827873HHHH5555634ggfwe\" : "...)
-	*bytes = append(*bytes, j.UID5...)
-	*bytes = append(*bytes, '}')
-}
