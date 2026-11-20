@@ -6,21 +6,27 @@
 cached function that loads each field by offset and calls fixed JIT intrinsics
 for strings, booleans, integers, floats and JSON punctuation.
 
+The compiler includes a linear-scan register allocator for non-reserved
+physical registers. ABI registers used by runtime bridges remain fixed and are
+not considered allocatable.
+
 `Unmarshal` parses the input into a non-reflective JSON AST, then executes a
 generated assignment function that writes fields by their compiled offsets.
 There is no reflection-based encoding plan or `encoding/json` runtime fallback.
 
 Current JIT type support:
 
-- structs, nested value structs and arrays
+- structs, nested structs, arrays and slices
+- pointer fields and pointer roots
+- maps through Go runtime `mapiterinit`/`mapiternext` and map allocation bridges
+  (decoding currently covers string-keyed maps)
+- interfaces through runtime type/interface metadata and dynamically compiled JIT units
 - strings and JSON escape decoding
 - booleans, signed/unsigned integers and floats
 - JSON tags and ignored fields
-- pointer roots (`*T`)
 
-Pointer fields, slices, maps, embedded fields and `omitempty` currently return
-an explicit unsupported-type error. They are not silently routed through a
-reflection fallback.
+Embedded fields and `omitempty` currently return an explicit unsupported-type
+error. They are not silently routed through a reflection fallback.
 
 ## Usage
 
@@ -57,7 +63,7 @@ func main() {
 
 ## Requirements
 
-- Go 1.20 or newer
+- Go 1.22 or newer
 - Windows amd64 or Linux amd64
 
 Windows is the primary verification target for this branch. The experimental

@@ -42,5 +42,5 @@ func Unmarshal(bytes []byte, data any) error {
 	if err != nil {
 		return err
 	}
-	return decoder(bytes, face.Val)
+	return decoder(bytes, unsafe.Pointer(reflect.ValueOf(data).Pointer()))
 }

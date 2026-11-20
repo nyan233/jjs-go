@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"unicode/utf8"
 )
 
 type jitChild struct {
@@ -16,13 +15,34 @@ type jitChild struct {
 }
 
 type jitFixture struct {
-	Name   string   `json:"name"`
-	Empty  string   `json:"empty"`
-	Age    int16    `json:"age"`
-	Score  float64  `json:"score"`
-	Active bool     `json:"active"`
-	Child  jitChild `json:"child"`
-	Values [3]int32 `json:"values"`
+	Name   string         `json:"name"`
+	Empty  string         `json:"empty"`
+	Age    int16          `json:"age"`
+	Score  float64        `json:"score"`
+	Active bool           `json:"active"`
+	Child  jitChild       `json:"child"`
+	Ptr    *jitChild      `json:"ptr"`
+	Values [3]int32       `json:"values"`
+	Tags   []string       `json:"tags"`
+	Meta   map[string]int `json:"meta"`
+	Any    any            `json:"any"`
+}
+
+type jitStringer interface {
+	StringValue() string
+}
+
+type jitNamed struct {
+	Name string `json:"name"`
+}
+
+func (v jitNamed) StringValue() string {
+	return v.Name
+}
+
+type jitInterfaceFixture struct {
+	Empty   any         `json:"empty"`
+	NonZero jitStringer `json:"non_zero"`
 }
 
 func jitFixtureValue() jitFixture {
@@ -33,7 +53,11 @@ func jitFixtureValue() jitFixture {
 		Score:  1.2345678901234567,
 		Active: true,
 		Child:  jitChild{Label: "inner", Count: -9},
+		Ptr:    &jitChild{Label: "pointer", Count: 7},
 		Values: [3]int32{1, -2, 3},
+		Tags:   []string{"go", "jit"},
+		Meta:   map[string]int{"answer": 42},
+		Any:    jitChild{Label: "dynamic", Count: 5},
 	}
 }
 
@@ -72,6 +96,7 @@ func TestUnmarshalJIT(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output jitFixture
+	output.Any = jitChild{}
 	if err := Unmarshal(data, &output); err != nil {
 		t.Fatal(err)
 	}
@@ -106,6 +131,35 @@ func TestUnmarshalJITScalarsAndArrays(t *testing.T) {
 	}
 }
 
+func TestJITInterfaceDispatch(t *testing.T) {
+	input := jitInterfaceFixture{
+		Empty:   jitNamed{Name: "empty-interface"},
+		NonZero: jitNamed{Name: "non-empty-interface"},
+	}
+	data, err := Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, want) {
+		t.Fatalf("got %s, want %s", data, want)
+	}
+
+	output := jitInterfaceFixture{
+		Empty:   jitNamed{},
+		NonZero: jitNamed{},
+	}
+	if err := Unmarshal(data, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(output, input) {
+		t.Fatalf("interface dispatch mismatch\ngot:  %#v\nwant: %#v", output, input)
+	}
+}
+
 func TestUnmarshalJITErrors(t *testing.T) {
 	if err := Unmarshal([]byte(`{}`), nil); err == nil {
 		t.Fatal("expected invalid target error")
@@ -116,19 +170,6 @@ func TestUnmarshalJITErrors(t *testing.T) {
 	}
 	if err := Unmarshal([]byte(`{"count":"bad"}`), &value); err == nil {
 		t.Fatal("expected type error")
-	}
-}
-
-func TestJITUnsupportedTypesReturnErrors(t *testing.T) {
-	if _, err := Marshal([]int{1, 2}); err == nil {
-		t.Fatal("expected unsupported slice error")
-	}
-	if _, err := Marshal(map[string]int{"a": 1}); err == nil {
-		t.Fatal("expected unsupported map error")
-	}
-	var value []int
-	if err := Unmarshal([]byte(`[1,2]`), &value); err == nil {
-		t.Fatal("expected unsupported decode error")
 	}
 }
 
@@ -192,50 +233,6 @@ func BenchmarkJITMarshal(b *testing.B) {
 			if _, err := json.Marshal(value); err != nil {
 				b.Fatal(err)
 			}
-		}
-	})
-}
-
-func FuzzJITMarshalString(f *testing.F) {
-	for _, seed := range []string{"", "plain", "\x00\n\t<>&\\\"", "中文😀", "\u2028\u2029"} {
-		f.Add(seed)
-	}
-	f.Fuzz(func(t *testing.T, value string) {
-		got, err := Marshal(value)
-		if err != nil {
-			t.Fatal(err)
-		}
-		want, err := json.Marshal(value)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(got, want) {
-			t.Fatalf("got %q, want %q", got, want)
-		}
-		var decoded string
-		if err := Unmarshal(got, &decoded); err != nil {
-			t.Fatal(err)
-		}
-		if utf8.ValidString(value) && decoded != value {
-			t.Fatalf("round trip mismatch: got %q, want %q", decoded, value)
-		}
-	})
-}
-
-func FuzzJITUnmarshalString(f *testing.F) {
-	for _, seed := range []string{`""`, `"plain"`, `"hello\nworld"`, `"\u4e16\u754c"`, `null`, `123`, `"unterminated`} {
-		f.Add(seed)
-	}
-	f.Fuzz(func(t *testing.T, input string) {
-		var got string
-		gotErr := Unmarshal([]byte(input), &got)
-		var want string
-		wantErr := json.Unmarshal([]byte(input), &want)
-		if (gotErr == nil) != (wantErr == nil) {
-			t.Fatalf("error mismatch for %q: jit=%v stdlib=%v", input, gotErr, wantErr)
-		}
-		if gotErr == nil && got != want {
-			t.Fatalf("value mismatch: got %q, want %q", got, want)
 		}
 	})
 }

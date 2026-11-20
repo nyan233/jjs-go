@@ -1,6 +1,6 @@
 module github.com/nyan233/jjs-go
 
-go 1.20
+go 1.22
 
 require (
 	github.com/bytedance/sonic/loader v0.1.1

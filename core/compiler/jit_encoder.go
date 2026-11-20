@@ -18,6 +18,7 @@ import (
 var gEncoder = new(Encoder).init()
 
 var jitEncodeContexts sync.Map
+var jitEncoderScratchRegisters = allocateJITScratchRegisters(3)
 
 func CompileEncoder(typ reflect.Type, opt uint64) (EncodeHandler, error) {
 	return gEncoder.Compile(typ, opt)
@@ -81,8 +82,8 @@ type jitCompiledEncoder struct {
 }
 
 func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
-	generator := &jitEncoderGenerator{
-		code: newJITCodeBuilder("jjs_encoder"),
+	compiler := &jitEncoderCompiler{
+		unitByType: make(map[reflect.Type]int),
 	}
 	rootType := typ
 	pointerDepth := 0
@@ -90,41 +91,81 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 		pointerDepth++
 		rootType = rootType.Elem()
 	}
-	if err := generator.emitPrologue(); err != nil {
+	if pointerDepth > 1 {
+		return nil, fmt.Errorf("json: JIT encoder supports at most one root pointer level")
+	}
+	if _, err := compiler.unitIndex(rootType); err != nil {
 		return nil, err
 	}
-	if pointerDepth > 0 {
-		for i := 1; i < pointerDepth; i++ {
-			generator.code.loadMem(_R12, 0, _R12)
-		}
-		if err := generator.emitValue(rootType, 0); err != nil {
+	for index := 0; index < len(compiler.units); index++ {
+		unit := compiler.units[index]
+		generator := &jitEncoderGenerator{code: unit.code, compiler: compiler}
+		if err := generator.emitPrologue(); err != nil {
 			return nil, err
 		}
-	} else if err := generator.emitValue(rootType, 0); err != nil {
-		return nil, err
+		if err := generator.emitValue(unit.typ, 0); err != nil {
+			return nil, err
+		}
+		generator.emitReturn()
 	}
-	generator.emitReturn()
-
-	code, err := generator.code.assemble()
-	if err != nil {
-		return nil, err
+	program := newJITEncodeProgram(compiler.static)
+	program.mapTypes = compiler.mapTypes
+	program.functions = make([]func(*jitEncodeContext) uintptr, len(compiler.units))
+	for index, unit := range compiler.units {
+		code, err := unit.code.assemble()
+		if err != nil {
+			return nil, err
+		}
+		if Debug {
+			logger.Debug(hex.EncodeToString(code))
+		}
+		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_encoder_%d", index))
+		program.functions[index] = *(*func(*jitEncodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
-	if Debug {
-		logger.Debug(hex.EncodeToString(code))
-	}
-	program := newJITEncodeProgram(generator.static)
-	program.helpers = generator.helpers()
-	libFunc := jitLoader.LoadOne(code, "jjs_encoder", 64, 16, []bool{true, false}, []bool{true, false, false, false, false, false, false, false})
-	function := *(*func(*jitEncodeContext) uintptr)(unsafe.Pointer(&libFunc))
+	function := program.functions[0]
 	return &jitCompiledEncoder{
 		program:  program,
 		function: function,
 	}, nil
 }
 
+type jitEncoderCompiler struct {
+	static     []byte
+	units      []*jitEncoderUnit
+	unitByType map[reflect.Type]int
+	mapTypes   []uintptr
+}
+
+type jitEncoderUnit struct {
+	typ  reflect.Type
+	code *jitCodeBuilder
+}
+
+func (c *jitEncoderCompiler) unitIndex(typ reflect.Type) (int, error) {
+	if index, ok := c.unitByType[typ]; ok {
+		return index, nil
+	}
+	if typ.Kind() == reflect.Pointer {
+		return 0, fmt.Errorf("json: JIT encoder unit cannot start at pointer type %s", typ)
+	}
+	index := len(c.units)
+	c.unitByType[typ] = index
+	jitTypeRegistry.Store(typePointer(typ), typ)
+	c.units = append(c.units, &jitEncoderUnit{
+		typ:  typ,
+		code: newJITCodeBuilder(fmt.Sprintf("jjs_encoder_%d", index)),
+	})
+	return index, nil
+}
+
+func (c *jitEncoderCompiler) mapTypeIndex(typ reflect.Type) int {
+	c.mapTypes = append(c.mapTypes, typePointer(typ))
+	return len(c.mapTypes) - 1
+}
+
 type jitEncoderGenerator struct {
-	code   *jitCodeBuilder
-	static []byte
+	code     *jitCodeBuilder
+	compiler *jitEncoderCompiler
 }
 
 func (g *jitEncoderGenerator) emitPrologue() error {
@@ -139,10 +180,6 @@ func (g *jitEncoderGenerator) emitReturn() {
 	g.code.addConst(64, _RSP)
 	g.code.xor(_RAX, _RAX)
 	g.code.ret()
-}
-
-func (g *jitEncoderGenerator) helpers() [8]uintptr {
-	return newJITEncodeProgram(nil).helpers
 }
 
 func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
@@ -174,7 +211,14 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		g.code.mov(_R10, _RAX)
 		g.emitHelper(1)
 	case reflect.Pointer:
-		return fmt.Errorf("json: JIT encoder does not support pointer field type %s", typ)
+		childUnit, err := g.compiler.unitIndex(typ.Elem())
+		if err != nil {
+			return err
+		}
+		g.code.mov(_R10, _RAX)
+		g.code.lea(_R12, offset, _RBX)
+		g.code.movConst(int64(childUnit), _RCX)
+		g.emitHelper(8)
 	case reflect.Struct:
 		return g.emitStruct(typ, offset)
 	case reflect.Array:
@@ -194,7 +238,40 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		}
 		return g.emitRaw([]byte("]"))
 	case reflect.Slice:
-		return fmt.Errorf("json: JIT encoder does not support slice type %s", typ)
+		childUnit, err := g.compiler.unitIndex(typ.Elem())
+		if err != nil {
+			return err
+		}
+		g.code.mov(_R10, _RAX)
+		g.code.lea(_R12, offset, _RBX)
+		g.code.movConst(int64(childUnit), _RCX)
+		g.code.movConst(int64(typ.Elem().Size()), _RDI)
+		g.emitHelper(9)
+	case reflect.Map:
+		keyUnit, err := g.compiler.unitIndex(typ.Key())
+		if err != nil {
+			return err
+		}
+		valueUnit, err := g.compiler.unitIndex(typ.Elem())
+		if err != nil {
+			return err
+		}
+		typeIndex := g.compiler.mapTypeIndex(typ)
+		g.code.mov(_R10, _RAX)
+		g.code.lea(_R12, offset, _RBX)
+		g.code.movConst(int64(keyUnit), _RCX)
+		g.code.movConst(int64(valueUnit), _RDI)
+		g.code.movConst(int64(typeIndex), _RSI)
+		g.emitHelper(10)
+	case reflect.Interface:
+		g.code.mov(_R10, _RAX)
+		g.code.lea(_R12, offset, _RBX)
+		if typ.NumMethod() == 0 {
+			g.code.xor(_RCX, _RCX)
+		} else {
+			g.code.movConst(1, _RCX)
+		}
+		g.emitHelper(11)
 	default:
 		return fmt.Errorf("json: JIT encoder does not support %s", typ)
 	}
@@ -315,8 +392,8 @@ func (g *jitEncoderGenerator) emitRaw(value []byte) error {
 	if len(value) == 0 {
 		return nil
 	}
-	offset := len(g.static)
-	g.static = append(g.static, value...)
+	offset := len(g.compiler.static)
+	g.compiler.static = append(g.compiler.static, value...)
 	g.code.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _R11)
 	g.code.loadMem(_R11, int64(unsafe.Offsetof(jitEncodeProgram{}.static)), _RBX)
 	g.code.addConst(int64(offset), _RBX)
@@ -546,21 +623,30 @@ func (c *jitCodeBuilder) setData(reg obj.Addr) {
 
 func (c *jitCodeBuilder) saveJITRegs() {
 	c.mov(_R12, mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved12))))
-	c.mov(_R13, mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved13))))
-	c.mov(_R9, mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved9))))
-	c.mov(_R15, mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved15))))
+	for index, register := range jitEncoderScratchRegisters {
+		c.mov(registerAddr(register), mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.savedScratch))+int64(index*8)))
+	}
 }
 
 func (c *jitCodeBuilder) restoreJITRegs() {
 	c.loadMem(_RSP, 0, _R10)
 	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.data)), _R12)
-	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved13)), _R13)
-	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved9)), _R9)
-	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved15)), _R15)
+	for index, register := range jitEncoderScratchRegisters {
+		c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.savedScratch))+int64(index*8), registerAddr(register))
+	}
 }
 
 func (c *jitCodeBuilder) call(reg obj.Addr) {
 	c.emit(&obj.Prog{As: obj.ACALL, To: reg})
+}
+
+func (c *jitCodeBuilder) callUnit(index int) {
+	c.loadMem(_RSP, 0, _R10)
+	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _R11)
+	c.loadMem(_R11, int64(unsafe.Offsetof(jitEncodeProgram{}.functions)), _R11)
+	c.loadMem(_R11, int64(index*8), _R11)
+	c.mov(_R10, _RAX)
+	c.call(_R11)
 }
 
 func (c *jitCodeBuilder) ret() {
@@ -661,6 +747,10 @@ func constAddr(value int64) obj.Addr {
 
 func mem(base obj.Addr, offset int64) obj.Addr {
 	return obj.Addr{Type: obj.TYPE_MEM, Reg: base.Reg, Offset: offset}
+}
+
+func registerAddr(register int) obj.Addr {
+	return obj.Addr{Type: obj.TYPE_REG, Reg: int16(register)}
 }
 
 var (

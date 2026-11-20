@@ -69,8 +69,13 @@ func (d *Decoder) Compile(typ reflect.Type) (DecodeHandler, error) {
 }
 
 type jitDecodeProgram struct {
-	helpers [4]uintptr
-	static  []byte
+	helpers   [8]uintptr
+	static    []byte
+	functions []func(*jitDecodeContext) uintptr
+	types     []uintptr
+	typeSizes []uintptr
+	elemSizes []uintptr
+	elemTypes []uintptr
 }
 
 type jitDecodeContext struct {
@@ -87,41 +92,112 @@ type jitCompiledDecoder struct {
 
 func newJITDecodeProgram(static []byte) *jitDecodeProgram {
 	return &jitDecodeProgram{
-		helpers: [4]uintptr{
+		helpers: [8]uintptr{
 			reflect.ValueOf(jitDecodeString).Pointer(),
 			reflect.ValueOf(jitDecodeInteger).Pointer(),
 			reflect.ValueOf(jitDecodeFloat).Pointer(),
 			reflect.ValueOf(jitDecodeBool).Pointer(),
+			reflect.ValueOf(jitDecodePointerField).Pointer(),
+			reflect.ValueOf(jitDecodeSliceField).Pointer(),
+			reflect.ValueOf(jitDecodeMapField).Pointer(),
+			reflect.ValueOf(jitDecodeInterfaceField).Pointer(),
 		},
 		static: static,
 	}
 }
 
 func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
-	generator := &jitDecoderGenerator{code: newJITCodeBuilder("jjs_decoder")}
-	if err := generator.emitPrologue(); err != nil {
+	compiler := &jitDecoderCompiler{unitByType: make(map[reflect.Type]int)}
+	if _, err := compiler.unitIndex(typ); err != nil {
 		return nil, err
 	}
-	if err := generator.emitValue(typ, 0, nil); err != nil {
-		return nil, err
+	for index := 0; index < len(compiler.units); index++ {
+		unit := compiler.units[index]
+		generator := &jitDecoderGenerator{code: unit.code, compiler: compiler}
+		if err := generator.emitPrologue(); err != nil {
+			return nil, err
+		}
+		if err := generator.emitValue(unit.typ, 0, nil); err != nil {
+			return nil, err
+		}
+		generator.code.addConst(64, _RSP)
+		generator.code.xor(_RAX, _RAX)
+		generator.code.ret()
 	}
-	g := generator
-	g.code.addConst(64, _RSP)
-	g.code.xor(_RAX, _RAX)
-	g.code.ret()
-	code, err := g.code.assemble()
-	if err != nil {
-		return nil, err
+	program := newJITDecodeProgram(compiler.static)
+	program.types = compiler.types
+	program.typeSizes = compiler.typeSizes
+	program.elemSizes = compiler.elemSizes
+	program.elemTypes = compiler.elemTypes
+	program.functions = make([]func(*jitDecodeContext) uintptr, len(compiler.units))
+	for index, unit := range compiler.units {
+		code, err := unit.code.assemble()
+		if err != nil {
+			return nil, err
+		}
+		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_decoder_%d", index))
+		program.functions[index] = *(*func(*jitDecodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
-	program := newJITDecodeProgram(generator.static)
-	libFunc := jitLoader.LoadOne(code, "jjs_decoder", 64, 16, []bool{true, false}, []bool{true, false, false, false, false, false, false, false})
-	function := *(*func(*jitDecodeContext) uintptr)(unsafe.Pointer(&libFunc))
+	function := program.functions[0]
 	return &jitCompiledDecoder{program: program, function: function}, nil
 }
 
+type jitDecoderCompiler struct {
+	static     []byte
+	units      []*jitDecoderUnit
+	unitByType map[reflect.Type]int
+	types      []uintptr
+	typeSizes  []uintptr
+	elemSizes  []uintptr
+	elemTypes  []uintptr
+}
+
+type jitDecoderUnit struct {
+	typ  reflect.Type
+	code *jitCodeBuilder
+}
+
+func (c *jitDecoderCompiler) unitIndex(typ reflect.Type) (int, error) {
+	if index, ok := c.unitByType[typ]; ok {
+		return index, nil
+	}
+	index := len(c.units)
+	c.unitByType[typ] = index
+	jitTypeRegistry.Store(typePointer(typ), typ)
+	c.units = append(c.units, &jitDecoderUnit{
+		typ:  typ,
+		code: newJITCodeBuilder(fmt.Sprintf("jjs_decoder_%d", index)),
+	})
+	return index, nil
+}
+
+func (c *jitDecoderCompiler) typeIndex(typ reflect.Type) int {
+	c.types = append(c.types, typePointer(typ))
+	c.typeSizes = append(c.typeSizes, typ.Size())
+	elemSize := uintptr(0)
+	elemType := uintptr(0)
+	if typ.Kind() == reflect.Slice {
+		elemSize = typ.Elem().Size()
+		elemType = typePointer(typ.Elem())
+	}
+	c.elemSizes = append(c.elemSizes, elemSize)
+	c.elemTypes = append(c.elemTypes, elemType)
+	return len(c.types) - 1
+}
+
+func typePointer(typ reflect.Type) uintptr {
+	face := (*nonEmptyInterface)(unsafe.Pointer(&typ))
+	return uintptr(face.data)
+}
+
+type nonEmptyInterface struct {
+	tab  unsafe.Pointer
+	data unsafe.Pointer
+}
+
 type jitDecoderGenerator struct {
-	code   *jitCodeBuilder
-	static []byte
+	code     *jitCodeBuilder
+	compiler *jitDecoderCompiler
 }
 
 func (g *jitDecoderGenerator) emitPrologue() error {
@@ -151,6 +227,14 @@ func (g *jitDecoderGenerator) emitValue(typ reflect.Type, offset int64, path []j
 		return g.emitDecodeCall(2, typ, offset, path)
 	case reflect.Bool:
 		return g.emitDecodeCall(3, typ, offset, path)
+	case reflect.Pointer:
+		return g.emitPointer(typ, offset, path)
+	case reflect.Slice:
+		return g.emitSlice(typ, offset, path)
+	case reflect.Map:
+		return g.emitMap(typ, offset, path)
+	case reflect.Interface:
+		return g.emitDecodeCall(7, typ, offset, path)
 	case reflect.Array:
 		size := int64(typ.Elem().Size())
 		for i := 0; i < typ.Len(); i++ {
@@ -163,6 +247,63 @@ func (g *jitDecoderGenerator) emitValue(typ reflect.Type, offset int64, path []j
 	default:
 		return fmt.Errorf("json: JIT decoder does not support %s", typ)
 	}
+}
+
+func (g *jitDecoderGenerator) emitPointer(typ reflect.Type, offset int64, path []jitPathSegment) error {
+	child, err := g.compiler.unitIndex(typ.Elem())
+	if err != nil {
+		return err
+	}
+	typeIndex := g.compiler.typeIndex(typ.Elem())
+	pathOffset, pathLen := g.addPath(path)
+	g.code.reloadDecodeContext()
+	g.code.lea(_R12, offset, _RBX)
+	g.code.mov(_R10, _RAX)
+	g.code.loadProgramStatic(_R10, int64(unsafe.Offsetof(jitDecodeContext{}.program)), pathOffset, _RCX)
+	g.code.movConst(int64(pathLen), _RDI)
+	g.code.movConst(int64(child), _RSI)
+	g.code.movConst(int64(typeIndex), _R8)
+	g.emitHelper(4)
+	return nil
+}
+
+func (g *jitDecoderGenerator) emitSlice(typ reflect.Type, offset int64, path []jitPathSegment) error {
+	child, err := g.compiler.unitIndex(typ.Elem())
+	if err != nil {
+		return err
+	}
+	typeIndex := g.compiler.typeIndex(typ)
+	pathOffset, pathLen := g.addPath(path)
+	g.code.reloadDecodeContext()
+	g.code.lea(_R12, offset, _RBX)
+	g.code.mov(_R10, _RAX)
+	g.code.loadProgramStatic(_R10, int64(unsafe.Offsetof(jitDecodeContext{}.program)), pathOffset, _RCX)
+	g.code.movConst(int64(pathLen), _RDI)
+	g.code.movConst(int64(child), _RSI)
+	g.code.movConst(int64(typeIndex), _R8)
+	g.emitHelper(5)
+	return nil
+}
+
+func (g *jitDecoderGenerator) emitMap(typ reflect.Type, offset int64, path []jitPathSegment) error {
+	if typ.Key().Kind() != reflect.String {
+		return fmt.Errorf("json: JIT decoder currently requires string map keys, got %s", typ.Key())
+	}
+	child, err := g.compiler.unitIndex(typ.Elem())
+	if err != nil {
+		return err
+	}
+	typeIndex := g.compiler.typeIndex(typ)
+	pathOffset, pathLen := g.addPath(path)
+	g.code.reloadDecodeContext()
+	g.code.lea(_R12, offset, _RBX)
+	g.code.mov(_R10, _RAX)
+	g.code.loadProgramStatic(_R10, int64(unsafe.Offsetof(jitDecodeContext{}.program)), pathOffset, _RCX)
+	g.code.movConst(int64(pathLen), _RDI)
+	g.code.movConst(int64(child), _RSI)
+	g.code.movConst(int64(typeIndex), _R8)
+	g.emitHelper(6)
+	return nil
 }
 
 func (g *jitDecoderGenerator) emitStruct(typ reflect.Type, offset int64, path []jitPathSegment) error {
@@ -206,27 +347,30 @@ func (g *jitDecoderGenerator) emitDecodeCall(helper int, typ reflect.Type, offse
 	if helper == 2 {
 		g.code.movConst(int64(typ.Bits()/8), _RSI)
 	}
+	if helper == 7 && typ.NumMethod() > 0 {
+		g.code.movConst(1, _RSI)
+	}
 	g.emitHelper(helper)
 	return nil
 }
 
 func (g *jitDecoderGenerator) addPath(path []jitPathSegment) (int, int) {
-	offset := len(g.static)
+	offset := len(g.compiler.static)
 	for _, segment := range path {
 		if segment.array {
-			g.static = append(g.static, 1, 4, 0)
-			payload := len(g.static)
-			g.static = append(g.static, 0, 0, 0, 0)
-			binary.LittleEndian.PutUint32(g.static[payload:payload+4], uint32(segment.index))
+			g.compiler.static = append(g.compiler.static, 1, 4, 0)
+			payload := len(g.compiler.static)
+			g.compiler.static = append(g.compiler.static, 0, 0, 0, 0)
+			binary.LittleEndian.PutUint32(g.compiler.static[payload:payload+4], uint32(segment.index))
 			continue
 		}
 		if len(segment.field) > 0xffff {
 			panic("JSON field name is too long")
 		}
-		g.static = append(g.static, 0, byte(len(segment.field)), byte(len(segment.field)>>8))
-		g.static = append(g.static, segment.field...)
+		g.compiler.static = append(g.compiler.static, 0, byte(len(segment.field)), byte(len(segment.field)>>8))
+		g.compiler.static = append(g.compiler.static, segment.field...)
 	}
-	return offset, len(g.static) - offset
+	return offset, len(g.compiler.static) - offset
 }
 
 func (g *jitDecoderGenerator) emitHelper(index int) {
@@ -391,3 +535,216 @@ func setJITDecodeError(ctx *jitDecodeContext, message string) {
 		ctx.err = errors.New("json: " + message)
 	}
 }
+
+//go:noinline
+func jitDecodePointerField(ctx *jitDecodeContext, dst unsafe.Pointer, path unsafe.Pointer, pathLen, childIndex, typeIndex int) {
+	node := resolveJITPath(ctx.root, path, pathLen)
+	if node == nil {
+		return
+	}
+	if node.kind == jitJSONNull {
+		*(*unsafe.Pointer)(dst) = nil
+		return
+	}
+	if typeIndex < 0 || typeIndex >= len(ctx.program.types) {
+		setJITDecodeError(ctx, "invalid pointer type index")
+		return
+	}
+	ptr := runtimeMallocGC(ctx.program.typeSizes[typeIndex], unsafe.Pointer(ctx.program.types[typeIndex]), true)
+	previousRoot := ctx.root
+	previousData := ctx.data
+	ctx.root = node
+	ctx.data = ptr
+	ctx.program.functions[childIndex](ctx)
+	ctx.root = previousRoot
+	ctx.data = previousData
+	if ctx.err == nil {
+		*(*unsafe.Pointer)(dst) = ptr
+	}
+}
+
+//go:noinline
+func jitDecodeSliceField(ctx *jitDecodeContext, dst unsafe.Pointer, path unsafe.Pointer, pathLen, childIndex, typeIndex int) {
+	node := resolveJITPath(ctx.root, path, pathLen)
+	if node == nil {
+		return
+	}
+	if node.kind == jitJSONNull {
+		*(*sliceHeader)(dst) = sliceHeader{}
+		return
+	}
+	if node.kind != jitJSONArray {
+		setJITDecodeError(ctx, "expected array")
+		return
+	}
+	ptr := runtimeMakeSlice(unsafe.Pointer(ctx.program.elemTypes[typeIndex]), len(node.array), len(node.array))
+	header := sliceHeader{Ptr: ptr, Len: len(node.array), Cap: len(node.array)}
+	*(*sliceHeader)(dst) = header
+	elemSize := int(ctx.program.elemSizes[typeIndex])
+	for i, child := range node.array {
+		previousRoot := ctx.root
+		previousData := ctx.data
+		ctx.root = child
+		ctx.data = unsafe.Add(ptr, uintptr(i*elemSize))
+		ctx.program.functions[childIndex](ctx)
+		ctx.root = previousRoot
+		ctx.data = previousData
+		if ctx.err != nil {
+			return
+		}
+	}
+}
+
+//go:noinline
+func jitDecodeMapField(ctx *jitDecodeContext, dst unsafe.Pointer, path unsafe.Pointer, pathLen, childIndex, typeIndex int) {
+	node := resolveJITPath(ctx.root, path, pathLen)
+	if node == nil {
+		return
+	}
+	if node.kind == jitJSONNull {
+		*(*unsafe.Pointer)(dst) = nil
+		return
+	}
+	if node.kind != jitJSONObject {
+		setJITDecodeError(ctx, "expected object")
+		return
+	}
+	mapType := unsafe.Pointer(ctx.program.types[typeIndex])
+	hmap := runtimeMakeMap(mapType, len(node.object), nil)
+	*(*unsafe.Pointer)(dst) = hmap
+	for _, field := range node.object {
+		key := sliceHeader{Ptr: unsafe.Pointer(unsafe.StringData(field.name)), Len: len(field.name), Cap: len(field.name)}
+		elem := runtimeMapAssign(mapType, hmap, unsafe.Pointer(&key))
+		previousRoot := ctx.root
+		previousData := ctx.data
+		ctx.root = field.value
+		ctx.data = elem
+		ctx.program.functions[childIndex](ctx)
+		ctx.root = previousRoot
+		ctx.data = previousData
+		if ctx.err != nil {
+			return
+		}
+	}
+}
+
+type sliceHeader struct {
+	Ptr unsafe.Pointer
+	Len int
+	Cap int
+}
+
+var jitDynamicDecoderCache sync.Map
+var jitDynamicDecodeCompileMu sync.Mutex
+
+//go:noinline
+func jitDecodeInterfaceField(ctx *jitDecodeContext, dst unsafe.Pointer, path unsafe.Pointer, pathLen, nonEmpty int) {
+	node := resolveJITPath(ctx.root, path, pathLen)
+	if node == nil {
+		return
+	}
+	typeWord := *(*unsafe.Pointer)(dst)
+	if typeWord != nil {
+		typePtr := typeWord
+		if nonEmpty != 0 {
+			typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
+		}
+		var typ reflect.Type
+		if registered, ok := jitTypeRegistry.Load(uintptr(typePtr)); ok {
+			typ = registered.(reflect.Type)
+		} else {
+			var value any
+			dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
+			dynamic.tab = typePtr
+			dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
+			typ = reflect.TypeOf(value)
+		}
+		if typ == nil {
+			setJITDecodeError(ctx, "invalid interface type")
+			return
+		}
+		valueData := runtimeMallocGC(typ.Size(), typePtr, true)
+		*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = valueData
+		decoded, ok := jitDynamicDecoderCache.Load(uintptr(typePtr))
+		var child *jitCompiledDecoder
+		if ok {
+			child = decoded.(*jitCompiledDecoder)
+		} else {
+			jitDynamicDecodeCompileMu.Lock()
+			defer jitDynamicDecodeCompileMu.Unlock()
+			if decoded, ok := jitDynamicDecoderCache.Load(uintptr(typePtr)); ok {
+				child = decoded.(*jitCompiledDecoder)
+			} else {
+				compiled, err := compileJITDecoder(typ)
+				if err != nil {
+					setJITDecodeError(ctx, err.Error())
+					return
+				}
+				actual, _ := jitDynamicDecoderCache.LoadOrStore(uintptr(typePtr), compiled)
+				child = actual.(*jitCompiledDecoder)
+			}
+		}
+		childContext := &jitDecodeContext{
+			root:    node,
+			data:    valueData,
+			program: child.program,
+		}
+		jitDecodeContexts.Store(childContext, struct{}{})
+		defer jitDecodeContexts.Delete(childContext)
+		child.function(childContext)
+		if childContext.err != nil {
+			ctx.err = childContext.err
+		}
+		return
+	}
+	var value any = jitNodeToAny(node)
+	face := (*nonEmptyInterface)(unsafe.Pointer(&value))
+	*(*unsafe.Pointer)(dst) = face.tab
+	*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = face.data
+}
+
+func jitNodeToAny(node *jitJSONNode) any {
+	if node == nil {
+		return nil
+	}
+	switch node.kind {
+	case jitJSONNull:
+		return nil
+	case jitJSONBool:
+		return node.boolean
+	case jitJSONNumber:
+		value, err := strconv.ParseFloat(node.text, 64)
+		if err != nil {
+			return nil
+		}
+		return value
+	case jitJSONString:
+		return node.text
+	case jitJSONArray:
+		value := make([]any, len(node.array))
+		for i, child := range node.array {
+			value[i] = jitNodeToAny(child)
+		}
+		return value
+	case jitJSONObject:
+		value := make(map[string]any, len(node.object))
+		for _, field := range node.object {
+			value[field.name] = jitNodeToAny(field.value)
+		}
+		return value
+	default:
+		return nil
+	}
+}
+
+//go:linkname runtimeMallocGC runtime.mallocgc
+func runtimeMallocGC(size uintptr, typ unsafe.Pointer, needZero bool) unsafe.Pointer
+
+//go:linkname runtimeMakeSlice runtime.makeslice
+func runtimeMakeSlice(elemType unsafe.Pointer, length, capacity int) unsafe.Pointer
+
+//go:linkname runtimeMakeMap runtime.makemap
+func runtimeMakeMap(mapType unsafe.Pointer, hint int, hmap unsafe.Pointer) unsafe.Pointer
+
+//go:linkname runtimeMapAssign runtime.mapassign
+func runtimeMapAssign(mapType, hmap, key unsafe.Pointer) unsafe.Pointer
