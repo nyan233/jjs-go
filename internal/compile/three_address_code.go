@@ -46,7 +46,7 @@ func (l *LIRList) reAllocRegister() {
 		Op      uint16
 		IsStart bool
 	}
-	regLiveList := make([]RegisterLive, 0, 8)
+	//regLiveList := make([]RegisterLive, 0, 8)
 	for _, tw := range l.tCodeList {
 		if tw.Arg1.Index > l.registerAllocInit {
 

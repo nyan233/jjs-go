@@ -11,6 +11,7 @@ func JitMemoryCopy()
 
 func JitSave()
 func JitRecover()
+func WapperGrowSlice()
 
 func CallMFunc(text, stackHi uintptr, dest, data unsafe.Pointer) (write int64, reason int64)
 

@@ -1,37 +1,46 @@
 package jjs_go
 
 import (
-	"errors"
-	"github.com/nyan233/jjs-go/internal/mempool"
-	"github.com/nyan233/jjs-go/internal/rtype"
+	"encoding/json"
 	"reflect"
-	"runtime"
 	"unsafe"
+
+	"github.com/nyan233/jjs-go/core/compiler"
+	"github.com/nyan233/jjs-go/internal/rtype"
 )
 
-func Marshal(data interface{}) ([]byte, error) {
-	if data == nil {
-		return nil, errors.New("data is nil")
+// Marshal returns the JSON encoding of data.
+func Marshal(data any) ([]byte, error) {
+	typ := reflect.TypeOf(data)
+	if typ == nil {
+		return []byte("null"), nil
 	}
-	ef := (*rtype.EmptyFace)(unsafe.Pointer(&data))
-	pg := go_GobalJitCompiler.Compile(reflect.TypeOf(data), true)
-	if pg == nil {
-		panic("program is null")
+	face := (*rtype.EmptyFace)(unsafe.Pointer(&data))
+	encoder, err := compiler.CompileEncoder(typ, 0)
+	if err != nil {
+		return nil, err
 	}
-	// TODO grow
-	newBytes := make([]byte, pg.MinSize+256, pg.MinSize+256)
-	stack := mempool.StackPool.Get().(*mempool.Stack)
-	reason := pg.MFunc(uintptr(stack.High), &newBytes, ef.Val)
-	_ = reason
-	runtime.KeepAlive(stack)
-	runtime.KeepAlive(&newBytes)
-	runtime.KeepAlive(ef.Val)
-	return newBytes, nil
+	buf := make([]byte, 0, 256)
+	if err := encoder(&buf, face.Val); err != nil {
+		return nil, err
+	}
+	return buf, nil
 }
 
-func Unmarshal(bytes []byte, data interface{}) error {
-	if data == nil {
-		return errors.New("data is nil")
+// Unmarshal parses JSON data and stores the result in the value pointed to by
+// data. data must be a non-nil pointer.
+func Unmarshal(bytes []byte, data any) error {
+	typ := reflect.TypeOf(data)
+	if typ == nil || typ.Kind() != reflect.Pointer {
+		return &json.InvalidUnmarshalError{Type: reflect.TypeOf(data)}
 	}
-	return nil
+	face := (*rtype.EmptyFace)(unsafe.Pointer(&data))
+	if face.Val == nil {
+		return &json.InvalidUnmarshalError{Type: typ}
+	}
+	decoder, err := compiler.CompileDecoder(typ.Elem())
+	if err != nil {
+		return err
+	}
+	return decoder(bytes, unsafe.Pointer(reflect.ValueOf(data).Pointer()))
 }

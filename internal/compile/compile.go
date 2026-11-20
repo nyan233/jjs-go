@@ -22,7 +22,7 @@ var (
 	}
 	// 4GB
 	constantStringAlloc = mempool.NewPool(false, 1024*1024*1024*4)
-	sharedMap           = make(map[string]uintptr, 1024)
+	sharedMap           = make(map[string]unsafe.Pointer, 1024)
 )
 
 type Result struct {
@@ -114,12 +114,8 @@ func (p *Program) compileMarshal() Result {
 	codeText := asmBuilder.BuildOnFunc(1, bytesBaseLen)
 	text := mempool.GlobalArena.AllocJitCodeMemory(codeText)
 	r := Result{
-		MFunc: *(*Marshaller)(unsafe.Pointer(&text)),
-		Text: *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
-			Data: *(*uintptr)(unsafe.Pointer(text)),
-			Len:  len(codeText),
-			Cap:  len(codeText),
-		})),
+		MFunc:   *(*Marshaller)(unsafe.Pointer(&text)),
+		Text:    unsafe.Slice((*byte)(*(*unsafe.Pointer)(text)), len(codeText)),
 		MinSize: int64(bytesBaseLen),
 	}
 	jitLoader.LoadOne(r.Text, "jjs_marshaller", 0, 40, []bool{false, true, true, true}, nil)
@@ -173,8 +169,8 @@ func (p *Program) outputStringIR(objl *objLink, builder *program, bytesBaseLen *
 			startAddr = constantStringAlloc.MallocFixed(uintptr(alg32 * 32))
 			sharedMap[s1] = startAddr
 		}
-		asm.RTMemmove(unsafe.Pointer(startAddr), unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s1)).Data), uintptr(alg32*32))
-		objl = buildSimd32Memmove(builder, objl, startAddr, *bytesBaseLen, alg32)
+		asm.RTMemmove(startAddr, unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s1)).Data), uintptr(alg32*32))
+		objl = buildSimd32Memmove(builder, objl, uintptr(startAddr), *bytesBaseLen, alg32)
 		*bytesBaseLen += alg32 * 32
 		if mod32 > 0 {
 			return p.outputStringIR(objl, builder, bytesBaseLen, s1[alg32*32:])

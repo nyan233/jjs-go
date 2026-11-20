@@ -6,5 +6,5 @@ TEXT ·jitGetg(SB),NOSPLIT, $0-0
     RET
 
 TEXT ·getg(SB),NOSPLIT, $0-8
-    MOVQ    R14, r0+0(FP) // R14 go runtime save g-struct-ptr on amd64
+    MOVQ    R14, ret+0(FP) // R14 go runtime save g-struct-ptr on amd64
     RET

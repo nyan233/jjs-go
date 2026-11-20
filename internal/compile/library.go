@@ -29,6 +29,9 @@ func buildBytes2String(ctxt *program, link *objLink, bPtr, bLen, sPtr, sLen obj.
 }
 
 func buildCallMemoryCopy(ctxt *program, link *objLink) *objLink {
+	if link == nil {
+		link, _ = ctxt.AppendP(nil)
+	}
 	return buildCallOnConst(ctxt, link, "jjs_jit_memory_copy", nil, nil)
 }
 
@@ -36,7 +39,7 @@ func buildCallMemoryCopy(ctxt *program, link *objLink) *objLink {
 func buildCallOnConst(ctxt *program, link *objLink, name string, beforeProgs, afterProgs []obj.Prog) *objLink {
 	desc := getFuncAddrByName(name)
 	if desc.Name == "" {
-		return nil
+		panic("unknown internal function: " + name)
 	}
 	for k := range beforeProgs {
 		link.Prog = &beforeProgs[k]
@@ -134,6 +137,7 @@ func buildMov(ctxt *program, link *objLink, level string, from, to obj.Addr) *ob
 		link.Prog.As = x86.AMOVW
 	case "long":
 		link.Prog.As = x86.AMOVL
+	default:
 		panic("unknown instruction")
 	}
 	link.Prog.From = from
@@ -142,7 +146,7 @@ func buildMov(ctxt *program, link *objLink, level string, from, to obj.Addr) *ob
 	return link
 }
 
-// amd64架构不支持64位立即数, 所以需要movabs中转
+// movq不支持64位立即数, 所以需要movabs中转
 // 以下生成的指令等于: movabs rcx, $val
 //
 //	mov	rcx, [to_addr]

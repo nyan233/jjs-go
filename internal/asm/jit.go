@@ -29,6 +29,8 @@ func jitGetStack()
 func jitCall()
 
 func goCodeJitCall(prog *jitCode)
+func entergocall()
+func exitgocall()
 
 //go:linkname systemstack runtime.systemstack
 func systemstack(fn func())

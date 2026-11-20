@@ -1,6 +1,7 @@
 package test
 
 import (
+	"github.com/nyan233/jjs-go/internal/asm"
 	"math"
 	"os"
 	"testing"
@@ -25,10 +26,10 @@ func BenchmarkMemoryCopy(b *testing.B) {
 			movMemoryCopy(&d1, &d2, SIZE)
 		}
 	})
-	b.Run("GO-AVX-256", func(b *testing.B) {
+	b.Run("RuntimeMemmove", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			callJitMemCopy(unsafe.Pointer(&d1[0]), unsafe.Pointer(&d2[0]), SIZE)
+			asm.RtMemoryCopy(unsafe.Pointer(&d1[0]), unsafe.Pointer(&d2[0]), SIZE)
 		}
 	})
 }

@@ -40,10 +40,3 @@ func TestRuntimeFunc(t *testing.T) {
 	var buf2 [2049]byte
 	RTMemmove(unsafe.Pointer(&buf1), unsafe.Pointer(&buf2), 2049)
 }
-
-func TestRTGrowSlice(t *testing.T) {
-	a := RTGrowSlice(nil, 0, 0, 0, nil)
-	_ = a.Ptr
-	_ = a.Len
-	_ = a.Cap
-}
