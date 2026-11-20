@@ -5,6 +5,7 @@ package jjs_go
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"unicode/utf8"
 )
@@ -49,6 +50,32 @@ func FuzzJITUnmarshalString(f *testing.F) {
 		}
 		if gotErr == nil && got != want {
 			t.Fatalf("value mismatch: got %q, want %q", got, want)
+		}
+	})
+}
+
+func FuzzJITUnmarshalGeneric(f *testing.F) {
+	for _, seed := range []string{
+		`null`,
+		`true`,
+		`123.5`,
+		`"plain"`,
+		`[1,true,"x",null,{"nested":[1,2]}]`,
+		`{"a":1,"b":{"c":false},"a":2}`,
+		`{"unicode":"\u4e16\u754c"}`,
+	} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, input string) {
+		var got any
+		gotErr := Unmarshal([]byte(input), &got)
+		var want any
+		wantErr := json.Unmarshal([]byte(input), &want)
+		if (gotErr == nil) != (wantErr == nil) {
+			t.Fatalf("error mismatch for %q: jit=%v stdlib=%v", input, gotErr, wantErr)
+		}
+		if gotErr == nil && !reflect.DeepEqual(got, want) {
+			t.Fatalf("value mismatch: got %#v, want %#v", got, want)
 		}
 	})
 }

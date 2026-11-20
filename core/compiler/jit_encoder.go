@@ -20,7 +20,6 @@ var gEncoder = new(Encoder).init()
 var jitEncodeContextPool = sync.Pool{
 	New: func() any { return new(jitEncodeContext) },
 }
-var jitEncoderScratchRegisters = allocateJITScratchRegisters(3)
 
 func CompileEncoder(typ reflect.Type, opt uint64) (EncodeHandler, error) {
 	return gEncoder.Compile(typ, opt)
@@ -102,6 +101,7 @@ type jitCompiledEncoder struct {
 	initialCapacity int
 	rootKind        reflect.Kind
 	capacityHint    atomic.Uint64 // last successful output size for the next allocation
+	stats           CodegenStats
 }
 
 func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
@@ -134,11 +134,13 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	program := newJITEncodeProgram(compiler.static)
 	program.mapTypes = compiler.mapTypes
 	program.functions = make([]func(*jitEncodeContext) uintptr, len(compiler.units))
+	stats := CodegenStats{Functions: len(compiler.units)}
 	for index, unit := range compiler.units {
 		code, err := unit.code.assemble()
 		if err != nil {
 			return nil, err
 		}
+		stats = stats.add(unit.code.stats)
 		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_encoder_%d", index))
 		program.functions[index] = *(*func(*jitEncodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
@@ -148,6 +150,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 		function:        function,
 		initialCapacity: estimateInitialCapacity(rootType, len(compiler.static)),
 		rootKind:        rootType.Kind(),
+		stats:           stats,
 	}, nil
 }
 
@@ -410,7 +413,7 @@ func (g *jitEncoderGenerator) emitRaw(value []byte) error {
 	g.code.mov(_R10, _RAX)
 	g.code.movConst(int64(len(value)), _RBX)
 	g.emitHelper(jitHelperReserve)
-	destination := registerAddr(jitEncoderScratchRegisters[0])
+	destination := g.code.newVirtualRegister()
 	g.code.mov(_RAX, destination)
 
 	used := 0
@@ -464,7 +467,6 @@ func (g *jitEncoderGenerator) emitHelper(index int) {
 	g.code.loadMem(_RSP, 0, _R11)
 	g.code.loadMem(_R11, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _R11)
 	g.code.loadMem(_R11, int64(index*8), _R11)
-	g.code.saveJITRegs()
 	g.code.call(_R11)
 	g.code.restoreJITRegs()
 }
@@ -532,20 +534,18 @@ func jitJSONField(field reflect.StructField) (name string, omitEmpty, supported 
 }
 
 type jitCodeBuilder struct {
-	name    string
-	builder *golangasm.Builder
+	name         string
+	instructions []*obj.Prog
+	virtualCount int
+	stats        jitCodegenStats
 }
 
 func newJITCodeBuilder(name string) *jitCodeBuilder {
-	builder, err := golangasm.NewBuilder("amd64", 64)
-	if err != nil {
-		panic(err)
-	}
-	return &jitCodeBuilder{name: name, builder: builder}
+	return &jitCodeBuilder{name: name}
 }
 
 func (c *jitCodeBuilder) emit(prog *obj.Prog) {
-	c.builder.AddInstruction(prog)
+	c.instructions = append(c.instructions, prog)
 }
 
 func (c *jitCodeBuilder) mov(from, to obj.Addr) {
@@ -597,19 +597,9 @@ func (c *jitCodeBuilder) xor(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AXORQ, From: from, To: to})
 }
 
-func (c *jitCodeBuilder) saveJITRegs() {
-	c.mov(_R12, mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.saved12))))
-	for index, register := range jitEncoderScratchRegisters {
-		c.mov(registerAddr(register), mem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.savedScratch))+int64(index*8)))
-	}
-}
-
 func (c *jitCodeBuilder) restoreJITRegs() {
 	c.loadMem(_RSP, 0, _R10)
 	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.data)), _R12)
-	for index, register := range jitEncoderScratchRegisters {
-		c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.savedScratch))+int64(index*8), registerAddr(register))
-	}
 }
 
 func (c *jitCodeBuilder) call(reg obj.Addr) {
@@ -621,7 +611,21 @@ func (c *jitCodeBuilder) ret() {
 }
 
 func (c *jitCodeBuilder) assemble() ([]byte, error) {
-	return c.builder.Assemble(), nil
+	instructions, stats, err := c.prepareIR()
+	if err != nil {
+		return nil, err
+	}
+	builder, err := golangasm.NewBuilder("amd64", 64)
+	if err != nil {
+		return nil, err
+	}
+	for _, instruction := range instructions {
+		builder.AddInstruction(instruction)
+	}
+	code := builder.Assemble()
+	stats.CodeBytes = len(code)
+	c.stats = stats
+	return code, nil
 }
 
 func mem(base obj.Addr, offset int64) obj.Addr {
@@ -636,6 +640,7 @@ var (
 	_RAX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_AX}
 	_RBX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_BX}
 	_RCX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_CX}
+	_R9  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R9}
 	_R8  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R8}
 	_R10 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R10}
 	_R11 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R11}

@@ -33,13 +33,11 @@ type jitEncodeProgram struct {
 }
 
 type jitEncodeContext struct {
-	dst          []byte
-	data         unsafe.Pointer
-	program      *jitEncodeProgram
-	err          error
-	saved12      unsafe.Pointer
-	savedScratch [8]uintptr
-	mapValue     unsafe.Pointer
+	dst      []byte
+	data     unsafe.Pointer
+	program  *jitEncodeProgram
+	err      error
+	mapValue unsafe.Pointer
 }
 
 func newJITEncodeProgram(static []byte) *jitEncodeProgram {
@@ -336,20 +334,20 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 		// runtime.itab: *abi.InterfaceType, *abi.Type
 		typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
 	}
-	var value any
-	dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
-	dynamic.tab = typePtr
-	dynamic.data = data
-	typ := reflect.TypeOf(value)
-	if typ == nil {
-		ctx.setError(errors.New("json: invalid interface type"))
-		return
-	}
 	encoded, ok := jitDynamicEncoderCache.Load(uintptr(typePtr))
 	var child *jitCompiledEncoder
 	if ok {
 		child = encoded.(*jitCompiledEncoder)
 	} else {
+		var value any
+		dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
+		dynamic.tab = typePtr
+		dynamic.data = data
+		typ := reflect.TypeOf(value)
+		if typ == nil {
+			ctx.setError(errors.New("json: invalid interface type"))
+			return
+		}
 		jitDynamicCompileMu.Lock()
 		if encoded, ok := jitDynamicEncoderCache.Load(uintptr(typePtr)); ok {
 			child = encoded.(*jitCompiledEncoder)
@@ -372,7 +370,7 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 		data:    data,
 		program: child.program,
 	}
-	if typ.Kind() == reflect.Map {
+	if child.rootKind == reflect.Map {
 		childContext.mapValue = data
 		childContext.data = unsafe.Pointer(&childContext.mapValue)
 	}

@@ -163,6 +163,17 @@ func (p *jitJSONParser) parseObject() (*jitJSONNode, error) {
 }
 
 func (p *jitJSONParser) parseString() (string, error) {
+	return p.parseStringInternal(true)
+}
+
+func (p *jitJSONParser) parseStringKey() (string, error) {
+	return p.parseStringInternal(false)
+}
+
+func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
+	if p.index >= len(p.data) || p.data[p.index] != '"' {
+		return "", p.errorf("expected string")
+	}
 	p.index++
 	start := p.index
 	scalarEnd := start + jitDecodeStringScalarBytes
@@ -177,7 +188,7 @@ func (p *jitJSONParser) parseString() (string, error) {
 		case c == '"':
 			end := p.index
 			p.index++
-			return p.rawString(start, end, hasNonASCII)
+			return p.rawString(start, end, hasNonASCII, copyValue)
 		case c == '\\':
 			return p.parseStringSlow(start)
 		case c < 0x20:
@@ -211,7 +222,7 @@ func (p *jitJSONParser) parseString() (string, error) {
 		if c == '"' {
 			end := p.index
 			p.index++
-			return p.rawString(start, end, hasNonASCII)
+			return p.rawString(start, end, hasNonASCII, copyValue)
 		}
 		if c == '\\' {
 			return p.parseStringSlow(start)
@@ -234,12 +245,24 @@ func (p *jitJSONParser) parseString() (string, error) {
 	return "", p.errorf("unexpected end of string")
 }
 
-func (p *jitJSONParser) rawString(start, end int, hasNonASCII bool) (string, error) {
+func (p *jitJSONParser) rawString(start, end int, hasNonASCII, copyValue bool) (string, error) {
 	raw := p.data[start:end]
 	if !hasNonASCII {
+		if !copyValue {
+			if len(raw) == 0 {
+				return "", nil
+			}
+			return unsafe.String((*byte)(unsafe.SliceData(raw)), len(raw)), nil
+		}
 		return string(raw), nil
 	}
 	if utf8.Valid(raw) {
+		if !copyValue {
+			if len(raw) == 0 {
+				return "", nil
+			}
+			return unsafe.String((*byte)(unsafe.SliceData(raw)), len(raw)), nil
+		}
 		return string(raw), nil
 	}
 	out := make([]byte, 0, len(raw))
@@ -342,17 +365,36 @@ func (p *jitJSONParser) parseUnicodeEscape() (rune, error) {
 
 func (p *jitJSONParser) parseNumber() (string, error) {
 	start := p.index
+	if err := p.consumeNumber(); err != nil {
+		return "", err
+	}
+	return string(p.data[start:p.index]), nil
+}
+
+func (p *jitJSONParser) parseNumberView() (string, error) {
+	start := p.index
+	if err := p.consumeNumber(); err != nil {
+		return "", err
+	}
+	raw := p.data[start:p.index]
+	if len(raw) == 0 {
+		return "", nil
+	}
+	return unsafe.String((*byte)(unsafe.SliceData(raw)), len(raw)), nil
+}
+
+func (p *jitJSONParser) consumeNumber() error {
 	if p.consumeByte('-') && p.index >= len(p.data) {
-		return "", p.errorf("invalid number")
+		return p.errorf("invalid number")
 	}
 	if p.index >= len(p.data) {
-		return "", p.errorf("invalid number")
+		return p.errorf("invalid number")
 	}
 	if p.data[p.index] == '0' {
 		p.index++
 	} else {
 		if p.data[p.index] < '1' || p.data[p.index] > '9' {
-			return "", p.errorf("invalid number")
+			return p.errorf("invalid number")
 		}
 		for p.index < len(p.data) && p.data[p.index] >= '0' && p.data[p.index] <= '9' {
 			p.index++
@@ -364,7 +406,7 @@ func (p *jitJSONParser) parseNumber() (string, error) {
 			p.index++
 		}
 		if p.index == digits {
-			return "", p.errorf("invalid number fraction")
+			return p.errorf("invalid number fraction")
 		}
 	}
 	if p.index < len(p.data) && (p.data[p.index] == 'e' || p.data[p.index] == 'E') {
@@ -377,10 +419,10 @@ func (p *jitJSONParser) parseNumber() (string, error) {
 			p.index++
 		}
 		if p.index == digits {
-			return "", p.errorf("invalid number exponent")
+			return p.errorf("invalid number exponent")
 		}
 	}
-	return string(p.data[start:p.index]), nil
+	return nil
 }
 
 func (p *jitJSONParser) skipSpace() {

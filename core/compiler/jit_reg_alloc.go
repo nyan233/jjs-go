@@ -49,15 +49,14 @@ func allocateJITRegisters(ranges []jitLiveRange, physical []int) jitAllocationRe
 				break
 			}
 			free = append(free, active[earliest].register)
-			sort.Ints(free)
 			active = append(active[:earliest], active[earliest+1:]...)
 		}
 		if len(free) == 0 {
 			result.Spilled = append(result.Spilled, current.Virtual)
 			continue
 		}
-		register := free[0]
-		free = free[1:]
+		register := free[len(free)-1]
+		free = free[:len(free)-1]
 		result.Registers[current.Virtual] = register
 		active = append(active, activeRange{
 			rangeIndex: index,
@@ -72,25 +71,4 @@ var jitAllocatableRegisters = []int{
 	x86.REG_R13,
 	x86.REG_R15,
 	x86.REG_R9,
-	x86.REG_R8,
-	x86.REG_R11,
-}
-
-func allocateJITScratchRegisters(count int) []int {
-	if count <= 0 {
-		return nil
-	}
-	ranges := make([]jitLiveRange, count)
-	for i := range ranges {
-		ranges[i] = jitLiveRange{Virtual: i, Start: 0, End: 1 << 30}
-	}
-	result := allocateJITRegisters(ranges, jitAllocatableRegisters)
-	if len(result.Spilled) != 0 {
-		panic("not enough physical registers for JIT scratch values")
-	}
-	registers := make([]int, count)
-	for i := range registers {
-		registers[i] = result.Registers[i]
-	}
-	return registers
 }

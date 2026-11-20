@@ -67,6 +67,21 @@ fails fast otherwise.
 
 The latest local results, raw output, and bottleneck notes are in
 [`RESULTS.md`](RESULTS.md) and
-[`results-windows-amd64-optimized.txt`](results-windows-amd64-optimized.txt).
-The pre-optimization run remains in
+[`results-windows-amd64-ir-direct.txt`](results-windows-amd64-ir-direct.txt).
+The first optimization pass remains in
+[`results-windows-amd64-optimized.txt`](results-windows-amd64-optimized.txt),
+and the pre-optimization run remains in
 [`results-windows-amd64.txt`](results-windows-amd64.txt) for comparison.
+
+## Code generation metrics
+
+The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from
+`core/compiler`. They report instruction counts before/after IR optimization,
+folded and removed instructions, virtual-register count, physical-register
+reuse, spills, generated code size, and direct-decoder plan size.
+
+Inspect the current metrics with:
+
+```powershell
+go run ./cmd/codegenstats
+```

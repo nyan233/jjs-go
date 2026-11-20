@@ -294,6 +294,10 @@ func TestUnmarshalJITErrors(t *testing.T) {
 	if err := Unmarshal([]byte(`{"count":"bad"}`), &value); err == nil {
 		t.Fatal("expected type error")
 	}
+	var generic any
+	if err := Unmarshal([]byte(`{0\":\"\"}`), &generic); err == nil {
+		t.Fatal("expected invalid object key error")
+	}
 }
 
 func TestJITConcurrentUse(t *testing.T) {

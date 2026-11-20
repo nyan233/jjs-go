@@ -18,9 +18,18 @@ fixed setup cost is amortized. Unescaped decode strings are converted directly
 from the input slice, and encoders use the previous output size as a capacity
 hint to avoid repeated growth copies.
 
-`Unmarshal` parses the input into a non-reflective JSON AST, then executes a
-generated assignment function that writes fields by their compiled offsets.
-There is no reflection-based encoding plan or `encoding/json` runtime fallback.
+`Unmarshal` compiles a direct recursive-descent decode plan for supported
+types. It parses fields directly into compiled offsets without constructing a
+JSON AST. Field keys and skipped strings use input-backed views, and numeric
+spans are converted without temporary strings. Types containing non-empty
+interfaces retain the earlier JIT path. There is no reflection-based encoding
+plan or `encoding/json` runtime fallback.
+
+Generated encoder programs pass through a small machine-instruction IR before
+assembly. Redundant moves and foldable immediate operations are removed, and
+scratch values use virtual registers with live intervals rather than permanent
+global scratch slots. `CodegenStats` reports instruction reduction, register
+reuse, spills and generated code size.
 
 Current JIT type support:
 

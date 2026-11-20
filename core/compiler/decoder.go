@@ -52,6 +52,9 @@ func (d *Decoder) Compile(typ reflect.Type) (DecodeHandler, error) {
 		if target == nil {
 			return errors.New("json: nil decode destination")
 		}
+		if program.direct != nil {
+			return decodeDirectBytes(data, program.direct, target)
+		}
 		root, err := parseJITJSON(data)
 		if err != nil {
 			return err
@@ -93,6 +96,10 @@ type jitDecodeContext struct {
 type jitCompiledDecoder struct {
 	program  *jitDecodeProgram
 	function func(*jitDecodeContext) uintptr
+	stats    CodegenStats
+	direct   *directDecodePlan
+	size     uintptr
+	typePtr  uintptr
 }
 
 func newJITDecodeProgram(static []byte) *jitDecodeProgram {
@@ -112,6 +119,7 @@ func newJITDecodeProgram(static []byte) *jitDecodeProgram {
 }
 
 func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
+	direct, directErr := compileDirectDecodePlan(typ)
 	compiler := &jitDecoderCompiler{unitByType: make(map[reflect.Type]int)}
 	if _, err := compiler.unitIndex(typ); err != nil {
 		return nil, err
@@ -135,16 +143,31 @@ func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 	program.elemSizes = compiler.elemSizes
 	program.elemTypes = compiler.elemTypes
 	program.functions = make([]func(*jitDecodeContext) uintptr, len(compiler.units))
+	stats := CodegenStats{Functions: len(compiler.units)}
 	for index, unit := range compiler.units {
 		code, err := unit.code.assemble()
 		if err != nil {
 			return nil, err
 		}
+		stats = stats.add(unit.code.stats)
 		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_decoder_%d", index))
 		program.functions[index] = *(*func(*jitDecodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
 	function := program.functions[0]
-	return &jitCompiledDecoder{program: program, function: function}, nil
+	if directErr != nil {
+		direct = nil
+	} else {
+		stats.DirectDecoder = true
+		stats.DirectPlanNodes, stats.DirectFields = directDecodePlanStats(direct)
+	}
+	return &jitCompiledDecoder{
+		program:  program,
+		function: function,
+		stats:    stats,
+		direct:   direct,
+		size:     typ.Size(),
+		typePtr:  typePointer(typ),
+	}, nil
 }
 
 type jitDecoderCompiler struct {
@@ -656,22 +679,21 @@ func jitDecodeInterfaceField(ctx *jitDecodeContext, dst unsafe.Pointer, path uns
 		if nonEmpty != 0 {
 			typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
 		}
-		var value any
-		dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
-		dynamic.tab = typePtr
-		dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
-		typ := reflect.TypeOf(value)
-		if typ == nil {
-			setJITDecodeError(ctx, "invalid interface type")
-			return
-		}
-		valueData := runtimeMallocGC(typ.Size(), typePtr, true)
-		*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = valueData
 		decoded, ok := jitDynamicDecoderCache.Load(uintptr(typePtr))
 		var child *jitCompiledDecoder
+		var typ reflect.Type
 		if ok {
 			child = decoded.(*jitCompiledDecoder)
 		} else {
+			var value any
+			dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
+			dynamic.tab = typePtr
+			dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
+			typ = reflect.TypeOf(value)
+			if typ == nil {
+				setJITDecodeError(ctx, "invalid interface type")
+				return
+			}
 			jitDynamicDecodeCompileMu.Lock()
 			if decoded, ok := jitDynamicDecoderCache.Load(uintptr(typePtr)); ok {
 				child = decoded.(*jitCompiledDecoder)
@@ -688,6 +710,8 @@ func jitDecodeInterfaceField(ctx *jitDecodeContext, dst unsafe.Pointer, path uns
 				jitDynamicDecodeCompileMu.Unlock()
 			}
 		}
+		valueData := runtimeMallocGC(child.size, unsafe.Pointer(child.typePtr), true)
+		*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = valueData
 		childContext := jitDecodeContextPool.Get().(*jitDecodeContext)
 		*childContext = jitDecodeContext{
 			root:    node,
