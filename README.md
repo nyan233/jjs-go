@@ -79,6 +79,15 @@ to start on CPUs without AVX2.
 The project does not claim a performance win until the generated path has
 passed broader differential and CPU-feature coverage.
 
+## Benchmarks
+
+`benchmark/compare` is an independent Go module that compares this checkout
+against `encoding/json`, goccy/go-json, json-iterator, EasyJSON and Sonic using
+Sonic's small/medium/large fixtures. See
+[`benchmark/compare/README.md`](benchmark/compare/README.md) for methodology
+and [`benchmark/compare/RESULTS.md`](benchmark/compare/RESULTS.md) for the
+latest Windows amd64 results.
+
 ## Verification
 
 ```sh

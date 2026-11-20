@@ -21,5 +21,10 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: true
+          cache-dependency-path: |
+            go.sum
+            benchmark/compare/go.sum
       - run: go test ./...
       - run: go build ./...
+      - run: go test ./...
+        working-directory: benchmark/compare

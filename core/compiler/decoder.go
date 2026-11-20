@@ -673,17 +673,19 @@ func jitDecodeInterfaceField(ctx *jitDecodeContext, dst unsafe.Pointer, path uns
 			child = decoded.(*jitCompiledDecoder)
 		} else {
 			jitDynamicDecodeCompileMu.Lock()
-			defer jitDynamicDecodeCompileMu.Unlock()
 			if decoded, ok := jitDynamicDecoderCache.Load(uintptr(typePtr)); ok {
 				child = decoded.(*jitCompiledDecoder)
+				jitDynamicDecodeCompileMu.Unlock()
 			} else {
 				compiled, err := compileJITDecoder(typ)
 				if err != nil {
+					jitDynamicDecodeCompileMu.Unlock()
 					setJITDecodeError(ctx, err.Error())
 					return
 				}
 				actual, _ := jitDynamicDecoderCache.LoadOrStore(uintptr(typePtr), compiled)
 				child = actual.(*jitCompiledDecoder)
+				jitDynamicDecodeCompileMu.Unlock()
 			}
 		}
 		childContext := jitDecodeContextPool.Get().(*jitDecodeContext)

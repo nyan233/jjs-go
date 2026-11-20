@@ -3,6 +3,7 @@ package compiler
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"slices"
@@ -39,6 +40,7 @@ type jitEncodeContext struct {
 	err          error
 	saved12      unsafe.Pointer
 	savedScratch [8]uintptr
+	mapValue     unsafe.Pointer
 }
 
 func newJITEncodeProgram(static []byte) *jitEncodeProgram {
@@ -250,13 +252,15 @@ type jitMapIterator struct {
 
 //go:noinline
 func jitEncodeMap(ctx *jitEncodeContext, mapFieldPtr unsafe.Pointer, keyIndex, valueIndex, typeIndex int) {
+	if ctx == nil || ctx.program == nil || typeIndex < 0 || typeIndex >= len(ctx.program.mapTypes) {
+		if ctx != nil {
+			ctx.setError(fmt.Errorf("json: invalid map type index %d (types=%d)", typeIndex, len(ctx.program.mapTypes)))
+		}
+		return
+	}
 	mapPtr := *(*unsafe.Pointer)(mapFieldPtr)
 	if mapPtr == nil {
 		jitAppendNull(ctx)
-		return
-	}
-	if typeIndex < 0 || typeIndex >= len(ctx.program.mapTypes) {
-		ctx.setError(errors.New("json: invalid map type index"))
 		return
 	}
 	var iterator jitMapIterator
@@ -326,17 +330,19 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 		child = encoded.(*jitCompiledEncoder)
 	} else {
 		jitDynamicCompileMu.Lock()
-		defer jitDynamicCompileMu.Unlock()
 		if encoded, ok := jitDynamicEncoderCache.Load(uintptr(typePtr)); ok {
 			child = encoded.(*jitCompiledEncoder)
+			jitDynamicCompileMu.Unlock()
 		} else {
 			compiled, err := compileJITEncoder(typ)
 			if err != nil {
+				jitDynamicCompileMu.Unlock()
 				ctx.setError(err)
 				return
 			}
 			actual, _ := jitDynamicEncoderCache.LoadOrStore(uintptr(typePtr), compiled)
 			child = actual.(*jitCompiledEncoder)
+			jitDynamicCompileMu.Unlock()
 		}
 	}
 	childContext := jitEncodeContextPool.Get().(*jitEncodeContext)
@@ -344,6 +350,10 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 		dst:     ctx.dst,
 		data:    data,
 		program: child.program,
+	}
+	if typ.Kind() == reflect.Map {
+		childContext.mapValue = data
+		childContext.data = unsafe.Pointer(&childContext.mapValue)
 	}
 	defer func() {
 		*childContext = jitEncodeContext{}

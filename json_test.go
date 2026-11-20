@@ -160,6 +160,105 @@ func TestJITInterfaceDispatch(t *testing.T) {
 	}
 }
 
+func TestMarshalJITInterfaceContainingMap(t *testing.T) {
+	values := []any{struct {
+		Payload any `json:"payload"`
+	}{
+		Payload: map[string]any{
+			"name":   "nested",
+			"values": []any{true, float64(7)},
+		},
+	}, map[string]any{
+		"name":   "root",
+		"values": []any{false, float64(8)},
+	}}
+	for _, value := range values {
+		data, err := Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got, want any
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatal(err)
+		}
+		wantData, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(wantData, &want); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %s, want %s", data, wantData)
+		}
+	}
+}
+
+func TestUnmarshalJITNestedMap(t *testing.T) {
+	data := []byte(`{"name":"root","nested":{"items":[{"enabled":true},{"count":3}]}}`)
+	var got map[string]any
+	if err := Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	var want map[string]any
+	if err := json.Unmarshal(data, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %#v, want %#v", got, want)
+	}
+}
+
+func TestJITConcurrentDynamicMaps(t *testing.T) {
+	value := map[string]any{
+		"name": "root",
+		"nested": map[string]any{
+			"items": []any{
+				map[string]any{"enabled": true},
+				map[string]any{"count": float64(3)},
+			},
+		},
+	}
+	want, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	errs := make(chan error, 32)
+	for worker := 0; worker < 32; worker++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 20; i++ {
+				data, err := Marshal(value)
+				if err != nil {
+					errs <- err
+					return
+				}
+				var got any
+				if err := json.Unmarshal(data, &got); err != nil {
+					errs <- err
+					return
+				}
+				var expected any
+				if err := json.Unmarshal(want, &expected); err != nil {
+					errs <- err
+					return
+				}
+				if !reflect.DeepEqual(got, expected) {
+					errs <- &jitMismatchError{got: data, want: want}
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
+}
+
 func TestUnmarshalJITErrors(t *testing.T) {
 	if err := Unmarshal([]byte(`{}`), nil); err == nil {
 		t.Fatal("expected invalid target error")

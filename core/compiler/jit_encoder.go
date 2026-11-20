@@ -66,6 +66,10 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 			data:    data,
 			program: program.program,
 		}
+		if program.rootKind == reflect.Map {
+			ctx.mapValue = data
+			ctx.data = unsafe.Pointer(&ctx.mapValue)
+		}
 		defer func() {
 			*ctx = jitEncodeContext{}
 			jitEncodeContextPool.Put(ctx)
@@ -84,6 +88,7 @@ type jitCompiledEncoder struct {
 	program         *jitEncodeProgram
 	function        func(*jitEncodeContext) uintptr
 	initialCapacity int
+	rootKind        reflect.Kind
 }
 
 func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
@@ -129,6 +134,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 		program:         program,
 		function:        function,
 		initialCapacity: estimateInitialCapacity(rootType, len(compiler.static)),
+		rootKind:        rootType.Kind(),
 	}, nil
 }
 
