@@ -6,8 +6,12 @@ import (
 	"unsafe"
 
 	"github.com/nyan233/jjs-go/core/compiler"
-	"github.com/nyan233/jjs-go/internal/rtype"
 )
+
+type emptyInterface struct {
+	typ  unsafe.Pointer
+	data unsafe.Pointer
+}
 
 // Marshal returns the JSON encoding of data.
 func Marshal(data any) ([]byte, error) {
@@ -15,13 +19,13 @@ func Marshal(data any) ([]byte, error) {
 	if typ == nil {
 		return []byte("null"), nil
 	}
-	face := (*rtype.EmptyFace)(unsafe.Pointer(&data))
+	face := (*emptyInterface)(unsafe.Pointer(&data))
 	encoder, err := compiler.CompileEncoder(typ, 0)
 	if err != nil {
 		return nil, err
 	}
 	buf := make([]byte, 0, 256)
-	if err := encoder(&buf, face.Val); err != nil {
+	if err := encoder(&buf, face.data); err != nil {
 		return nil, err
 	}
 	return buf, nil
@@ -34,8 +38,7 @@ func Unmarshal(bytes []byte, data any) error {
 	if typ == nil || typ.Kind() != reflect.Pointer {
 		return &json.InvalidUnmarshalError{Type: reflect.TypeOf(data)}
 	}
-	face := (*rtype.EmptyFace)(unsafe.Pointer(&data))
-	if face.Val == nil {
+	if reflect.ValueOf(data).IsNil() {
 		return &json.InvalidUnmarshalError{Type: typ}
 	}
 	decoder, err := compiler.CompileDecoder(typ.Elem())

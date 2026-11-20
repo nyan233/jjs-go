@@ -11,10 +11,22 @@ import (
 	"unsafe"
 )
 
-const jitEncodeStackSize = 4096
+const (
+	jitHelperString = iota
+	jitHelperInt
+	jitHelperFloat
+	jitHelperBool
+	jitHelperNull
+	jitHelperPointer
+	jitHelperSlice
+	jitHelperMap
+	jitHelperInterface
+	jitHelperReserve
+	jitHelperByteSlice
+)
 
 type jitEncodeProgram struct {
-	helpers   [13]uintptr
+	helpers   [11]uintptr
 	static    []byte
 	functions []func(*jitEncodeContext) uintptr
 	mapTypes  []uintptr
@@ -23,33 +35,25 @@ type jitEncodeProgram struct {
 type jitEncodeContext struct {
 	dst          []byte
 	data         unsafe.Pointer
-	stack        []byte
 	program      *jitEncodeProgram
 	err          error
 	saved12      unsafe.Pointer
-	saved13      uintptr
-	saved9       uintptr
-	saved15      uintptr
 	savedScratch [8]uintptr
-	slots        [256]uintptr
-	slotTop      uintptr
 }
 
 func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program := &jitEncodeProgram{static: static}
-	program.helpers[0] = reflect.ValueOf(jitAppendRaw).Pointer()
-	program.helpers[1] = reflect.ValueOf(jitAppendString).Pointer()
-	program.helpers[2] = reflect.ValueOf(jitAppendIntPtr).Pointer()
-	program.helpers[3] = reflect.ValueOf(jitAppendFloatPtr).Pointer()
-	program.helpers[4] = reflect.ValueOf(jitAppendBoolPtr).Pointer()
-	program.helpers[5] = reflect.ValueOf(jitAppendNull).Pointer()
-	program.helpers[6] = reflect.ValueOf(jitIsEmpty).Pointer()
-	program.helpers[7] = reflect.ValueOf(jitAppendBase64).Pointer()
-	program.helpers[8] = reflect.ValueOf(jitEncodePointer).Pointer()
-	program.helpers[9] = reflect.ValueOf(jitEncodeSlice).Pointer()
-	program.helpers[10] = reflect.ValueOf(jitEncodeMap).Pointer()
-	program.helpers[11] = reflect.ValueOf(jitEncodeInterface).Pointer()
-	program.helpers[12] = reflect.ValueOf(jitReserveRaw).Pointer()
+	program.helpers[jitHelperString] = reflect.ValueOf(jitAppendString).Pointer()
+	program.helpers[jitHelperInt] = reflect.ValueOf(jitAppendIntPtr).Pointer()
+	program.helpers[jitHelperFloat] = reflect.ValueOf(jitAppendFloatPtr).Pointer()
+	program.helpers[jitHelperBool] = reflect.ValueOf(jitAppendBoolPtr).Pointer()
+	program.helpers[jitHelperNull] = reflect.ValueOf(jitAppendNull).Pointer()
+	program.helpers[jitHelperPointer] = reflect.ValueOf(jitEncodePointer).Pointer()
+	program.helpers[jitHelperSlice] = reflect.ValueOf(jitEncodeSlice).Pointer()
+	program.helpers[jitHelperMap] = reflect.ValueOf(jitEncodeMap).Pointer()
+	program.helpers[jitHelperInterface] = reflect.ValueOf(jitEncodeInterface).Pointer()
+	program.helpers[jitHelperReserve] = reflect.ValueOf(jitReserveRaw).Pointer()
+	program.helpers[jitHelperByteSlice] = reflect.ValueOf(jitEncodeByteSlice).Pointer()
 	return program
 }
 
@@ -57,18 +61,6 @@ func (c *jitEncodeContext) setError(err error) {
 	if err != nil && c.err == nil {
 		c.err = err
 	}
-}
-
-//go:noinline
-func jitAppendRaw(ctx *jitEncodeContext, ptr unsafe.Pointer, n int) {
-	if ctx == nil || n < 0 {
-		return
-	}
-	if n > 0 && ptr == nil {
-		ctx.setError(errors.New("json: nil source buffer"))
-		return
-	}
-	ctx.dst = append(ctx.dst, unsafe.Slice((*byte)(ptr), n)...)
 }
 
 //go:noinline
@@ -178,62 +170,6 @@ func jitAppendNull(ctx *jitEncodeContext) {
 }
 
 //go:noinline
-func jitAppendBase64(ctx *jitEncodeContext, ptr unsafe.Pointer, n int) {
-	if ctx == nil || n < 0 {
-		return
-	}
-	if n > 0 && ptr == nil {
-		ctx.setError(errors.New("json: nil byte slice"))
-		return
-	}
-	ctx.dst = append(ctx.dst, '"')
-	dstLen := len(ctx.dst)
-	ctx.dst = append(ctx.dst, make([]byte, base64.StdEncoding.EncodedLen(n))...)
-	base64.StdEncoding.Encode(ctx.dst[dstLen:], unsafe.Slice((*byte)(ptr), n))
-	ctx.dst = append(ctx.dst, '"')
-}
-
-const (
-	jitEmptyString = iota
-	jitEmptyBool
-	jitEmptyInt
-	jitEmptyUint
-	jitEmptyFloat
-	jitEmptyPointer
-	jitEmptySlice
-)
-
-//go:noinline
-func jitIsEmpty(_ *jitEncodeContext, ptr unsafe.Pointer, kind, _ int) int {
-	switch kind {
-	case jitEmptyString, jitEmptySlice:
-		if *(*unsafe.Pointer)(ptr) == nil {
-			return 1
-		}
-		return boolInt(*(*int)(unsafe.Add(ptr, 8)) == 0)
-	case jitEmptyPointer:
-		return boolInt(*(*unsafe.Pointer)(ptr) == nil)
-	case jitEmptyBool:
-		return boolInt(*(*uint8)(ptr) == 0)
-	case jitEmptyInt:
-		return boolInt(*(*int64)(ptr) == 0)
-	case jitEmptyUint:
-		return boolInt(*(*uint64)(ptr) == 0)
-	case jitEmptyFloat:
-		return boolInt(*(*float64)(ptr) == 0)
-	default:
-		return 0
-	}
-}
-
-func boolInt(value bool) int {
-	if value {
-		return 1
-	}
-	return 0
-}
-
-//go:noinline
 func jitEncodePointer(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, childIndex int) {
 	ptr := *(*unsafe.Pointer)(fieldPtr)
 	if ptr == nil {
@@ -276,6 +212,21 @@ func jitEncodeSlice(ctx *jitEncodeContext, headerPtr unsafe.Pointer, childIndex,
 		}
 	}
 	ctx.dst = append(ctx.dst, ']')
+}
+
+//go:noinline
+func jitEncodeByteSlice(ctx *jitEncodeContext, headerPtr unsafe.Pointer) {
+	ptr := *(*unsafe.Pointer)(headerPtr)
+	length := *(*int)(unsafe.Add(headerPtr, 8))
+	if ptr == nil {
+		jitAppendNull(ctx)
+		return
+	}
+	ctx.dst = append(ctx.dst, '"')
+	dstLen := len(ctx.dst)
+	ctx.dst = append(ctx.dst, make([]byte, base64.StdEncoding.EncodedLen(length))...)
+	base64.StdEncoding.Encode(ctx.dst[dstLen:], unsafe.Slice((*byte)(ptr), length))
+	ctx.dst = append(ctx.dst, '"')
 }
 
 type jitMapIterator struct {
@@ -402,5 +353,3 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 	ctx.dst = childContext.dst
 	ctx.setError(childContext.err)
 }
-
-var _ = jitEncodeStackSize
