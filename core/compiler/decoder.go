@@ -14,7 +14,9 @@ import (
 
 var gDecoder = new(Decoder).init()
 
-var jitDecodeContexts sync.Map
+var jitDecodeContextPool = sync.Pool{
+	New: func() any { return new(jitDecodeContext) },
+}
 
 func CompileDecoder(typ reflect.Type) (DecodeHandler, error) {
 	return gDecoder.Compile(typ)
@@ -54,13 +56,16 @@ func (d *Decoder) Compile(typ reflect.Type) (DecodeHandler, error) {
 		if err != nil {
 			return err
 		}
-		ctx := &jitDecodeContext{
+		ctx := jitDecodeContextPool.Get().(*jitDecodeContext)
+		*ctx = jitDecodeContext{
 			root:    root,
 			data:    target,
 			program: program.program,
 		}
-		jitDecodeContexts.Store(ctx, struct{}{})
-		defer jitDecodeContexts.Delete(ctx)
+		defer func() {
+			*ctx = jitDecodeContext{}
+			jitDecodeContextPool.Put(ctx)
+		}()
 		program.function(ctx)
 		return ctx.err
 	}
@@ -349,6 +354,8 @@ func (g *jitDecoderGenerator) emitDecodeCall(helper int, typ reflect.Type, offse
 	}
 	if helper == 7 && typ.NumMethod() > 0 {
 		g.code.movConst(1, _RSI)
+	} else if helper == 7 {
+		g.code.xor(_RSI, _RSI)
 	}
 	g.emitHelper(helper)
 	return nil
@@ -649,16 +656,11 @@ func jitDecodeInterfaceField(ctx *jitDecodeContext, dst unsafe.Pointer, path uns
 		if nonEmpty != 0 {
 			typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
 		}
-		var typ reflect.Type
-		if registered, ok := jitTypeRegistry.Load(uintptr(typePtr)); ok {
-			typ = registered.(reflect.Type)
-		} else {
-			var value any
-			dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
-			dynamic.tab = typePtr
-			dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
-			typ = reflect.TypeOf(value)
-		}
+		var value any
+		dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
+		dynamic.tab = typePtr
+		dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
+		typ := reflect.TypeOf(value)
 		if typ == nil {
 			setJITDecodeError(ctx, "invalid interface type")
 			return
@@ -684,13 +686,16 @@ func jitDecodeInterfaceField(ctx *jitDecodeContext, dst unsafe.Pointer, path uns
 				child = actual.(*jitCompiledDecoder)
 			}
 		}
-		childContext := &jitDecodeContext{
+		childContext := jitDecodeContextPool.Get().(*jitDecodeContext)
+		*childContext = jitDecodeContext{
 			root:    node,
 			data:    valueData,
 			program: child.program,
 		}
-		jitDecodeContexts.Store(childContext, struct{}{})
-		defer jitDecodeContexts.Delete(childContext)
+		defer func() {
+			*childContext = jitDecodeContext{}
+			jitDecodeContextPool.Put(childContext)
+		}()
 		child.function(childContext)
 		if childContext.err != nil {
 			ctx.err = childContext.err

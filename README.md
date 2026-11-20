@@ -10,6 +10,10 @@ The compiler includes a linear-scan register allocator for non-reserved
 physical registers. ABI registers used by runtime bridges remain fixed and are
 not considered allocatable.
 
+Encode and decode contexts are reused through `sync.Pool`. The generated code
+reserves output capacity once per static segment and writes compiled literals
+directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
+
 `Unmarshal` parses the input into a non-reflective JSON AST, then executes a
 generated assignment function that writes fields by their compiled offsets.
 There is no reflection-based encoding plan or `encoding/json` runtime fallback.

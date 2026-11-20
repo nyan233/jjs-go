@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 	"unsafe"
@@ -13,7 +14,7 @@ import (
 const jitEncodeStackSize = 4096
 
 type jitEncodeProgram struct {
-	helpers   [12]uintptr
+	helpers   [13]uintptr
 	static    []byte
 	functions []func(*jitEncodeContext) uintptr
 	mapTypes  []uintptr
@@ -48,6 +49,7 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[9] = reflect.ValueOf(jitEncodeSlice).Pointer()
 	program.helpers[10] = reflect.ValueOf(jitEncodeMap).Pointer()
 	program.helpers[11] = reflect.ValueOf(jitEncodeInterface).Pointer()
+	program.helpers[12] = reflect.ValueOf(jitReserveRaw).Pointer()
 	return program
 }
 
@@ -67,6 +69,17 @@ func jitAppendRaw(ctx *jitEncodeContext, ptr unsafe.Pointer, n int) {
 		return
 	}
 	ctx.dst = append(ctx.dst, unsafe.Slice((*byte)(ptr), n)...)
+}
+
+//go:noinline
+func jitReserveRaw(ctx *jitEncodeContext, n int) unsafe.Pointer {
+	if ctx == nil || n <= 0 {
+		return nil
+	}
+	start := len(ctx.dst)
+	ctx.dst = slices.Grow(ctx.dst, n)
+	ctx.dst = ctx.dst[:start+n]
+	return unsafe.Add(unsafe.Pointer(unsafe.SliceData(ctx.dst)), start)
 }
 
 //go:noinline
@@ -375,13 +388,16 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 			child = actual.(*jitCompiledEncoder)
 		}
 	}
-	childContext := &jitEncodeContext{
+	childContext := jitEncodeContextPool.Get().(*jitEncodeContext)
+	*childContext = jitEncodeContext{
 		dst:     ctx.dst,
 		data:    data,
 		program: child.program,
 	}
-	jitEncodeContexts.Store(childContext, struct{}{})
-	defer jitEncodeContexts.Delete(childContext)
+	defer func() {
+		*childContext = jitEncodeContext{}
+		jitEncodeContextPool.Put(childContext)
+	}()
 	child.function(childContext)
 	ctx.dst = childContext.dst
 	ctx.setError(childContext.err)

@@ -17,7 +17,9 @@ import (
 
 var gEncoder = new(Encoder).init()
 
-var jitEncodeContexts sync.Map
+var jitEncodeContextPool = sync.Pool{
+	New: func() any { return new(jitEncodeContext) },
+}
 var jitEncoderScratchRegisters = allocateJITScratchRegisters(3)
 
 func CompileEncoder(typ reflect.Type, opt uint64) (EncodeHandler, error) {
@@ -59,13 +61,16 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 			*buf = append((*buf)[:0], "null"...)
 			return nil
 		}
-		ctx := &jitEncodeContext{
-			dst:     (*buf)[:0],
+		ctx := jitEncodeContextPool.Get().(*jitEncodeContext)
+		*ctx = jitEncodeContext{
+			dst:     make([]byte, 0, program.initialCapacity),
 			data:    data,
 			program: program.program,
 		}
-		jitEncodeContexts.Store(ctx, struct{}{})
-		defer jitEncodeContexts.Delete(ctx)
+		defer func() {
+			*ctx = jitEncodeContext{}
+			jitEncodeContextPool.Put(ctx)
+		}()
 		program.function(ctx)
 		*buf = ctx.dst
 		runtime.KeepAlive(ctx)
@@ -77,8 +82,9 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 }
 
 type jitCompiledEncoder struct {
-	program  *jitEncodeProgram
-	function func(*jitEncodeContext) uintptr
+	program         *jitEncodeProgram
+	function        func(*jitEncodeContext) uintptr
+	initialCapacity int
 }
 
 func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
@@ -124,8 +130,9 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	}
 	function := program.functions[0]
 	return &jitCompiledEncoder{
-		program:  program,
-		function: function,
+		program:         program,
+		function:        function,
+		initialCapacity: estimateInitialCapacity(rootType, len(compiler.static)),
 	}, nil
 }
 
@@ -139,6 +146,60 @@ type jitEncoderCompiler struct {
 type jitEncoderUnit struct {
 	typ  reflect.Type
 	code *jitCodeBuilder
+}
+
+func estimateInitialCapacity(typ reflect.Type, staticSize int) int {
+	cache := make(map[reflect.Type]int)
+	var estimate func(reflect.Type, int) int
+	estimate = func(current reflect.Type, depth int) int {
+		if current == nil || depth > 8 {
+			return 256
+		}
+		if size, ok := cache[current]; ok {
+			return size
+		}
+		if current.Kind() == reflect.Pointer {
+			size := estimate(current.Elem(), depth+1)
+			cache[current] = size
+			return size
+		}
+		var size int
+		switch current.Kind() {
+		case reflect.Bool:
+			size = 8
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			size = 24
+		case reflect.Float32, reflect.Float64:
+			size = 32
+		case reflect.String:
+			size = 64
+		case reflect.Struct:
+			for i := 0; i < current.NumField(); i++ {
+				field := current.Field(i)
+				if field.PkgPath != "" {
+					continue
+				}
+				size += len(field.Name) + 6 + estimate(field.Type, depth+1)
+			}
+		case reflect.Array:
+			size = current.Len() * estimate(current.Elem(), depth+1)
+		case reflect.Slice, reflect.Map, reflect.Interface:
+			size = 192
+		default:
+			size = 128
+		}
+		cache[current] = size
+		return size
+	}
+	size := staticSize + estimate(typ, 0)
+	if size < 256 {
+		size = 256
+	}
+	if size > 64*1024 {
+		size = 64 * 1024
+	}
+	return size
 }
 
 func (c *jitEncoderCompiler) unitIndex(typ reflect.Type) (int, error) {
@@ -290,21 +351,23 @@ func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 	if err != nil {
 		return err
 	}
-	if err := g.emitRaw([]byte("{")); err != nil {
-		return err
+	if len(fields) == 0 {
+		return g.emitRaw([]byte("{}"))
 	}
 	for index, field := range fields {
 		fieldOffset := offset + int64(typ.Field(field.index).Offset)
 		if field.omitEmpty {
 			return fmt.Errorf("json: JIT encoder does not support omitempty on %s", field.name)
 		}
+		prefix := make([]byte, 0, len(field.name)+4)
 		if index > 0 {
-			if err := g.emitRaw([]byte(",")); err != nil {
-				return err
-			}
+			prefix = append(prefix, ',')
+		} else {
+			prefix = append(prefix, '{')
 		}
-		key := append(appendQuoted(nil, field.name), ':')
-		if err := g.emitRaw(key); err != nil {
+		prefix = appendQuoted(prefix, field.name)
+		prefix = append(prefix, ':')
+		if err := g.emitRaw(prefix); err != nil {
 			return err
 		}
 		if err := g.emitValue(field.typ, fieldOffset); err != nil {
@@ -394,12 +457,56 @@ func (g *jitEncoderGenerator) emitRaw(value []byte) error {
 	}
 	offset := len(g.compiler.static)
 	g.compiler.static = append(g.compiler.static, value...)
-	g.code.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _R11)
-	g.code.loadMem(_R11, int64(unsafe.Offsetof(jitEncodeProgram{}.static)), _RBX)
-	g.code.addConst(int64(offset), _RBX)
 	g.code.mov(_R10, _RAX)
-	g.code.movConst(int64(len(value)), _RCX)
-	g.emitHelper(0)
+	g.code.movConst(int64(len(value)), _RBX)
+	g.emitHelper(12)
+	destination := registerAddr(jitEncoderScratchRegisters[0])
+	g.code.mov(_RAX, destination)
+
+	used := 0
+	if len(value) >= 16 {
+		g.code.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _R11)
+		g.code.loadMem(_R11, int64(unsafe.Offsetof(jitEncodeProgram{}.static)), _R11)
+	}
+	for len(value)-used >= 32 {
+		g.code.vectorMove32(mem(_R11, int64(offset+used)), mem(destination, int64(used)))
+		used += 32
+	}
+	if len(value)-used >= 16 {
+		g.code.vectorMove16(mem(_R11, int64(offset+used)), mem(destination, int64(used)))
+		used += 16
+	}
+	if remaining := len(value) - used; remaining >= 8 {
+		g.code.loadImm64(binary.LittleEndian.Uint64(value[used:used+8]), _R11)
+		g.code.mov(_R11, mem(destination, int64(used)))
+		used += 8
+	}
+	if remaining := len(value) - used; remaining >= 4 {
+		g.code.movConst(int64(binary.LittleEndian.Uint32(value[used:used+4])), _R11)
+		g.code.emit(&obj.Prog{
+			As:   x86.AMOVL,
+			From: _R11,
+			To:   mem(destination, int64(used)),
+		})
+		used += 4
+	}
+	if remaining := len(value) - used; remaining >= 2 {
+		g.code.movConst(int64(binary.LittleEndian.Uint16(value[used:used+2])), _R11)
+		g.code.emit(&obj.Prog{
+			As:   x86.AMOVW,
+			From: _R11,
+			To:   mem(destination, int64(used)),
+		})
+		used += 2
+	}
+	if used < len(value) {
+		g.code.movConst(int64(value[used]), _R11)
+		g.code.emit(&obj.Prog{
+			As:   x86.AMOVB,
+			From: _R11,
+			To:   mem(destination, int64(used)),
+		})
+	}
 	return nil
 }
 
@@ -536,6 +643,27 @@ func (c *jitCodeBuilder) emit(prog *obj.Prog) {
 
 func (c *jitCodeBuilder) mov(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AMOVQ, From: from, To: to})
+}
+
+func (c *jitCodeBuilder) vectorMove32(from, to obj.Addr) {
+	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: from, To: _Y0})
+	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: _Y0, To: to})
+}
+
+func (c *jitCodeBuilder) vectorMove16(from, to obj.Addr) {
+	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: from, To: _X0})
+	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: _X0, To: to})
+}
+
+func (c *jitCodeBuilder) loadImm64(value uint64, register obj.Addr) {
+	c.emit(&obj.Prog{
+		As:   x86.AWORD,
+		From: obj.Addr{Type: obj.TYPE_CONST, Offset: 0xbb49},
+	})
+	c.emit(&obj.Prog{
+		As:   x86.AQUAD,
+		From: obj.Addr{Type: obj.TYPE_CONST, Offset: int64(value)},
+	})
 }
 
 func (c *jitCodeBuilder) movConst(value int64, to obj.Addr) {
@@ -767,4 +895,6 @@ var (
 	_RDI = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_DI}
 	_RSI = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SI}
 	_RSP = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SP}
+	_X0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_X0}
+	_Y0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_Y0}
 )
