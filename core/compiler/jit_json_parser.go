@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"unicode/utf16"
 	"unicode/utf8"
+	"unsafe"
 )
 
 type jitJSONKind uint8
@@ -161,6 +162,20 @@ func (p *jitJSONParser) parseString() (string, error) {
 	p.index++
 	out := make([]byte, 0, 32)
 	for p.index < len(p.data) {
+		if remaining := len(p.data) - p.index; remaining >= 32 {
+			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(p.data)), p.index))
+			special := avx2FindJSONEscape(ptr, remaining)
+			if special < 0 {
+				out = append(out, p.data[p.index:]...)
+				p.index = len(p.data)
+				break
+			}
+			if special > 0 {
+				out = append(out, p.data[p.index:p.index+special]...)
+				p.index += special
+				continue
+			}
+		}
 		c := p.data[p.index]
 		if c == '"' {
 			p.index++

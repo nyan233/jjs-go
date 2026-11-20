@@ -64,10 +64,13 @@ func main() {
 ## Requirements
 
 - Go 1.22 or newer
+- AVX2-capable amd64 CPU; initialization fails fast otherwise
 - Windows amd64 or Linux amd64
 
 Windows is the primary verification target for this branch. The experimental
-assembly packages remain amd64-specific.
+assembly packages remain amd64-specific. String escaping and JSON string parsing
+use an AVX2 fast path for 32-byte blocks, with runtime initialization refusing
+to start on CPUs without AVX2.
 
 The project does not claim a performance win until the generated path has
 passed broader differential and CPU-feature coverage.

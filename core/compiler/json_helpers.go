@@ -1,6 +1,9 @@
 package compiler
 
-import "unicode/utf8"
+import (
+	"unicode/utf8"
+	"unsafe"
+)
 
 func splitJSONTag(tag string) (name, options string) {
 	if tag == "" {
@@ -35,6 +38,20 @@ func appendQuoted(dst []byte, value string) []byte {
 	const hex = "0123456789abcdef"
 	dst = append(dst, '"')
 	for i := 0; i < len(value); {
+		if remaining := len(value) - i; remaining >= 32 {
+			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.StringData(value)), i))
+			special := avx2FindJSONEscape(ptr, remaining)
+			if special < 0 {
+				dst = append(dst, value[i:]...)
+				i = len(value)
+				break
+			}
+			if special > 0 {
+				dst = append(dst, value[i:i+special]...)
+				i += special
+				continue
+			}
+		}
 		c := value[i]
 		if c < utf8.RuneSelf {
 			switch c {
