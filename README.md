@@ -1,21 +1,26 @@
 # jjs-go
 
-`jjs-go` is an experimental, type-specialized JSON codec written in Go.
+`jjs-go` is a type-specialized JSON codec that generates native x86-64 code.
 
-The current default path compiles a cached encoding plan for each Go type. The
-plan handles structs, pointers, strings, booleans, integers, floats, slices,
-arrays, maps and `encoding/json` custom marshalers. Values that need full
-standard-library behavior use `encoding/json` as a safe fallback.
+`Marshal` reads struct layout and JSON tags at compile time, then generates a
+cached function that loads each field by offset and calls fixed JIT intrinsics
+for strings, booleans, integers, floats and JSON punctuation.
 
-Decoding validates the target once and caches a type-specific entry point while
-using `encoding/json` for JSON parsing and assignment. This covers JSON tags,
-custom unmarshalers, embedded fields and detailed syntax/type errors.
+`Unmarshal` parses the input into a non-reflective JSON AST, then executes a
+generated assignment function that writes fields by their compiled offsets.
+There is no reflection-based encoding plan or `encoding/json` runtime fallback.
 
-The earlier x86-64 JIT and executable-memory modules remain in the repository
-as experimental low-level code. They are not on the public `Marshal`/`Unmarshal`
-path because their bounds checking, runtime ABI compatibility and CPU feature
-gating are not yet sufficient for general use. Their package initialization is
-disabled unless `JJS_ENABLE_EXPERIMENTAL_JIT=1` is set.
+Current JIT type support:
+
+- structs, nested value structs and arrays
+- strings and JSON escape decoding
+- booleans, signed/unsigned integers and floats
+- JSON tags and ignored fields
+- pointer roots (`*T`)
+
+Pointer fields, slices, maps, embedded fields and `omitempty` currently return
+an explicit unsupported-type error. They are not silently routed through a
+reflection fallback.
 
 ## Usage
 
@@ -31,7 +36,7 @@ import (
 type User struct {
 	ID    int    `json:"id"`
 	Name  string `json:"name"`
-	Email string `json:"email,omitempty"`
+	Email string `json:"email"`
 }
 
 func main() {
@@ -58,10 +63,8 @@ func main() {
 Windows is the primary verification target for this branch. The experimental
 assembly packages remain amd64-specific.
 
-The safe encoding-plan path is currently a correctness and architecture
-baseline. It has not yet demonstrated a performance win over `encoding/json`;
-that claim should only be made after the JIT path passes differential, bounds,
-race and CPU-feature tests.
+The project does not claim a performance win until the generated path has
+passed broader differential and CPU-feature coverage.
 
 ## Verification
 

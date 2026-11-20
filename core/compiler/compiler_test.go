@@ -3,6 +3,7 @@ package compiler
 import (
 	"reflect"
 	"testing"
+	"unsafe"
 )
 
 type TestJson1 struct {
@@ -10,14 +11,48 @@ type TestJson1 struct {
 	UserBase64Id string
 }
 
+type TestJITNested struct {
+	Name   string    `json:"name"`
+	Child  TestJson1 `json:"child"`
+	Values [2]int    `json:"values"`
+}
+
 func TestEncodeCompile(t *testing.T) {
 	j := &TestJson1{
 		UserName:     "Hello-World",
 		UserBase64Id: "Base64-Id",
 	}
-	_, err := gEncoder.Compile(reflect.TypeOf(j), 0)
+	handler, err := gEncoder.Compile(reflect.TypeOf(j), 0)
 	if err != nil {
 		t.Fatal(err)
+	}
+	var buf []byte
+	if err := handler(&buf, unsafe.Pointer(j)); err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"UserName":"Hello-World","UserBase64Id":"Base64-Id"}`
+	if string(buf) != want {
+		t.Fatalf("got %s, want %s", buf, want)
+	}
+}
+
+func TestEncodeJITNested(t *testing.T) {
+	value := &TestJITNested{
+		Name:   "root",
+		Child:  TestJson1{UserName: "child", UserBase64Id: "id"},
+		Values: [2]int{1, -2},
+	}
+	handler, err := CompileEncoder(reflect.TypeOf(value), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf []byte
+	if err := handler(&buf, unsafe.Pointer(value)); err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"name":"root","child":{"UserName":"child","UserBase64Id":"id"},"values":[1,-2]}`
+	if string(buf) != want {
+		t.Fatalf("got %s, want %s", buf, want)
 	}
 }
 

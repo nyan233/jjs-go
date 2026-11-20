@@ -1,9 +1,10 @@
 package compiler
 
 import (
+	"github.com/bytedance/sonic/loader"
 	"github.com/zbh255/bilog"
 	"os"
-	"reflect"
+	"unsafe"
 )
 
 const (
@@ -17,14 +18,16 @@ var (
 		bilog.WithLowBuffer(0),
 		bilog.WithTimes(),
 		bilog.WithCaller(0))
+
+	jitLoader = loader.Loader{
+		Name: "jjs.jit.",
+		File: "github.com/nyan233/jjs-go/jit.go",
+		Options: loader.Options{
+			NoPreempt: true,
+		},
+	}
 )
 
-// EncodeHandler appends the JSON representation of val to buf.
-//
-// The handler is compiled for a specific reflect.Type. reflect.Value is used
-// instead of an unsafe data pointer so unsupported values and cycles can be
-// reported as errors instead of corrupting memory.
-type EncodeHandler func(buf *[]byte, val reflect.Value) error
+type EncodeHandler func(buf *[]byte, val unsafe.Pointer) error
 
-// DecodeHandler decodes JSON into the addressable value val.
-type DecodeHandler func(data []byte, val reflect.Value) error
+type DecodeHandler func(data []byte, val unsafe.Pointer) error
