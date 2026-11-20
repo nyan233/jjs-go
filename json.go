@@ -2,7 +2,6 @@ package jjs_go
 
 import (
 	"errors"
-	"github.com/nyan233/jjs-go/internal/asm"
 	"github.com/nyan233/jjs-go/internal/mempool"
 	"github.com/nyan233/jjs-go/internal/rtype"
 	"reflect"
@@ -20,13 +19,12 @@ func Marshal(data interface{}) ([]byte, error) {
 		panic("program is null")
 	}
 	// TODO grow
-	newBytes := make([]byte, pg.MinSize+1024*16, pg.MinSize+1024*16)
+	newBytes := make([]byte, pg.MinSize+256, pg.MinSize+256)
 	stack := mempool.StackPool.Get().(*mempool.Stack)
-	write, reason := asm.CallMFunc(pg.MFunc, uintptr(stack.High), unsafe.Pointer(&newBytes[0]), ef.Val)
-	newBytes = newBytes[:write+pg.MinSize]
+	reason := pg.MFunc(uintptr(stack.High), &newBytes, ef.Val)
 	_ = reason
 	runtime.KeepAlive(stack)
-	runtime.KeepAlive(newBytes)
+	runtime.KeepAlive(&newBytes)
 	runtime.KeepAlive(ef.Val)
 	return newBytes, nil
 }

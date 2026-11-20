@@ -1,6 +1,9 @@
 package asm
 
-import "testing"
+import (
+	"testing"
+	"unsafe"
+)
 
 func TestRegisterAccess(t *testing.T) {
 	var funcSet = map[string]func() uint64{
@@ -30,4 +33,17 @@ func TestRegisterAccess(t *testing.T) {
 	t.Log("RSP: ", ctxt.RSP)
 	t.Log("RBP: ", ctxt.RBP)
 	t.Log("RIP: ", ctxt.RIP)
+}
+
+func TestRuntimeFunc(t *testing.T) {
+	var buf1 [2049]byte
+	var buf2 [2049]byte
+	RTMemmove(unsafe.Pointer(&buf1), unsafe.Pointer(&buf2), 2049)
+}
+
+func TestRTGrowSlice(t *testing.T) {
+	a := RTGrowSlice(nil, 0, 0, 0, nil)
+	_ = a.Ptr
+	_ = a.Len
+	_ = a.Cap
 }

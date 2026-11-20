@@ -3,27 +3,34 @@ package compile
 import (
 	"fmt"
 	"github.com/bytedance/sonic/loader"
+	"github.com/nyan233/jjs-go/internal/asm"
 	"github.com/nyan233/jjs-go/internal/mempool"
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/x86"
 	"reflect"
+	"runtime"
 	"unsafe"
 )
 
-var jitLoader = loader.Loader{
-	Name: "jjs.jit.",
-	File: "github.com/nyan233/jjs/jit.go",
-	Options: loader.Options{
-		NoPreempt: true,
-	},
-}
+var (
+	jitLoader = loader.Loader{
+		Name: "jjs.jit.",
+		File: "github.com/nyan233/jjs/jit.go",
+		Options: loader.Options{
+			NoPreempt: true,
+		},
+	}
+	// 4GB
+	constantStringAlloc = mempool.NewPool(false, 1024*1024*1024*4)
+	sharedMap           = make(map[string]uintptr, 1024)
+)
 
 type Result struct {
 	StackSize int64
 	MinSize   int64
-	MFunc     uintptr
+	MFunc     Marshaller
 	Text      []byte
-	UFunc     uintptr
+	UFunc     Unmarshaller
 }
 
 type Program struct {
@@ -82,7 +89,7 @@ func (p *Program) compileMarshal() Result {
 	for stmt != nil {
 		switch stmt.OP {
 		case IRStartObject:
-			objl = p.outputSingleByteIR(objl, asmBuilder, &bytesBaseLen, '{')
+			objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, "{")
 		case IROutputStaticString:
 			// 合并静态Key和分割符的字符串输出
 			if stmt.next != nil && stmt.next.OP == IROutputKeyValSplit {
@@ -92,22 +99,22 @@ func (p *Program) compileMarshal() Result {
 				objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, fmt.Sprintf("\"%s\"", stmt.Tail.(string)))
 			}
 		case IROutputDynamicString:
-			objl = p.outputSingleByteIR(objl, asmBuilder, &bytesBaseLen, '"')
+			objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, "\"")
 			objl = p.outputDynamicStringIR(objl, asmBuilder, int(stmt.Offset), &bytesBaseLen, stmt.Tail.(reflect.Type))
-			objl = p.outputSingleByteIR(objl, asmBuilder, &bytesBaseLen, '"')
+			objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, "\"")
 		case IROutputKeyValSplit:
-			objl = p.outputSingleByteIR(objl, asmBuilder, &bytesBaseLen, ':')
+			objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, ":")
 		case IROutputNextSplit:
-			objl = p.outputSingleByteIR(objl, asmBuilder, &bytesBaseLen, ',')
+			objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, ",")
 		case IREndObject:
-			objl = p.outputSingleByteIR(objl, asmBuilder, &bytesBaseLen, '}')
+			objl = p.outputStringIR(objl, asmBuilder, &bytesBaseLen, "}")
 		}
 		stmt = stmt.next
 	}
-	codeText := asmBuilder.BuildOnFunc(1)
+	codeText := asmBuilder.BuildOnFunc(1, bytesBaseLen)
 	text := mempool.GlobalArena.AllocJitCodeMemory(codeText)
 	r := Result{
-		MFunc: text,
+		MFunc: *(*Marshaller)(unsafe.Pointer(&text)),
 		Text: *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
 			Data: *(*uintptr)(unsafe.Pointer(text)),
 			Len:  len(codeText),
@@ -140,40 +147,40 @@ func (p *Program) insertIndexInc(objl *objLink, builder *program, size int, from
 	return objl
 }
 
-func (p *Program) outputSingleByteIR(objl *objLink, builder *program, bytesBaseLen *int, b byte) *objLink {
-	objl = buildMov(builder, objl, "byte", obj.Addr{
-		Type:   obj.TYPE_CONST,
-		Offset: int64(b),
-	}, obj.Addr{
-		Type:   obj.TYPE_MEM,
-		Reg:    x86.REG_AX,
-		Index:  x86.REG_DX,
-		Scale:  1,
-		Offset: int64(*bytesBaseLen),
-	})
-	*bytesBaseLen += 1
-	return objl
-}
-
 func (p *Program) outputStringIR(objl *objLink, builder *program, bytesBaseLen *int, s1 string) *objLink {
 	strLen := len(s1)
-	var index int
-	for index < len(s1) {
-		var write int
-		switch {
-		// go-assembler似乎不允许写入超过4 Byte的常量, 所以不写入8 Byte数据
-		case strLen&3 == 0:
-			write = 4
-		case strLen&1 == 0:
-			write = 2
-		case strLen > 0:
-			write = 1
+	switch alg8 := strLen / 8; alg8 {
+	case 0:
+		defer func() {
+			*bytesBaseLen += strLen
+		}()
+		objl = buildMovStaticString(builder, objl, 8, []byte(s1), int64(*bytesBaseLen))
+	case 1, 2, 3:
+		for i := 0; i < alg8; i++ {
+			objl = buildMovStaticString(builder, objl, 8, []byte(s1[i*8:i*8+8]), int64(*bytesBaseLen))
+			*bytesBaseLen += 8
 		}
-		objl = buildMovStaticString(builder, objl, write, []byte(s1[index:index+write]), int64(*bytesBaseLen))
-		index += write
-		strLen -= write
-		*bytesBaseLen += write
+		if strLen%8 > 0 {
+			objl = buildMovStaticString(builder, objl, 8, []byte(s1[alg8*8:]), int64(*bytesBaseLen))
+			*bytesBaseLen += strLen % 8
+		}
+	default:
+		// if alg8 > 1
+		alg32 := strLen / 32
+		mod32 := strLen % 32
+		startAddr, ok := sharedMap[s1]
+		if !ok {
+			startAddr = constantStringAlloc.MallocFixed(uintptr(alg32 * 32))
+			sharedMap[s1] = startAddr
+		}
+		asm.RTMemmove(unsafe.Pointer(startAddr), unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s1)).Data), uintptr(alg32*32))
+		objl = buildSimd32Memmove(builder, objl, startAddr, *bytesBaseLen, alg32)
+		*bytesBaseLen += alg32 * 32
+		if mod32 > 0 {
+			return p.outputStringIR(objl, builder, bytesBaseLen, s1[alg32*32:])
+		}
 	}
+	runtime.KeepAlive(&s1)
 	return objl
 }
 
@@ -195,7 +202,7 @@ func (p *Program) outputDynamicStringIR(objl *objLink, builder *program, valOffs
 			{As: x86.AMOVQ, From: rtslen, To: _RCX},
 			{As: x86.AMOVQ, From: rtsptr, To: _RBX},
 		}
-		return p.insertIndexInc(buildCallOnConst(builder, objl, "jjs_jit_memory_copy", nil, afterProgs), builder, -1, rtslen)
+		return p.insertIndexInc(buildCallOnConst(builder, objl, "rt_memory_copy", nil, afterProgs), builder, -1, rtslen)
 	default:
 		panic(fmt.Sprintf("not support type %s", typ.Kind()))
 	}

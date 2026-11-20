@@ -3,7 +3,6 @@ package compile
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/nyan233/jjs-go/internal/asm"
 	"github.com/nyan233/jjs-go/internal/mempool"
 	"reflect"
 	"runtime"
@@ -22,13 +21,18 @@ var (
 		{OP: IROutputStaticString, Tail: "UserId"},
 		{OP: IROutputKeyValSplit},
 		{OP: IROutputDynamicString, Offset: 16, Tail: reflect.TypeOf(*new(string))},
+		{OP: IROutputNextSplit},
+		{OP: IROutputStaticString, Tail: "MyUserNameOrUserUidByUidUid12334242"},
+		{OP: IROutputKeyValSplit},
+		{OP: IROutputDynamicString, Offset: 32, Tail: reflect.TypeOf(*new(string))},
 		{OP: IREndObject},
 	}
 )
 
 type TestJsonTyp struct {
-	UserName string
-	UserId   string
+	UserName                            string
+	UserId                              string
+	MyUserNameOrUserUidByUidUid12334242 string
 }
 
 func TestCompile(t *testing.T) {
@@ -37,8 +41,9 @@ func TestCompile(t *testing.T) {
 	p.AppendStmts(testIR)
 	result := p.Compile()
 	td := &TestJsonTyp{
-		UserName: "hello-person2222333937429hf92qhf9qhf9q238f",
-		UserId:   "wuuuwuhello2333f32q89492374",
+		UserName:                            "hello-person2222333937429hf92qhf9qhf9q238f",
+		UserId:                              "wuuuwuhello2333f32q89492374",
+		MyUserNameOrUserUidByUidUid12334242: "hehehehwi4y29347293h923vh392hv2r",
 	}
 	t.Log(len(result.Text))
 	t.Log(hex.EncodeToString(result.Text))
@@ -46,8 +51,7 @@ func TestCompile(t *testing.T) {
 	stack := mempool.StackPool.Get().(*mempool.Stack)
 	t.Log(fmt.Sprintf("0x%x", uintptr(unsafe.Pointer(&dest[0]))))
 	t.Log(fmt.Sprintf("0x%x", unsafe.Pointer(td)))
-	write, _ := asm.CallMFunc(result.MFunc, uintptr(stack.High), unsafe.Pointer(&dest[0]), unsafe.Pointer(td))
-	dest = dest[:write+result.MinSize]
+	result.MFunc(uintptr(stack.High), &dest, unsafe.Pointer(td))
 	t.Log(string(dest))
 	runtime.KeepAlive(dest)
 	runtime.KeepAlive(stack)
@@ -58,7 +62,7 @@ func TestLibrary(t *testing.T) {
 	p := newProgram()
 	link, _ := p.AppendP(nil)
 	buildCallMemoryCopy(p, link)
-	t.Log(hex.EncodeToString(p.BuildOnFunc(1)))
+	t.Log(hex.EncodeToString(p.BuildOnFunc(1, -1)))
 }
 
 func TestUtils(t *testing.T) {

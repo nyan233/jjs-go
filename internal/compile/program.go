@@ -80,7 +80,7 @@ func (p *program) AppendP(objl *objLink) (l *objLink, pcOffset int) {
 }
 
 func (p *program) Build() []byte {
-	nb, _ := p.buildNewContainer(-1)
+	nb, _ := p.buildNewContainer(-1, -1, false)
 	return nb.Assemble()
 }
 
@@ -88,16 +88,18 @@ func (p *program) Build() []byte {
 //
 //	ABI == 2 (Build Unmarshaller ABI)
 //	ABI <= 0 (No Build)
-func (p *program) BuildOnFunc(abi int) []byte {
-	nb, last := p.buildNewContainer(abi)
+func (p *program) BuildOnFunc(abi int, baseLen int) []byte {
+	nb, last := p.buildNewContainer(abi, baseLen, true)
 	p.checkAndInsertRet(nb, last.Prog)
 	return nb.Assemble()
 }
 
-func (p *program) buildNewContainer(abi int) (nb *asm.Builder, last *objLink) {
+func (p *program) buildNewContainer(abi int, baseLen int, rewrite bool) (nb *asm.Builder, last *objLink) {
 	nb = p.newBuilderFunc()
 	root := p.progRoot
-	// defer p.rewriteJitFuncCallABI(nb,abi)(nb)
+	if rewrite {
+		defer p.rewriteJitFuncCallABI(nb, abi)(nb, baseLen)
+	}
 	for {
 		// 最后一个为无效指令时不插入
 		if root.next == nil && root.Prog.As == obj.AXXX {
@@ -112,74 +114,80 @@ func (p *program) buildNewContainer(abi int) (nb *asm.Builder, last *objLink) {
 	return nb, root
 }
 
-func (p *program) rewriteJitFuncCallABI(b *asm.Builder, abi int) func(b2 *asm.Builder) {
-	const StartOffset = 8
-	const FrameReg = x86.REG_SP
+func (p *program) rewriteJitFuncCallABI(b *asm.Builder, abi int) func(b2 *asm.Builder, baseLen int) {
+	// rewrite base ABIInternal
 	b.AddInstruction(&obj.Prog{
-		As: x86.AMOVQ,
-		From: obj.Addr{
-			Type:   obj.TYPE_MEM,
-			Reg:    FrameReg,
-			Offset: StartOffset + 0,
-		},
-		To: _R8,
+		As:   x86.AMOVQ,
+		From: _RAX,
+		To:   _R8,
 	})
+	// raw bytes ptr
 	b.AddInstruction(&obj.Prog{
-		As: x86.AMOVQ,
-		From: obj.Addr{
-			Type:   obj.TYPE_MEM,
-			Reg:    FrameReg,
-			Offset: StartOffset + 8,
-		},
-		To: _RAX,
-	})
-	b.AddInstruction(&obj.Prog{
-		As: x86.AMOVQ,
-		From: obj.Addr{
-			Type:   obj.TYPE_MEM,
-			Reg:    FrameReg,
-			Offset: StartOffset + 16,
-		},
-		To: _RBX,
+		As:   x86.AMOVQ,
+		From: _RBX,
+		To:   _R9,
 	})
 	b.AddInstruction(&obj.Prog{
 		As:   x86.AXORQ,
 		From: _RDX,
 		To:   _RDX,
 	})
+	if abi == 1 {
+		// mov rsi, bytes.cap
+		b.AddInstruction(&obj.Prog{
+			As: x86.AMOVQ,
+			From: obj.Addr{
+				Type:   obj.TYPE_MEM,
+				Reg:    x86.REG_BX,
+				Offset: 16,
+			},
+			To: obj.Addr{
+				Type: obj.TYPE_REG,
+				Reg:  x86.REG_SI,
+			},
+		})
+		// mov rax, QWORD PTR [rax]
+		b.AddInstruction(&obj.Prog{
+			As: x86.AMOVQ,
+			From: obj.Addr{
+				Type: obj.TYPE_MEM,
+				Reg:  x86.REG_BX,
+			},
+			To: _RAX,
+		})
+		b.AddInstruction(&obj.Prog{
+			As:   x86.AMOVQ,
+			From: _RCX,
+			To:   _RBX,
+		})
+	}
 	// write-background
-	return func(b2 *asm.Builder) {
+	return func(b2 *asm.Builder, baseLen int) {
+		b2.AddInstruction(&obj.Prog{
+			As:   x86.AMOVQ,
+			From: _R9,
+			To: obj.Addr{
+				Type: obj.TYPE_REG,
+				Reg:  x86.REG_DI,
+			},
+		})
 		switch abi {
 		case 1:
-			// write rdx to $len
+			if baseLen > 0 {
+				b2.AddInstruction(&obj.Prog{
+					As:   x86.AADDQ,
+					From: obj.Addr{Type: obj.TYPE_CONST, Offset: int64(baseLen)},
+					To:   _RDX,
+				})
+			}
+			// write bytes len
 			b2.AddInstruction(&obj.Prog{
 				As:   x86.AMOVQ,
 				From: _RDX,
 				To: obj.Addr{
 					Type:   obj.TYPE_MEM,
-					Reg:    FrameReg,
-					Offset: int64(StartOffset + 24),
-				},
-			})
-			// write r9 to $reason
-			b2.AddInstruction(&obj.Prog{
-				As:   x86.AMOVQ,
-				From: _R9,
-				To: obj.Addr{
-					Type:   obj.TYPE_MEM,
-					Reg:    FrameReg,
-					Offset: int64(StartOffset + 32),
-				},
-			})
-		case 2:
-			// write r9 to $reason
-			b2.AddInstruction(&obj.Prog{
-				As:   x86.AMOVQ,
-				From: _R9,
-				To: obj.Addr{
-					Type:   obj.TYPE_MEM,
-					Reg:    FrameReg,
-					Offset: int64(StartOffset + 32),
+					Reg:    x86.REG_R9,
+					Offset: 8,
 				},
 			})
 		}

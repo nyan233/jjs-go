@@ -62,3 +62,13 @@ TEXT ·CallMFunc(SB), NOSPLIT, $0-56
     MOVQ    DX, write+32(FP)
     MOVQ    $0x20, reason+40(FP)
     RET
+
+// ABIInternal
+TEXT ·WapperGrowSlice(SB), NOSPLIT, $0-0
+    SUBQ    $24, R8
+    SUBQ    $8, SP
+    MOVQ    R8, SP
+    MOVQ    R10, 0(R8)
+
+    ADDQ    $8, SP
+    JMP     R10
