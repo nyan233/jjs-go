@@ -97,9 +97,17 @@ jobs:
           set +e
           qemu-aarch64 -one-insn-per-tb -d in_asm,cpu -D /tmp/qemu.log \
             /tmp/jjs-arm64.test -test.v \
-            -test.run '^TestJITCustomMarshalerAndUnmarshaler$'
+            -test.run '^TestJITCustomMarshalerAndUnmarshaler$' \
+            > /tmp/qemu.stdout 2>&1
           status=$?
-          tail -n 500 /tmp/qemu.log
+          cat /tmp/qemu.stdout
+          fault_pc=$(grep -m1 -o 'pc=0x[0-9a-f]*' /tmp/qemu.stdout | cut -d= -f2)
+          if [ -n "$fault_pc" ]; then
+            fault_pc=$(printf '%016x' "$fault_pc")
+            grep -B 120 -A 80 "PC=$fault_pc" /tmp/qemu.log | tail -n 700
+          else
+            tail -n 500 /tmp/qemu.log
+          fi
           exit $status
 
   go-version-matrix:
