@@ -95,7 +95,7 @@ jobs:
         run: |
           go test -c -o /tmp/jjs-arm64.test .
           set +e
-          qemu-aarch64 -singlestep -d in_asm,cpu -D /tmp/qemu.log \
+          qemu-aarch64 -one-insn-per-tb -d in_asm,cpu,nochain -D /tmp/qemu.log \
             /tmp/jjs-arm64.test -test.v \
             -test.run '^TestJITCustomMarshalerAndUnmarshaler$' \
             > /tmp/qemu.stdout 2>&1
