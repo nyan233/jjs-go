@@ -67,10 +67,6 @@ jobs:
 
   arm64-qemu:
     runs-on: ubuntu-latest
-    # macOS validates native multicore JIT execution. Keep QEMU single-threaded
-    # because linux-user can execute stale translations for generated pages.
-    env:
-      GOMAXPROCS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -90,7 +86,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/compiler-arm64.test ./core/compiler
-          qemu-aarch64 -one-insn-per-tb /tmp/compiler-arm64.test -test.v
+          qemu-aarch64 /tmp/compiler-arm64.test -test.v
       - name: Run codec tests under QEMU
         env:
           GOOS: linux
@@ -98,11 +94,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/jjs-arm64.test .
-          # linux-user can retain chained translations for freshly executable
-          # JIT pages. One-instruction TBs make code-cache validation stable.
-          # Native macOS runs TestJITConcurrentUse with real multicore JIT.
-          qemu-aarch64 -one-insn-per-tb /tmp/jjs-arm64.test -test.v \
-            -test.skip '^TestJITConcurrentUse$'
+          qemu-aarch64 /tmp/jjs-arm64.test -test.v
 
   go-version-matrix:
     runs-on: ubuntu-latest
