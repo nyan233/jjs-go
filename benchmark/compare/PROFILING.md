@@ -34,6 +34,7 @@ Run from an elevated PowerShell:
 ```powershell
 cd benchmark/compare
 ./profile-hardware.ps1 -Library jjs-go -Direction Encoder
+./profile-hardware.ps1 -Library jjs-go -Direction Encoder -CounterSet Cache
 ./profile-hardware.ps1 -Library sonic -Direction Encoder
 ./profile-hardware.ps1 -Library jjs-go -Direction Decoder -CounterSet Interactions
 ./profile-hardware.ps1 -Library jjs-go -Direction Decoder -CounterSet Branches

@@ -6,7 +6,7 @@ param(
     [ValidateSet("Encoder", "Decoder")]
     [string]$Direction = "Encoder",
     [int]$Seconds = 10,
-    [ValidateSet("Interactions", "Branches")]
+    [ValidateSet("Interactions", "Branches", "Cache")]
     [string]$CounterSet = "Interactions"
 )
 
@@ -19,6 +19,9 @@ switch ($CounterSet) {
     }
     "Branches" {
         $counters = "BranchInstructionRetired,BranchMispredictsRetired,InstructionRetired,UnhaltedCoreCycles"
+    }
+    "Cache" {
+        $counters = "CacheMisses,LLCMisses,InstructionRetired,UnhaltedCoreCycles"
     }
 }
 
