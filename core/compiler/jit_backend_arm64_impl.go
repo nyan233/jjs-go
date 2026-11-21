@@ -43,8 +43,8 @@ func (c *jitCodeBuilder) vectorMove16(from, to obj.Addr) {
 
 func (c *jitCodeBuilder) copyWords(from, to obj.Addr, size int) {
 	for offset := 0; offset < size; offset += 8 {
-		c.loadMemory(mem(from, int64(offset)), _R11, false)
-		c.storeMemory(_R11, mem(to, int64(offset)), 64)
+		c.loadMemory(mem(from, int64(offset)), _R7, false)
+		c.storeMemory(_R7, mem(to, int64(offset)), 64)
 	}
 }
 
@@ -266,6 +266,7 @@ var (
 	_RCX = registerAddr(arm64.REG_R2)
 	_RDI = registerAddr(arm64.REG_R3)
 	_RSI = registerAddr(arm64.REG_R4)
+	_R7  = registerAddr(arm64.REG_R7)
 	_R11 = registerAddr(arm64.REG_R5)
 	_R8  = registerAddr(arm64.REG_R6)
 	_R10 = registerAddr(arm64.REG_R8)

@@ -32,7 +32,7 @@ func (c *jitCodeBuilder) emit(prog *obj.Prog) {
 }
 
 func mem(base obj.Addr, offset int64) obj.Addr {
-	return obj.Addr{Type: obj.TYPE_MEM, Reg: base.Reg, Offset: offset}
+	return obj.Addr{Type: obj.TYPE_MEM, Reg: base.Reg, Offset: base.Offset + offset}
 }
 
 func registerAddr(register int) obj.Addr {
