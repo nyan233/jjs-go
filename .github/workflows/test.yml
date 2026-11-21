@@ -67,6 +67,10 @@ jobs:
 
   arm64-qemu:
     runs-on: ubuntu-latest
+    # macOS validates native multicore JIT execution. Keep QEMU single-threaded
+    # because linux-user can execute stale translations for generated pages.
+    env:
+      GOMAXPROCS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
