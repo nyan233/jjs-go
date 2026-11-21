@@ -86,7 +86,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/compiler-arm64.test ./core/compiler
-          qemu-aarch64 /tmp/compiler-arm64.test -test.v
+          qemu-aarch64 -one-insn-per-tb /tmp/compiler-arm64.test -test.v
       - name: Run codec tests under QEMU
         env:
           GOOS: linux
@@ -94,21 +94,9 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/jjs-arm64.test .
-          set +e
-          qemu-aarch64 -one-insn-per-tb -d in_asm,cpu,nochain -D /tmp/qemu.log \
-            /tmp/jjs-arm64.test -test.v \
-            -test.run '^TestJITCustomMarshalerAndUnmarshaler$' \
-            > /tmp/qemu.stdout 2>&1
-          status=$?
-          cat /tmp/qemu.stdout
-          fault_pc=$(grep -m1 -o 'pc=0x[0-9a-f]*' /tmp/qemu.stdout | cut -d= -f2)
-          if [ -n "$fault_pc" ]; then
-            fault_pc=$(printf '%016x' "$fault_pc")
-            grep -B 120 -A 80 "PC=$fault_pc" /tmp/qemu.log | tail -n 700
-          else
-            tail -n 500 /tmp/qemu.log
-          fi
-          exit $status
+          # linux-user can retain chained translations for freshly executable
+          # JIT pages. One-instruction TBs make code-cache validation stable.
+          qemu-aarch64 -one-insn-per-tb /tmp/jjs-arm64.test -test.v
 
   go-version-matrix:
     runs-on: ubuntu-latest
