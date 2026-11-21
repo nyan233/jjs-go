@@ -9,16 +9,18 @@ import (
 )
 
 type directDecodePlan struct {
-	typ      reflect.Type
-	kind     reflect.Kind
-	elem     *directDecodePlan
-	fields   []directDecodeField
-	byLength [][]int
-	elemType unsafe.Pointer
-	elemSize uintptr
-	typePtr  unsafe.Pointer
-	size     uintptr
-	nonEmpty bool
+	typ        reflect.Type
+	kind       reflect.Kind
+	elem       *directDecodePlan
+	fields     []directDecodeField
+	byLength   [][]int
+	elemType   unsafe.Pointer
+	elemSize   uintptr
+	typePtr    unsafe.Pointer
+	size       uintptr
+	nonEmpty   bool
+	custom     jitCustomCallKind
+	customType reflect.Type
 }
 
 type directDecodeField struct {
@@ -71,6 +73,11 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 		size:    typ.Size(),
 	}
 	cache[typ] = plan
+	if callKind, customType := jitUnmarshalerCall(typ); callKind != jitCustomNone {
+		plan.custom = callKind
+		plan.customType = customType
+		return plan, nil
+	}
 
 	switch typ.Kind() {
 	case reflect.Struct:
@@ -159,6 +166,9 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 }
 
 func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer) error {
+	if plan.custom != jitCustomNone {
+		return p.decodeDirectCustom(plan, dst)
+	}
 	p.depth++
 	if p.depth > 1000 {
 		return p.errorf("maximum JSON depth exceeded")

@@ -24,14 +24,16 @@ const (
 	jitHelperReserve
 	jitHelperByteSlice
 	jitHelperResolvedField
+	jitHelperCustomMarshal
 )
 
 type jitEncodeProgram struct {
-	helpers   [12]uintptr
-	static    []byte
-	functions []func(*jitEncodeContext) uintptr
-	mapTypes  []uintptr
-	fields    []jitEncodeFieldMeta
+	helpers     [13]uintptr
+	static      []byte
+	functions   []func(*jitEncodeContext) uintptr
+	mapTypes    []uintptr
+	fields      []jitEncodeFieldMeta
+	customTypes []uintptr
 }
 
 type jitEncodeFieldMeta struct {
@@ -43,6 +45,8 @@ type jitEncodeFieldMeta struct {
 	kind       reflect.Kind
 	size       uintptr
 	pointer    bool
+	customKind jitCustomCallKind
+	customType int
 }
 
 type jitEncodeContext struct {
@@ -67,6 +71,7 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperReserve] = reflect.ValueOf(jitReserveRaw).Pointer()
 	program.helpers[jitHelperByteSlice] = reflect.ValueOf(jitEncodeByteSlice).Pointer()
 	program.helpers[jitHelperResolvedField] = reflect.ValueOf(jitEncodeResolvedField).Pointer()
+	program.helpers[jitHelperCustomMarshal] = reflect.ValueOf(jitEncodeCustomMarshaler).Pointer()
 	return program
 }
 
@@ -82,24 +87,21 @@ func jitEncodeResolvedField(ctx *jitEncodeContext, root unsafe.Pointer, metaInde
 	if meta.omitEmpty && jitFieldEmpty(fieldPtr, meta.kind, meta.size, meta.arrayLen) {
 		return
 	}
+	if meta.customKind != jitCustomNone {
+		writeJITFieldPrefix(ctx, meta.prefix)
+		jitEncodeCustomMarshaler(ctx, fieldPtr, int(meta.customKind), meta.customType)
+		return
+	}
 	target := fieldPtr
 	if meta.pointer {
 		target = *(*unsafe.Pointer)(fieldPtr)
 		if target == nil {
-			ctx.ensureCapacity(len(meta.prefix) + 5)
-			if len(ctx.dst) > 0 && ctx.dst[len(ctx.dst)-1] != '{' {
-				ctx.dst = append(ctx.dst, ',')
-			}
-			ctx.dst = append(ctx.dst, meta.prefix...)
+			writeJITFieldPrefix(ctx, meta.prefix)
 			ctx.dst = append(ctx.dst, "null"...)
 			return
 		}
 	}
-	ctx.ensureCapacity(len(meta.prefix) + 1)
-	if len(ctx.dst) > 0 && ctx.dst[len(ctx.dst)-1] != '{' {
-		ctx.dst = append(ctx.dst, ',')
-	}
-	ctx.dst = append(ctx.dst, meta.prefix...)
+	writeJITFieldPrefix(ctx, meta.prefix)
 	if meta.childIndex < 0 || meta.childIndex >= len(ctx.program.functions) {
 		ctx.setError(errors.New("json: invalid resolved field encoder index"))
 		return
@@ -108,6 +110,14 @@ func jitEncodeResolvedField(ctx *jitEncodeContext, root unsafe.Pointer, metaInde
 	ctx.data = target
 	ctx.program.functions[meta.childIndex](ctx)
 	ctx.data = previous
+}
+
+func writeJITFieldPrefix(ctx *jitEncodeContext, prefix []byte) {
+	ctx.ensureCapacity(len(prefix) + 1)
+	if len(ctx.dst) > 0 && ctx.dst[len(ctx.dst)-1] != '{' {
+		ctx.dst = append(ctx.dst, ',')
+	}
+	ctx.dst = append(ctx.dst, prefix...)
 }
 
 func jitFieldEmpty(fieldPtr unsafe.Pointer, kind reflect.Kind, size uintptr, arrayLen int) bool {

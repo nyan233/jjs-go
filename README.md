@@ -42,6 +42,8 @@ Current JIT type support:
 - booleans, signed/unsigned integers and floats
 - JSON tags, `omitempty` and ignored fields
 - promoted fields from embedded structs, including embedded pointers
+- user-defined `json.Marshaler` and `json.Unmarshaler`, including named
+  interface fields and nil pointer/interface values
 
 ## Usage
 

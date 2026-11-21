@@ -3,6 +3,7 @@ package jjs_go
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"math"
 	"reflect"
 	"strings"
@@ -101,6 +102,91 @@ type jitOmitEmptyFixture struct {
 	Interface any            `json:"interface,omitempty"`
 	Array     [0]int         `json:"array,omitempty"`
 	Struct    struct{}       `json:"struct,omitempty"`
+}
+
+type jitCustomValue struct {
+	Value string
+}
+
+func (v jitCustomValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal("custom:" + v.Value)
+}
+
+func (v *jitCustomValue) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	v.Value = value[len("custom:"):]
+	return nil
+}
+
+type jitCustomCodec interface {
+	json.Marshaler
+	json.Unmarshaler
+	CodecName() string
+}
+
+type jitNamedCodec struct {
+	Value string
+}
+
+func (v jitNamedCodec) MarshalJSON() ([]byte, error) {
+	return json.Marshal("named:" + v.Value)
+}
+
+func (v *jitNamedCodec) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	v.Value = value[len("named:"):]
+	return nil
+}
+
+func (jitNamedCodec) CodecName() string {
+	return "named"
+}
+
+type jitCustomError struct{}
+
+func (jitCustomError) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("custom marshal failure")
+}
+
+type jitCustomInvalid struct{}
+
+func (jitCustomInvalid) MarshalJSON() ([]byte, error) {
+	return []byte(`{invalid`), nil
+}
+
+type jitPointerOnlyValue struct {
+	Value string
+}
+
+func (v *jitPointerOnlyValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal("pointer-only:" + v.Value)
+}
+
+func (v *jitPointerOnlyValue) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	v.Value = value[len("pointer-only:"):]
+	return nil
+}
+
+type jitCustomUnmarshalError struct{}
+
+func (*jitCustomUnmarshalError) UnmarshalJSON([]byte) error {
+	return errors.New("custom unmarshal failure")
+}
+
+type jitCustomHTML struct{}
+
+func (jitCustomHTML) MarshalJSON() ([]byte, error) {
+	return []byte(" { \"html\" : \"<&>\" } "), nil
 }
 
 func jitFixtureValue() jitFixture {
@@ -371,6 +457,164 @@ func TestJITFieldsAndOmitEmptyMatchEncodingJSON(t *testing.T) {
 		if !reflect.DeepEqual(gotValue, wantValue) {
 			t.Fatalf("%T unmarshal mismatch\ngot:  %#v\nwant: %#v", value, gotValue, wantValue)
 		}
+	}
+}
+
+func TestJITCustomMarshalerAndUnmarshaler(t *testing.T) {
+	value := jitCustomValue{Value: "value"}
+	pointer := &jitCustomValue{Value: "pointer"}
+	named := &jitNamedCodec{Value: "interface"}
+	raw := json.RawMessage(`{"nested":[1,2,3]}`)
+	holder := struct {
+		Value customField[jitCustomValue] `json:"value"`
+		Ptr   *jitCustomValue             `json:"ptr"`
+		Named jitCustomCodec              `json:"named"`
+		OnlyP *jitPointerOnlyValue        `json:"only_ptr"`
+		Raw   json.RawMessage             `json:"raw"`
+	}{
+		Value: customField[jitCustomValue]{Value: value},
+		Ptr:   pointer,
+		Named: named,
+		OnlyP: &jitPointerOnlyValue{Value: "pointer"},
+		Raw:   raw,
+	}
+	got, err := Marshal(holder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := json.Marshal(holder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("marshal mismatch\ngot:  %s\nwant: %s", got, want)
+	}
+
+	roundTrip := struct {
+		Value customField[jitCustomValue] `json:"value"`
+		Ptr   *jitCustomValue             `json:"ptr"`
+		Named jitCustomCodec              `json:"named"`
+		OnlyP *jitPointerOnlyValue        `json:"only_ptr"`
+		Raw   json.RawMessage             `json:"raw"`
+	}{
+		Named: &jitNamedCodec{},
+		OnlyP: &jitPointerOnlyValue{},
+	}
+	if err := Unmarshal(want, &roundTrip); err != nil {
+		t.Fatal(err)
+	}
+	var standard struct {
+		Value customField[jitCustomValue] `json:"value"`
+		Ptr   *jitCustomValue             `json:"ptr"`
+		Named jitCustomCodec              `json:"named"`
+		OnlyP *jitPointerOnlyValue        `json:"only_ptr"`
+		Raw   json.RawMessage             `json:"raw"`
+	}
+	standard.Named = &jitNamedCodec{}
+	standard.OnlyP = &jitPointerOnlyValue{}
+	if err := json.Unmarshal(want, &standard); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(roundTrip, standard) {
+		t.Fatalf("unmarshal mismatch\ngot:  %#v\nwant: %#v", roundTrip, standard)
+	}
+
+	nullHolder := struct {
+		Ptr   *jitCustomValue `json:"ptr"`
+		Named jitCustomCodec  `json:"named"`
+	}{}
+	got, err = Marshal(nullHolder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err = json.Marshal(nullHolder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("nil marshal mismatch\ngot:  %s\nwant: %s", got, want)
+	}
+
+	pointerOnly := struct {
+		Value jitPointerOnlyValue `json:"value"`
+	}{Value: jitPointerOnlyValue{Value: "value"}}
+	got, err = Marshal(pointerOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err = json.Marshal(pointerOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("pointer-only value mismatch\ngot:  %s\nwant: %s", got, want)
+	}
+
+	pointerRoot := &struct {
+		Value jitPointerOnlyValue `json:"value"`
+	}{Value: jitPointerOnlyValue{Value: "addressable"}}
+	got, err = Marshal(pointerRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err = json.Marshal(pointerRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("pointer-root custom mismatch\ngot:  %s\nwant: %s", got, want)
+	}
+}
+
+// customField keeps jitCustomValue a named field while testing value-receiver
+// MarshalJSON through the normal field path.
+type customField[T any] struct {
+	Value T
+}
+
+func (v customField[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.Value)
+}
+
+func (v *customField[T]) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &v.Value)
+}
+
+func TestJITCustomCodecErrors(t *testing.T) {
+	if _, err := Marshal(struct {
+		Value jitCustomError `json:"value"`
+	}{}); err == nil {
+		t.Fatal("expected custom MarshalJSON error")
+	}
+	if _, err := Marshal(struct {
+		Value jitCustomInvalid `json:"value"`
+	}{}); err == nil {
+		t.Fatal("expected invalid MarshalJSON output error")
+	}
+	if err := Unmarshal([]byte(`{"value":{}}`), &struct {
+		Value jitCustomUnmarshalError `json:"value"`
+	}{}); err == nil {
+		t.Fatal("expected custom UnmarshalJSON error")
+	}
+	if err := Unmarshal([]byte(`{"value":"text"}`), &struct {
+		Value jitCustomCodec `json:"value"`
+	}{}); err == nil {
+		t.Fatal("expected nil named interface error")
+	}
+
+	html := struct {
+		Value jitCustomHTML `json:"value"`
+	}{}
+	got, err := Marshal(html)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := json.Marshal(html)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("custom JSON normalization mismatch\ngot:  %s\nwant: %s", got, want)
 	}
 }
 

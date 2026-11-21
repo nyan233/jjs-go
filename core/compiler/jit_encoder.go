@@ -106,7 +106,7 @@ type jitCompiledEncoder struct {
 
 func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	compiler := &jitEncoderCompiler{
-		unitByType: make(map[reflect.Type]int),
+		unitByType: make(map[jitEncoderUnitKey]int),
 	}
 	rootType := typ
 	pointerDepth := 0
@@ -117,12 +117,13 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	if pointerDepth > 1 {
 		return nil, fmt.Errorf("json: JIT encoder supports at most one root pointer level")
 	}
-	if _, err := compiler.unitIndex(rootType); err != nil {
+	rootAddressable := typ.Kind() == reflect.Pointer
+	if _, err := compiler.unitIndex(rootType, rootAddressable); err != nil {
 		return nil, err
 	}
 	for index := 0; index < len(compiler.units); index++ {
 		unit := compiler.units[index]
-		generator := &jitEncoderGenerator{code: unit.code, compiler: compiler}
+		generator := &jitEncoderGenerator{code: unit.code, compiler: compiler, addressable: unit.addressable}
 		if err := generator.emitPrologue(); err != nil {
 			return nil, err
 		}
@@ -134,6 +135,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	program := newJITEncodeProgram(compiler.static)
 	program.mapTypes = compiler.mapTypes
 	program.fields = compiler.fields
+	program.customTypes = compiler.customTypes
 	program.functions = make([]func(*jitEncodeContext) uintptr, len(compiler.units))
 	stats := CodegenStats{Functions: len(compiler.units)}
 	for index, unit := range compiler.units {
@@ -156,16 +158,23 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 }
 
 type jitEncoderCompiler struct {
-	static     []byte
-	units      []*jitEncoderUnit
-	unitByType map[reflect.Type]int
-	mapTypes   []uintptr
-	fields     []jitEncodeFieldMeta
+	static      []byte
+	units       []*jitEncoderUnit
+	unitByType  map[jitEncoderUnitKey]int
+	mapTypes    []uintptr
+	fields      []jitEncodeFieldMeta
+	customTypes []uintptr
+}
+
+type jitEncoderUnitKey struct {
+	typ         reflect.Type
+	addressable bool
 }
 
 type jitEncoderUnit struct {
-	typ  reflect.Type
-	code *jitCodeBuilder
+	typ         reflect.Type
+	addressable bool
+	code        *jitCodeBuilder
 }
 
 func estimateInitialCapacity(typ reflect.Type, staticSize int) int {
@@ -222,16 +231,18 @@ func estimateInitialCapacity(typ reflect.Type, staticSize int) int {
 	return size
 }
 
-func (c *jitEncoderCompiler) unitIndex(typ reflect.Type) (int, error) {
-	if index, ok := c.unitByType[typ]; ok {
+func (c *jitEncoderCompiler) unitIndex(typ reflect.Type, addressable bool) (int, error) {
+	key := jitEncoderUnitKey{typ: typ, addressable: addressable}
+	if index, ok := c.unitByType[key]; ok {
 		return index, nil
 	}
 	index := len(c.units)
-	c.unitByType[typ] = index
+	c.unitByType[key] = index
 	jitTypeRegistry.Store(typePointer(typ), typ)
 	c.units = append(c.units, &jitEncoderUnit{
-		typ:  typ,
-		code: newJITCodeBuilder(fmt.Sprintf("jjs_encoder_%d", index)),
+		typ:         typ,
+		addressable: addressable,
+		code:        newJITCodeBuilder(fmt.Sprintf("jjs_encoder_%d", index)),
 	})
 	return index, nil
 }
@@ -242,8 +253,9 @@ func (c *jitEncoderCompiler) mapTypeIndex(typ reflect.Type) int {
 }
 
 type jitEncoderGenerator struct {
-	code     *jitCodeBuilder
-	compiler *jitEncoderCompiler
+	code        *jitCodeBuilder
+	compiler    *jitEncoderCompiler
+	addressable bool
 }
 
 func (g *jitEncoderGenerator) emitPrologue() error {
@@ -261,6 +273,15 @@ func (g *jitEncoderGenerator) emitReturn() {
 }
 
 func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
+	if callKind, customType := jitMarshalerCall(typ, g.addressable); callKind != jitCustomNone {
+		typeIndex := g.compiler.customTypeIndex(customType)
+		g.code.mov(_R10, _RAX)
+		g.code.lea(_R12, offset, _RBX)
+		g.code.movConst(int64(callKind), _RCX)
+		g.code.movConst(int64(typeIndex), _RDI)
+		g.emitHelper(jitHelperCustomMarshal)
+		return nil
+	}
 	switch typ.Kind() {
 	case reflect.Bool:
 		g.code.lea(_R12, offset, _RBX)
@@ -289,7 +310,7 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		g.code.mov(_R10, _RAX)
 		g.emitHelper(jitHelperString)
 	case reflect.Pointer:
-		childUnit, err := g.compiler.unitIndex(typ.Elem())
+		childUnit, err := g.compiler.unitIndex(typ.Elem(), true)
 		if err != nil {
 			return err
 		}
@@ -322,7 +343,7 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 			g.emitHelper(jitHelperByteSlice)
 			break
 		}
-		childUnit, err := g.compiler.unitIndex(typ.Elem())
+		childUnit, err := g.compiler.unitIndex(typ.Elem(), true)
 		if err != nil {
 			return err
 		}
@@ -332,11 +353,11 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		g.code.movConst(int64(typ.Elem().Size()), _RDI)
 		g.emitHelper(jitHelperSlice)
 	case reflect.Map:
-		keyUnit, err := g.compiler.unitIndex(typ.Key())
+		keyUnit, err := g.compiler.unitIndex(typ.Key(), false)
 		if err != nil {
 			return err
 		}
-		valueUnit, err := g.compiler.unitIndex(typ.Elem())
+		valueUnit, err := g.compiler.unitIndex(typ.Elem(), false)
 		if err != nil {
 			return err
 		}
@@ -404,14 +425,23 @@ func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField) error {
 		return err
 	}
 	for _, field := range fields {
+		customKind, customType := jitMarshalerCall(field.typ, g.addressable)
 		childType := field.typ
 		pointer := childType.Kind() == reflect.Pointer
-		if pointer {
-			childType = childType.Elem()
-		}
-		child, err := g.compiler.unitIndex(childType)
-		if err != nil {
-			return err
+		child := 0
+		if customKind == jitCustomNone {
+			if pointer {
+				childType = childType.Elem()
+			}
+			var err error
+			childAddressable := g.addressable
+			if pointer {
+				childAddressable = true
+			}
+			child, err = g.compiler.unitIndex(childType, childAddressable)
+			if err != nil {
+				return err
+			}
 		}
 		prefix := appendQuoted(nil, field.name)
 		prefix = append(prefix, ':')
@@ -425,6 +455,8 @@ func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField) error {
 			kind:       field.typ.Kind(),
 			size:       field.typ.Size(),
 			pointer:    pointer,
+			customKind: customKind,
+			customType: customMetadataIndex(g.compiler, customKind, customType),
 		})
 		g.code.mov(_R10, _RAX)
 		g.code.lea(_R12, 0, _RBX)
@@ -439,6 +471,13 @@ func fieldArrayLen(typ reflect.Type) int {
 		return typ.Len()
 	}
 	return 0
+}
+
+func customMetadataIndex(compiler *jitEncoderCompiler, kind jitCustomCallKind, typ reflect.Type) int {
+	if kind == jitCustomNone {
+		return 0
+	}
+	return compiler.customTypeIndex(typ)
 }
 
 func (g *jitEncoderGenerator) emitRaw(value []byte) error {
