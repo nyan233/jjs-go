@@ -120,6 +120,11 @@ func newJITDecodeProgram(static []byte) *jitDecodeProgram {
 
 func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 	direct, directErr := compileDirectDecodePlan(typ)
+	if directErr == nil {
+		stats := CodegenStats{DirectDecoder: true}
+		stats.DirectPlanNodes, stats.DirectFields = directDecodePlanStats(direct)
+		return &jitCompiledDecoder{direct: direct, stats: stats}, nil
+	}
 	compiler := &jitDecoderCompiler{unitByType: make(map[reflect.Type]int)}
 	if _, err := compiler.unitIndex(typ); err != nil {
 		return nil, err
@@ -154,17 +159,10 @@ func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 		program.functions[index] = *(*func(*jitDecodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
 	function := program.functions[0]
-	if directErr != nil {
-		direct = nil
-	} else {
-		stats.DirectDecoder = true
-		stats.DirectPlanNodes, stats.DirectFields = directDecodePlanStats(direct)
-	}
 	return &jitCompiledDecoder{
 		program:  program,
 		function: function,
 		stats:    stats,
-		direct:   direct,
 		size:     typ.Size(),
 		typePtr:  typePointer(typ),
 	}, nil
@@ -340,8 +338,12 @@ func (g *jitDecoderGenerator) emitStruct(typ reflect.Type, offset int64, path []
 		return err
 	}
 	for _, field := range fields {
+		staticOffset, ok := jitFieldStaticOffset(field.path)
+		if !ok {
+			return fmt.Errorf("json: legacy JIT decoder cannot address embedded pointer field %s", field.name)
+		}
 		childPath := append(append([]jitPathSegment(nil), path...), jitPathSegment{field: field.name})
-		if err := g.emitValue(field.typ, offset+int64(typ.Field(field.index).Offset), childPath); err != nil {
+		if err := g.emitValue(field.typ, offset+int64(staticOffset), childPath); err != nil {
 			return err
 		}
 	}

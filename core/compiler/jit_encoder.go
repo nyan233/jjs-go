@@ -133,6 +133,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	}
 	program := newJITEncodeProgram(compiler.static)
 	program.mapTypes = compiler.mapTypes
+	program.fields = compiler.fields
 	program.functions = make([]func(*jitEncodeContext) uintptr, len(compiler.units))
 	stats := CodegenStats{Functions: len(compiler.units)}
 	for index, unit := range compiler.units {
@@ -159,6 +160,7 @@ type jitEncoderCompiler struct {
 	units      []*jitEncoderUnit
 	unitByType map[reflect.Type]int
 	mapTypes   []uintptr
+	fields     []jitEncodeFieldMeta
 }
 
 type jitEncoderUnit struct {
@@ -223,9 +225,6 @@ func estimateInitialCapacity(typ reflect.Type, staticSize int) int {
 func (c *jitEncoderCompiler) unitIndex(typ reflect.Type) (int, error) {
 	if index, ok := c.unitByType[typ]; ok {
 		return index, nil
-	}
-	if typ.Kind() == reflect.Pointer {
-		return 0, fmt.Errorf("json: JIT encoder unit cannot start at pointer type %s", typ)
 	}
 	index := len(c.units)
 	c.unitByType[typ] = index
@@ -363,13 +362,6 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 	return nil
 }
 
-type jitStructField struct {
-	index     int
-	name      string
-	omitEmpty bool
-	typ       reflect.Type
-}
-
 func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 	fields, err := jitExportedFields(typ)
 	if err != nil {
@@ -378,11 +370,14 @@ func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 	if len(fields) == 0 {
 		return g.emitRaw([]byte("{}"))
 	}
-	for index, field := range fields {
-		fieldOffset := offset + int64(typ.Field(field.index).Offset)
-		if field.omitEmpty {
-			return fmt.Errorf("json: JIT encoder does not support omitempty on %s", field.name)
+	for _, field := range fields {
+		if _, static := jitFieldStaticOffset(field.path); field.omitEmpty || !static || field.typ.Kind() == reflect.Pointer {
+			return g.emitStructDynamic(fields)
 		}
+	}
+	for index, field := range fields {
+		staticOffset, _ := jitFieldStaticOffset(field.path)
+		fieldOffset := offset + int64(staticOffset)
 		prefix := make([]byte, 0, len(field.name)+4)
 		if index > 0 {
 			prefix = append(prefix, ',')
@@ -402,6 +397,48 @@ func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 		return err
 	}
 	return nil
+}
+
+func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField) error {
+	if err := g.emitRaw([]byte("{")); err != nil {
+		return err
+	}
+	for _, field := range fields {
+		childType := field.typ
+		pointer := childType.Kind() == reflect.Pointer
+		if pointer {
+			childType = childType.Elem()
+		}
+		child, err := g.compiler.unitIndex(childType)
+		if err != nil {
+			return err
+		}
+		prefix := appendQuoted(nil, field.name)
+		prefix = append(prefix, ':')
+		metaIndex := len(g.compiler.fields)
+		g.compiler.fields = append(g.compiler.fields, jitEncodeFieldMeta{
+			path:       field.path,
+			prefix:     prefix,
+			childIndex: child,
+			omitEmpty:  field.omitEmpty,
+			arrayLen:   fieldArrayLen(field.typ),
+			kind:       field.typ.Kind(),
+			size:       field.typ.Size(),
+			pointer:    pointer,
+		})
+		g.code.mov(_R10, _RAX)
+		g.code.lea(_R12, 0, _RBX)
+		g.code.movConst(int64(metaIndex), _RCX)
+		g.emitHelper(jitHelperResolvedField)
+	}
+	return g.emitRaw([]byte("}"))
+}
+
+func fieldArrayLen(typ reflect.Type) int {
+	if typ.Kind() == reflect.Array {
+		return typ.Len()
+	}
+	return 0
 }
 
 func (g *jitEncoderGenerator) emitRaw(value []byte) error {
@@ -469,38 +506,6 @@ func (g *jitEncoderGenerator) emitHelper(index int) {
 	g.code.loadMem(_R11, int64(index*8), _R11)
 	g.code.call(_R11)
 	g.code.restoreJITRegs()
-}
-
-func jitExportedFields(typ reflect.Type) ([]jitStructField, error) {
-	fields := make([]jitStructField, 0, typ.NumField())
-	names := make(map[string]struct{}, typ.NumField())
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-		if field.PkgPath != "" {
-			continue
-		}
-		if field.Anonymous {
-			return nil, fmt.Errorf("json: JIT encoder does not support embedded field %s", field.Name)
-		}
-		name, omitEmpty, supported := jitJSONField(field)
-		if !supported {
-			return nil, fmt.Errorf("json: JIT encoder does not support field option on %s", field.Name)
-		}
-		if name == "" {
-			continue
-		}
-		if _, exists := names[name]; exists {
-			return nil, fmt.Errorf("json: duplicate JSON field name %q", name)
-		}
-		names[name] = struct{}{}
-		fields = append(fields, jitStructField{
-			index:     i,
-			name:      name,
-			omitEmpty: omitEmpty,
-			typ:       field.Type,
-		})
-	}
-	return fields, nil
 }
 
 func jitJSONField(field reflect.StructField) (name string, omitEmpty, supported bool) {

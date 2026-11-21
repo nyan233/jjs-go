@@ -40,10 +40,8 @@ Current JIT type support:
 - interfaces through runtime type/interface metadata and dynamically compiled JIT units
 - strings and JSON escape decoding
 - booleans, signed/unsigned integers and floats
-- JSON tags and ignored fields
-
-Embedded fields and `omitempty` currently return an explicit unsupported-type
-error. They are not silently routed through a reflection fallback.
+- JSON tags, `omitempty` and ignored fields
+- promoted fields from embedded structs, including embedded pointers
 
 ## Usage
 

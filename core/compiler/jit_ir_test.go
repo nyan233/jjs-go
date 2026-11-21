@@ -90,12 +90,6 @@ func TestCodegenStatsAreReported(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decoder.Functions == 0 || decoder.InstructionsBefore == 0 || decoder.CodeBytes == 0 {
-		t.Fatalf("incomplete decoder stats: %#v", decoder)
-	}
-	if decoder.InstructionsAfter > decoder.InstructionsBefore {
-		t.Fatalf("optimizer increased decoder instruction count: %#v", decoder)
-	}
 	if !decoder.DirectDecoder || decoder.DirectPlanNodes == 0 || decoder.DirectFields == 0 {
 		t.Fatalf("direct decoder metrics were not reported: %#v", decoder)
 	}

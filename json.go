@@ -25,7 +25,12 @@ func Marshal(data any) ([]byte, error) {
 		return nil, err
 	}
 	var buf []byte
-	if err := encoder(&buf, face.data); err != nil {
+	dataPointer := face.data
+	if typ.Kind() != reflect.Pointer && typ.Kind() != reflect.Map && compiler.IsDirectInterfaceType(typ) {
+		boxed := face.data
+		dataPointer = unsafe.Pointer(&boxed)
+	}
+	if err := encoder(&buf, dataPointer); err != nil {
 		return nil, err
 	}
 	return buf, nil

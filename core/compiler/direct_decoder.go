@@ -22,9 +22,11 @@ type directDecodePlan struct {
 }
 
 type directDecodeField struct {
-	name   string
-	offset uintptr
-	plan   *directDecodePlan
+	name     string
+	path     []jitFieldStep
+	offset   uintptr
+	indirect bool
+	plan     *directDecodePlan
 }
 
 var (
@@ -90,10 +92,13 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 				return nil, err
 			}
 			index := len(plan.fields)
+			staticOffset, directPath := jitFieldStaticOffset(field.path)
 			plan.fields = append(plan.fields, directDecodeField{
-				name:   field.name,
-				offset: typ.Field(field.index).Offset,
-				plan:   child,
+				name:     field.name,
+				path:     field.path,
+				offset:   staticOffset,
+				indirect: !directPath,
+				plan:     child,
 			})
 			plan.byLength[len(field.name)] = append(plan.byLength[len(field.name)], index)
 		}
@@ -297,7 +302,11 @@ func (p *jitJSONParser) decodeDirectStruct(plan *directDecodePlan, dst unsafe.Po
 		}
 		if index, ok := plan.lookupField(name); ok {
 			field := plan.fields[index]
-			if err := p.decodeDirect(field.plan, unsafe.Add(dst, field.offset)); err != nil {
+			fieldPtr := unsafe.Add(dst, field.offset)
+			if field.indirect {
+				fieldPtr, _ = jitResolveField(dst, field.path, true)
+			}
+			if err := p.decodeDirect(field.plan, fieldPtr); err != nil {
 				return err
 			}
 		} else if err := p.skipDirectValue(); err != nil {
@@ -465,6 +474,9 @@ func (p *jitJSONParser) decodeDirectInterface(plan *directDecodePlan, dst unsafe
 		data := runtimeMallocGC(plan.size, plan.typePtr, true)
 		if err := p.decodeDirect(plan, data); err != nil {
 			return err
+		}
+		if IsDirectInterfaceType(plan.typ) {
+			data = *(*unsafe.Pointer)(data)
 		}
 		*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = data
 		return nil

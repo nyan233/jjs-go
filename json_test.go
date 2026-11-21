@@ -46,6 +46,63 @@ type jitInterfaceFixture struct {
 	NonZero jitStringer `json:"non_zero"`
 }
 
+type JITEmbeddedBase struct {
+	ID      int    `json:"id"`
+	Ignored string `json:"-"`
+	Empty   string `json:"empty,omitempty"`
+}
+
+type jitEmbeddedValue struct {
+	JITEmbeddedBase
+	Name string `json:"name"`
+}
+
+type jitEmbeddedPointer struct {
+	*JITEmbeddedBase
+	Name string `json:"name"`
+}
+
+type jitNamedEmbedded struct {
+	JITEmbeddedBase `json:"base"`
+}
+
+type jitNamedEmbeddedPointer struct {
+	*JITEmbeddedBase `json:"base"`
+}
+
+type jitIgnoredEmbedded struct {
+	JITEmbeddedBase `json:"-"`
+	Name            string `json:"name"`
+}
+
+type jitEmbeddedConflictA struct {
+	Value int `json:"value"`
+}
+
+type jitEmbeddedConflictB struct {
+	Value int `json:"value"`
+}
+
+type jitEmbeddedConflict struct {
+	jitEmbeddedConflictA
+	jitEmbeddedConflictB
+	Name string `json:"name"`
+}
+
+type jitOmitEmptyFixture struct {
+	Bool      bool           `json:"bool,omitempty"`
+	Int       int            `json:"int,omitempty"`
+	Uint      uint           `json:"uint,omitempty"`
+	Float     float64        `json:"float,omitempty"`
+	String    string         `json:"string,omitempty"`
+	Slice     []string       `json:"slice,omitempty"`
+	Map       map[string]int `json:"map,omitempty"`
+	Pointer   *int           `json:"pointer,omitempty"`
+	Interface any            `json:"interface,omitempty"`
+	Array     [0]int         `json:"array,omitempty"`
+	Struct    struct{}       `json:"struct,omitempty"`
+}
+
 func jitFixtureValue() jitFixture {
 	return jitFixture{
 		Name:   "hello <world> & 中文",
@@ -184,6 +241,29 @@ func TestJITInterfaceDispatch(t *testing.T) {
 	}
 }
 
+func TestJITInterfacePointerRoundTrip(t *testing.T) {
+	input := struct {
+		Value any `json:"value"`
+	}{
+		Value: &jitChild{Label: "pointer", Count: 7},
+	}
+	data, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := struct {
+		Value any `json:"value"`
+	}{
+		Value: &jitChild{},
+	}
+	if err := Unmarshal(data, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(output.Value, input.Value) {
+		t.Fatalf("got %#v, want %#v", output.Value, input.Value)
+	}
+}
+
 func TestMarshalJITInterfaceContainingMap(t *testing.T) {
 	values := []any{struct {
 		Payload any `json:"payload"`
@@ -214,6 +294,82 @@ func TestMarshalJITInterfaceContainingMap(t *testing.T) {
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %s, want %s", data, wantData)
+		}
+	}
+}
+
+func TestJITFieldsAndOmitEmptyMatchEncodingJSON(t *testing.T) {
+	value := 0
+	var typedNil *int
+	values := []any{
+		jitEmbeddedValue{
+			JITEmbeddedBase: JITEmbeddedBase{ID: 1},
+			Name:            "value",
+		},
+		jitEmbeddedPointer{
+			JITEmbeddedBase: &JITEmbeddedBase{ID: 2},
+			Name:            "pointer",
+		},
+		jitEmbeddedPointer{Name: "nil-pointer"},
+		jitNamedEmbedded{
+			JITEmbeddedBase: JITEmbeddedBase{ID: 3, Empty: "included"},
+		},
+		jitNamedEmbeddedPointer{
+			JITEmbeddedBase: &JITEmbeddedBase{ID: 5},
+		},
+		jitIgnoredEmbedded{
+			JITEmbeddedBase: JITEmbeddedBase{ID: 4},
+			Name:            "ignored-embedded",
+		},
+		jitEmbeddedConflict{
+			jitEmbeddedConflictA: jitEmbeddedConflictA{Value: 1},
+			jitEmbeddedConflictB: jitEmbeddedConflictB{Value: 2},
+			Name:                 "conflict",
+		},
+		jitOmitEmptyFixture{},
+		jitOmitEmptyFixture{
+			Float: math.Copysign(0, -1),
+			Slice: []string{},
+			Map:   map[string]int{},
+		},
+		jitOmitEmptyFixture{Interface: typedNil},
+		jitOmitEmptyFixture{
+			Bool:      true,
+			Int:       1,
+			Uint:      2,
+			Float:     3.5,
+			String:    "included",
+			Slice:     []string{"x"},
+			Map:       map[string]int{"x": 1},
+			Pointer:   &value,
+			Interface: 4,
+		},
+	}
+	for _, value := range values {
+		got, err := Marshal(value)
+		if err != nil {
+			t.Fatalf("%T marshal: %v", value, err)
+		}
+		want, err := json.Marshal(value)
+		if err != nil {
+			t.Fatalf("%T encoding/json marshal: %v", value, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Fatalf("%T marshal mismatch\ngot:  %s\nwant: %s", value, got, want)
+		}
+
+		target := reflect.New(reflect.TypeOf(value)).Interface()
+		if err := Unmarshal(want, target); err != nil {
+			t.Fatalf("%T unmarshal: %v", value, err)
+		}
+		var standard any = reflect.New(reflect.TypeOf(value)).Interface()
+		if err := json.Unmarshal(want, standard); err != nil {
+			t.Fatalf("%T encoding/json unmarshal: %v", value, err)
+		}
+		gotValue := reflect.ValueOf(target).Elem().Interface()
+		wantValue := reflect.ValueOf(standard).Elem().Interface()
+		if !reflect.DeepEqual(gotValue, wantValue) {
+			t.Fatalf("%T unmarshal mismatch\ngot:  %#v\nwant: %#v", value, gotValue, wantValue)
 		}
 	}
 }

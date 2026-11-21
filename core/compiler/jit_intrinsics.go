@@ -23,13 +23,26 @@ const (
 	jitHelperInterface
 	jitHelperReserve
 	jitHelperByteSlice
+	jitHelperResolvedField
 )
 
 type jitEncodeProgram struct {
-	helpers   [11]uintptr
+	helpers   [12]uintptr
 	static    []byte
 	functions []func(*jitEncodeContext) uintptr
 	mapTypes  []uintptr
+	fields    []jitEncodeFieldMeta
+}
+
+type jitEncodeFieldMeta struct {
+	path       []jitFieldStep
+	prefix     []byte
+	childIndex int
+	omitEmpty  bool
+	arrayLen   int
+	kind       reflect.Kind
+	size       uintptr
+	pointer    bool
 }
 
 type jitEncodeContext struct {
@@ -53,7 +66,79 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperInterface] = reflect.ValueOf(jitEncodeInterface).Pointer()
 	program.helpers[jitHelperReserve] = reflect.ValueOf(jitReserveRaw).Pointer()
 	program.helpers[jitHelperByteSlice] = reflect.ValueOf(jitEncodeByteSlice).Pointer()
+	program.helpers[jitHelperResolvedField] = reflect.ValueOf(jitEncodeResolvedField).Pointer()
 	return program
+}
+
+func jitEncodeResolvedField(ctx *jitEncodeContext, root unsafe.Pointer, metaIndex int) {
+	if ctx == nil || ctx.program == nil || metaIndex < 0 || metaIndex >= len(ctx.program.fields) {
+		return
+	}
+	meta := &ctx.program.fields[metaIndex]
+	fieldPtr, ok := jitResolveField(root, meta.path, false)
+	if !ok {
+		return
+	}
+	if meta.omitEmpty && jitFieldEmpty(fieldPtr, meta.kind, meta.size, meta.arrayLen) {
+		return
+	}
+	target := fieldPtr
+	if meta.pointer {
+		target = *(*unsafe.Pointer)(fieldPtr)
+		if target == nil {
+			ctx.ensureCapacity(len(meta.prefix) + 5)
+			if len(ctx.dst) > 0 && ctx.dst[len(ctx.dst)-1] != '{' {
+				ctx.dst = append(ctx.dst, ',')
+			}
+			ctx.dst = append(ctx.dst, meta.prefix...)
+			ctx.dst = append(ctx.dst, "null"...)
+			return
+		}
+	}
+	ctx.ensureCapacity(len(meta.prefix) + 1)
+	if len(ctx.dst) > 0 && ctx.dst[len(ctx.dst)-1] != '{' {
+		ctx.dst = append(ctx.dst, ',')
+	}
+	ctx.dst = append(ctx.dst, meta.prefix...)
+	if meta.childIndex < 0 || meta.childIndex >= len(ctx.program.functions) {
+		ctx.setError(errors.New("json: invalid resolved field encoder index"))
+		return
+	}
+	previous := ctx.data
+	ctx.data = target
+	ctx.program.functions[meta.childIndex](ctx)
+	ctx.data = previous
+}
+
+func jitFieldEmpty(fieldPtr unsafe.Pointer, kind reflect.Kind, size uintptr, arrayLen int) bool {
+	switch kind {
+	case reflect.Array:
+		return arrayLen == 0
+	case reflect.Map:
+		hmap := *(*unsafe.Pointer)(fieldPtr)
+		return hmap == nil || *(*int)(hmap) == 0
+	case reflect.Slice, reflect.String:
+		return *(*int)(unsafe.Add(fieldPtr, 8)) == 0
+	case reflect.Interface, reflect.Pointer:
+		return *(*unsafe.Pointer)(fieldPtr) == nil
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		switch size {
+		case 1:
+			return *(*uint8)(fieldPtr) == 0
+		case 2:
+			return *(*uint16)(fieldPtr) == 0
+		case 4:
+			return *(*uint32)(fieldPtr) == 0
+		case 8:
+			return *(*uint64)(fieldPtr) == 0
+		}
+	case reflect.Float32:
+		return *(*float32)(fieldPtr) == 0
+	case reflect.Float64:
+		return *(*float64)(fieldPtr) == 0
+	}
+	return false
 }
 
 func (c *jitEncodeContext) setError(err error) {
@@ -325,7 +410,7 @@ var (
 func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonEmpty int) {
 	typeWord := *(*unsafe.Pointer)(interfacePtr)
 	data := *(*unsafe.Pointer)(unsafe.Add(interfacePtr, 8))
-	if typeWord == nil {
+	if typeWord == nil || data == nil {
 		jitAppendNull(ctx)
 		return
 	}

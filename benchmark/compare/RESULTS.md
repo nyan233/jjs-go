@@ -63,21 +63,21 @@ For `TwitterResponse`, `go run ./cmd/codegenstats` reports:
 
 | Metric | Encoder | Decoder |
 | --- | ---: | ---: |
-| Instructions before | 2,205 | 1,060 |
-| Instructions after | 2,073 | 1,060 |
+| Instructions before | 2,205 | 0 |
+| Instructions after | 2,073 | 0 |
 | Folded instructions | 132 | 0 |
 | Instruction reduction | 5.99% | 0.00% |
 | Virtual registers | 96 | 0 |
 | Register reuse | 92 | 0 |
 | Spills | 0 | 0 |
-| Generated code bytes | 9,139 | 4,856 |
+| Generated code bytes | 9,139 | 0 |
 | Direct-plan nodes | 0 | 22 |
 | Direct-plan fields | 0 | 85 |
 
 Branch folding is implemented in the IR but reports zero removals because the
-current encoder templates do not emit redundant branches. The decoder's
-runtime hot path uses the direct plan; its generated assignment program remains
-available as the compatibility path.
+current encoder templates do not emit redundant branches. Direct-decoder types
+skip assignment-program generation entirely; unsupported types still compile
+the compatibility JIT path.
 
 Large Binding encode also dropped from 1,194,738 B/op to 272,747 B/op. The
 changes were:
