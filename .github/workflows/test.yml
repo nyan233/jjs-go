@@ -64,3 +64,33 @@ jobs:
         run: |
           go test -c -o /tmp/compiler-arm64.test ./core/compiler
           go test -c -o /tmp/jjs-arm64.test .
+
+  arm64-qemu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Install ARM64 user-mode emulation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+      - name: Run compiler tests under QEMU
+        env:
+          GOOS: linux
+          GOARCH: arm64
+          CGO_ENABLED: "0"
+        run: |
+          go test -c -o /tmp/compiler-arm64.test ./core/compiler
+          qemu-aarch64-static /tmp/compiler-arm64.test -test.v
+      - name: Run codec tests under QEMU
+        env:
+          GOOS: linux
+          GOARCH: arm64
+          CGO_ENABLED: "0"
+        run: |
+          go test -c -o /tmp/jjs-arm64.test .
+          qemu-aarch64-static /tmp/jjs-arm64.test -test.v

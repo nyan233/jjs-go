@@ -56,6 +56,16 @@ GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go test -c ./core/compiler
 GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go test -c .
 ```
 
+On an x86 Linux host, user-mode QEMU executes the full ARM64 test binaries:
+
+```sh
+scripts/test-linux-arm64-qemu.sh
+```
+
+This exercises ARM64 register state, stack frames, helper calls, executable
+memory, generated instructions, and JSON behavior. It does not test macOS JIT
+entitlements or Darwin-specific executable-memory policy.
+
 ## macOS JIT notes
 
 Runtime JIT loading uses the arm64-capable Sonic loader implementation. A
