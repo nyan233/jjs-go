@@ -81,7 +81,7 @@ jobs:
       - name: Install ARM64 user-mode emulation
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user qemu-user-binfmt
+          sudo apt-get install -y qemu-user-hwe qemu-user-binfmt-hwe
           qemu-aarch64 --version
       - name: Run compiler tests under QEMU
         env:
