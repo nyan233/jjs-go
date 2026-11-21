@@ -1,22 +1,26 @@
 # jjs-go
 
-`jjs-go` is a type-specialized JSON codec that generates native x86-64 code.
+`jjs-go` is a type-specialized JSON codec with native JIT backends for amd64
+and ARM64. It provides `Marshal`/`Unmarshal`-style APIs without a reflection
+encoder plan or an `encoding/json` runtime fallback.
 
-`Marshal` reads struct layout and JSON tags at compile time, then generates a
-cached function that loads each field by offset and calls fixed JIT intrinsics
+`Marshal` reads struct layout and JSON tags once per concrete type, then caches
+a generated function that loads each field by offset and calls fixed JIT intrinsics
 for strings, booleans, integers, floats and JSON punctuation.
 
-The compiler includes a linear-scan register allocator for non-reserved
-physical registers. ABI registers used by runtime bridges remain fixed and are
-not considered allocatable.
+On amd64, the compiler includes a machine-instruction IR and a linear-scan
+register allocator for non-reserved physical registers. ABI registers used by
+runtime bridges remain fixed and are not considered allocatable. The ARM64
+backend emits its own ABI-compatible prologue, helper calls, scalar operations
+and epilogue directly.
 
 Encode and decode contexts are reused through `sync.Pool`. The generated code
 reserves output capacity once per static segment and writes compiled literals
 directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
-Short and medium strings stay on a scalar path; AVX2 is used only where its
-fixed setup cost is amortized. Unescaped decode strings are converted directly
-from the input slice, and encoders use the previous output size as a capacity
-hint to avoid repeated growth copies.
+amd64 string scanning combines SSE4.2 for short encoder strings and AVX2 for
+longer runs. ARM64 uses native 64-bit word scanning. Unescaped decode strings
+are converted directly from the input slice, and encoders use the previous
+output size as a capacity hint to avoid repeated growth copies.
 
 `Unmarshal` compiles a direct recursive-descent decode plan for supported
 types. It parses fields directly into compiled offsets without constructing a
@@ -31,19 +35,10 @@ scratch values use virtual registers with live intervals rather than permanent
 global scratch slots. `CodegenStats` reports instruction reduction, register
 reuse, spills and generated code size.
 
-Current JIT type support:
-
-- structs, nested structs, arrays and slices
-- pointer fields and pointer roots
-- maps through Go runtime `mapiterinit`/`mapiternext` and map allocation bridges
-  (decoding currently covers string-keyed maps)
-- interfaces through runtime type/interface metadata and dynamically compiled JIT units
-- strings and JSON escape decoding
-- booleans, signed/unsigned integers and floats
-- JSON tags, `omitempty` and ignored fields
-- promoted fields from embedded structs, including embedded pointers
-- user-defined `json.Marshaler` and `json.Unmarshaler`, including named
-  interface fields and nil pointer/interface values
+The runtime loader is implemented in [`internal/jitloader`](internal/jitloader/README.md).
+It generates Go `moduledata`, `functab`, `_func`, pcdata/funcdata and GC stack
+maps directly from the runtime layouts for Go 1.21 through Go 1.27.4, without
+importing the Sonic loader.
 
 ## Usage
 
@@ -78,6 +73,19 @@ func main() {
 }
 ```
 
+## Supported types
+
+- concrete structs, nested structs and pointer roots
+- arrays, slices, maps and interfaces
+- promoted fields from embedded structs and embedded pointers
+- JSON tags, `omitempty` and `json:"-"`
+- user-defined `json.Marshaler` and `json.Unmarshaler`
+- nil pointers, nil maps/slices and typed-nil interfaces
+
+`Unmarshal` currently supports string-keyed maps. Unsupported types return a
+compile-time error from the JIT plan instead of silently falling back to
+reflection.
+
 ## Requirements
 
 - Go 1.21 or newer
@@ -99,8 +107,15 @@ The repository-owned loader and compiler JIT tests are validated against Go
 1.22 as its primary target because Go 1.26 introduced additional
 reflection/interface ABI differences outside the loader itself.
 
-The project does not claim a performance win until the generated path has
-passed broader differential and CPU-feature coverage.
+## Architecture
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): backend split, ABI, ARM64 and registration strategy.
+- [docs/moduledata-organization.md](docs/moduledata-organization.md): runtime metadata and GC layout.
+- [docs/go-runtime-loader-versions.md](docs/go-runtime-loader-versions.md): Go 1.21–1.27 source-level compatibility matrix.
+
+The type frontend is shared between architectures. amd64 uses the x86
+instruction builder, IR optimizer and linear-scan allocator. ARM64 uses a
+direct instruction encoder and its own Go ABI frame/cache-flush sequence.
 
 ## Benchmarks
 
@@ -111,9 +126,47 @@ Sonic's small/medium/large fixtures. See
 and [`benchmark/compare/RESULTS.md`](benchmark/compare/RESULTS.md) for the
 latest Windows amd64 results.
 
+Hardware-counter profiling notes and raw results are in
+[`benchmark/compare/PROFILING.md`](benchmark/compare/PROFILING.md),
+[`benchmark/compare/HARDWARE_RESULTS.md`](benchmark/compare/HARDWARE_RESULTS.md)
+and [`benchmark/compare/SHORT_STRING_SCAN.md`](benchmark/compare/SHORT_STRING_SCAN.md).
+
 ## Verification
 
 ```sh
 go test ./...
 go test -race ./...
 ```
+
+Loader and compiler compatibility matrix:
+
+```sh
+go test ./internal/jitloader ./core/compiler
+```
+
+ARM64 instruction-generation tests:
+
+```sh
+go test -tags arm64_asm_test ./core/compiler -run '^TestARM64'
+```
+
+darwin/arm64 cross-build:
+
+```sh
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go test -c ./core/compiler
+```
+
+## Known limitations
+
+- Go 1.26/1.27 loader and compiler JIT tests pass, but the full codec
+  differential suite still exposes separate reflect/interface ABI behavior.
+- ARM64 is cross-compiled and instruction-tested; real Apple Silicon runtime
+  performance still needs CI/device validation.
+- Hardened macOS apps need executable-memory/JIT entitlements in their code
+  signature.
+
+## Branches
+
+- `main` tracks the current architecture, native ARM64 backend, custom runtime
+  loader and profiling work.
+- `zbh-dev` preserves the pre-rewrite `main` snapshot.
