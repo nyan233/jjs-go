@@ -2,13 +2,7 @@
 
 package jitloader
 
-import (
-	"unsafe"
-
-	"github.com/nyan233/jjs-go/internal/jitloader/internal/rt"
-)
-
-const _Magic uint32 = 0xfffffff1
+import "unsafe"
 
 type moduledata struct {
 	pcHeader     *pcHeader
@@ -17,7 +11,7 @@ type moduledata struct {
 	filetab      []byte
 	pctab        []byte
 	pclntable    []byte
-	ftab         []funcTab
+	ftab         []functab
 	findfunctab  uintptr
 	minpc, maxpc uintptr
 
@@ -51,30 +45,11 @@ type moduledata struct {
 
 	gcdatamask, gcbssmask bitVector
 
-	typemap map[*rt.GoType]*rt.GoType
+	typemap map[unsafe.Pointer]unsafe.Pointer
 
 	next *moduledata
 }
 
-type _func struct {
-	entryOff uint32
-	nameOff  int32
-
-	args        int32
-	deferreturn uint32
-
-	pcsp      uint32
-	pcfile    uint32
-	pcln      uint32
-	npcdata   uint32
-	cuOffset  uint32
-	startLine int32
-	funcID    uint8
-	flag      uint8
-	_         [1]byte
-	nfuncdata uint8
-}
-
-func setEpclntab(mod *moduledata, val uintptr) {
-	mod.epclntab = val
+func setEpclntab(module *moduledata, end uintptr) {
+	module.epclntab = end
 }

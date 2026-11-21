@@ -1,37 +1,85 @@
-/**
- * Copyright 2023 ByteDance Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package jitloader
 
 import (
+	"fmt"
 	"unsafe"
 )
 
-// Function is a function pointer
+// Function is a pointer to a loaded function value.
 type Function unsafe.Pointer
 
-// Options used to load a module
+// Options controls runtime-visible metadata for generated functions.
 type Options struct {
-	// NoPreempt is used to disable async preemption for this module
 	NoPreempt bool
 }
 
-// Loader is a helper used to load a module simply
+// Loader owns the names and options used to register generated functions.
 type Loader struct {
-	Name string // module name
-	File string // file name
+	Name string
+	File string
 	Options
+}
+
+// Pcvalue maps a program-counter range to Val.
+type Pcvalue struct {
+	PC  uint32
+	Val int32
+}
+
+// Pcdata is a PC-to-value table.
+type Pcdata []Pcvalue
+
+// LoadOne loads one generated function into the current Go module chain.
+func (loader Loader) LoadOne(
+	text []byte,
+	funcName string,
+	_ int,
+	argSize int,
+	argPtrs []bool,
+	localPtrs []bool,
+	pcsp Pcdata,
+) Function {
+	module := buildModule(moduleSpec{
+		loader:    loader,
+		text:      text,
+		name:      funcName,
+		argSize:   argSize,
+		argPtrs:   argPtrs,
+		localPtrs: localPtrs,
+		pcsp:      pcsp,
+	})
+	registerModule(module.metadata)
+	address := module.metadata.text
+	return Function(&address)
+}
+
+type moduleSpec struct {
+	loader    Loader
+	text      []byte
+	name      string
+	argSize   int
+	argPtrs   []bool
+	localPtrs []bool
+	pcsp      Pcdata
+}
+
+type loadedModule struct {
+	metadata *moduledata
+	retain   moduleRetain
+}
+
+type moduleRetain struct {
+	text        []byte
+	funcNames   []byte
+	cuTable     []uint32
+	fileTable   []byte
+	pcTable     []byte
+	pcLineTable []byte
+	funcTable   []functab
+	findFunc    []byte
+	funcData    []byte
+}
+
+func loadedFunctionName(spec moduleSpec) string {
+	return fmt.Sprintf("%s%s", spec.loader.Name, spec.name)
 }

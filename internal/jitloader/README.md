@@ -1,8 +1,8 @@
 # jitloader
 
 `jitloader` is the repository-owned runtime loader for generated machine code.
-It is an adapted derivative of the Apache-2.0 licensed Sonic loader, with
-changes validated against the Go 1.21 through Go 1.27 runtime sources.
+Its `moduledata`, `functab`, `_func`, pcHeader, and stack-map layouts are
+defined directly from the Go 1.21 through Go 1.27 runtime source.
 
 The package only implements the loader surface needed by `jjs-go`:
 
@@ -11,8 +11,8 @@ The package only implements the loader surface needed by `jjs-go`:
 - pcdata/funcdata and GC stack maps,
 - runtime module-chain registration.
 
-The Sonic ABI wrappers, ARM64 instruction assembler, Tango-specific registration
-path, and unrelated public APIs are intentionally omitted.
+The loader has no Sonic source, imported ABI wrapper, instruction assembler, or
+unrelated public API.
 
 Version-specific behavior:
 
@@ -23,6 +23,5 @@ Version-specific behavior:
 - Go 1.26: adds `epclntab`.
 - Go 1.27: adds `typedesclen`, `itaboffset`, and `itabsize` to `moduledata`.
 
-The package license is in [LICENSE](LICENSE).
 The source-level compatibility matrix is in
 [`docs/go-runtime-loader-versions.md`](../../docs/go-runtime-loader-versions.md).

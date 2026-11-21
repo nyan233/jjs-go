@@ -1,44 +1,25 @@
 //go:build !windows
-// +build !windows
-
-/**
- * Copyright 2023 ByteDance Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 package jitloader
 
 import (
-	"syscall"
+	"os"
+	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
-const (
-	_AP = syscall.MAP_ANON | syscall.MAP_PRIVATE
-	_RX = syscall.PROT_READ | syscall.PROT_EXEC
-	_RW = syscall.PROT_READ | syscall.PROT_WRITE
-)
-
-func mmap(nb int) uintptr {
-	if m, _, e := syscall.RawSyscall6(syscall.SYS_MMAP, 0, uintptr(nb), _RW, _AP, 0, 0); e != 0 {
-		panic(e)
-	} else {
-		return m
+func mmapExecutable(code []byte) ([]byte, uintptr) {
+	size := os.Getpagesize()
+	mappedSize := (len(code) + size - 1) / size * size
+	mapping, err := unix.Mmap(-1, 0, mappedSize, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_ANON|unix.MAP_PRIVATE)
+	if err != nil {
+		panic("jitloader: mmap: " + err.Error())
 	}
-}
-
-func mprotect(p uintptr, nb int) {
-	if _, _, err := syscall.RawSyscall(syscall.SYS_MPROTECT, p, uintptr(nb), _RX); err != 0 {
-		panic(err)
+	copy(mapping[:len(code)], code)
+	if err := unix.Mprotect(mapping, unix.PROT_READ|unix.PROT_EXEC); err != nil {
+		_ = unix.Munmap(mapping)
+		panic("jitloader: mprotect: " + err.Error())
 	}
+	return mapping, uintptr(unsafe.Pointer(&mapping[0]))
 }
