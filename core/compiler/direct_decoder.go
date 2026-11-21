@@ -21,6 +21,7 @@ type directDecodePlan struct {
 	nonEmpty   bool
 	custom     jitCustomCallKind
 	customType reflect.Type
+	customItab unsafe.Pointer
 }
 
 type directDecodeField struct {
@@ -76,6 +77,8 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 	if callKind, customType := jitUnmarshalerCall(typ); callKind != jitCustomNone {
 		plan.custom = callKind
 		plan.customType = customType
+		info := makeJITUnmarshalerTypeInfo(customType)
+		plan.customItab = unsafe.Pointer(info.itab)
 		return plan, nil
 	}
 

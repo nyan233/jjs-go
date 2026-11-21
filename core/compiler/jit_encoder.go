@@ -163,7 +163,7 @@ type jitEncoderCompiler struct {
 	unitByType  map[jitEncoderUnitKey]int
 	mapTypes    []uintptr
 	fields      []jitEncodeFieldMeta
-	customTypes []uintptr
+	customTypes []jitCustomTypeInfo
 }
 
 type jitEncoderUnitKey struct {

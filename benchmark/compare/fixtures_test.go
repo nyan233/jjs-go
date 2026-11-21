@@ -6,6 +6,19 @@ import (
 	"testing"
 )
 
+func TestFixturesDoNotExposeStandardMarshalers(t *testing.T) {
+	marshaler := reflect.TypeOf((*stdjson.Marshaler)(nil)).Elem()
+	unmarshaler := reflect.TypeOf((*stdjson.Unmarshaler)(nil)).Elem()
+	for _, typ := range []reflect.Type{
+		reflect.TypeOf(Book{}),
+		reflect.TypeOf(TwitterResponse{}),
+	} {
+		if typ.Implements(marshaler) || typ.Implements(unmarshaler) {
+			t.Fatalf("%s unexpectedly implements a standard JSON codec interface", typ)
+		}
+	}
+}
+
 func TestFixtureSizes(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -18,6 +18,11 @@ const (
 	jitCustomInterface
 )
 
+type jitCustomTypeInfo struct {
+	typePtr uintptr
+	itab    uintptr
+}
+
 var (
 	jitMarshalerType   = reflect.TypeOf((*stdjson.Marshaler)(nil)).Elem()
 	jitUnmarshalerType = reflect.TypeOf((*stdjson.Unmarshaler)(nil)).Elem()
@@ -74,8 +79,38 @@ func jitUnmarshalerCall(typ reflect.Type) (jitCustomCallKind, reflect.Type) {
 }
 
 func (c *jitEncoderCompiler) customTypeIndex(typ reflect.Type) int {
-	c.customTypes = append(c.customTypes, typePointer(typ))
+	c.customTypes = append(c.customTypes, makeJITMarshalerTypeInfo(typ))
 	return len(c.customTypes) - 1
+}
+
+func makeJITMarshalerTypeInfo(typ reflect.Type) jitCustomTypeInfo {
+	info := jitCustomTypeInfo{typePtr: typePointer(typ)}
+	if typ.Kind() == reflect.Interface {
+		return info
+	}
+	value := reflect.Zero(typ).Interface()
+	marshaler, ok := value.(stdjson.Marshaler)
+	if !ok {
+		return info
+	}
+	face := (*nonEmptyInterface)(unsafe.Pointer(&marshaler))
+	info.itab = uintptr(face.tab)
+	return info
+}
+
+func makeJITUnmarshalerTypeInfo(typ reflect.Type) jitCustomTypeInfo {
+	info := jitCustomTypeInfo{typePtr: typePointer(typ)}
+	if typ.Kind() == reflect.Interface {
+		return info
+	}
+	value := reflect.Zero(typ).Interface()
+	unmarshaler, ok := value.(stdjson.Unmarshaler)
+	if !ok {
+		return info
+	}
+	face := (*nonEmptyInterface)(unsafe.Pointer(&unmarshaler))
+	info.itab = uintptr(face.tab)
+	return info
 }
 
 func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, callKind, typeIndex int) {
@@ -83,8 +118,11 @@ func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, ca
 		return
 	}
 	var (
-		typePtr = unsafe.Pointer(ctx.program.customTypes[typeIndex])
+		info    = ctx.program.customTypes[typeIndex]
+		typePtr = unsafe.Pointer(info.typePtr)
+		tab     = unsafe.Pointer(info.itab)
 		data    = fieldPtr
+		dynamic bool
 	)
 	switch jitCustomCallKind(callKind) {
 	case jitCustomPointer:
@@ -95,6 +133,7 @@ func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, ca
 		}
 	case jitCustomValue, jitCustomAddress:
 	case jitCustomInterface:
+		dynamic = true
 		itab := *(*unsafe.Pointer)(fieldPtr)
 		if itab == nil {
 			jitAppendNull(ctx)
@@ -111,22 +150,34 @@ func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, ca
 		return
 	}
 
-	var value any
-	face := (*nonEmptyInterface)(unsafe.Pointer(&value))
-	face.tab = typePtr
-	face.data = data
-	marshaler, ok := value.(stdjson.Marshaler)
-	if !ok {
-		ctx.setError(fmt.Errorf("json: %T does not implement json.Marshaler", value))
-		return
+	var marshaler stdjson.Marshaler
+	var dynamicValue any
+	if dynamic {
+		face := (*nonEmptyInterface)(unsafe.Pointer(&dynamicValue))
+		face.tab = typePtr
+		face.data = data
+		var ok bool
+		marshaler, ok = dynamicValue.(stdjson.Marshaler)
+		if !ok {
+			ctx.setError(fmt.Errorf("json: %T does not implement json.Marshaler", dynamicValue))
+			return
+		}
+	} else {
+		if tab == nil {
+			ctx.setError(errors.New("json: missing custom marshaler itab"))
+			return
+		}
+		face := (*nonEmptyInterface)(unsafe.Pointer(&marshaler))
+		face.tab = tab
+		face.data = data
 	}
 	encoded, err := marshaler.MarshalJSON()
 	if err != nil {
-		ctx.setError(fmt.Errorf("json: error calling MarshalJSON for type %T: %w", value, err))
+		ctx.setError(fmt.Errorf("json: error calling MarshalJSON: %w", err))
 		return
 	}
 	if !stdjson.Valid(encoded) {
-		ctx.setError(fmt.Errorf("json: error calling MarshalJSON for type %T: invalid JSON", value))
+		ctx.setError(errors.New("json: error calling MarshalJSON: invalid JSON"))
 		return
 	}
 	ctx.ensureCapacity(len(encoded))
@@ -189,6 +240,7 @@ func (p *jitJSONParser) decodeDirectCustom(plan *directDecodePlan, dst unsafe.Po
 	var (
 		valueType = plan.customType
 		data      = dst
+		dynamic   bool
 	)
 	switch plan.custom {
 	case jitCustomPointer:
@@ -204,6 +256,7 @@ func (p *jitJSONParser) decodeDirectCustom(plan *directDecodePlan, dst unsafe.Po
 		data = ptr
 	case jitCustomAddress, jitCustomValue:
 	case jitCustomInterface:
+		dynamic = true
 		itab := *(*unsafe.Pointer)(dst)
 		if isNull {
 			*(*unsafe.Pointer)(dst) = nil
@@ -222,13 +275,24 @@ func (p *jitJSONParser) decodeDirectCustom(plan *directDecodePlan, dst unsafe.Po
 		return p.errorf("invalid custom unmarshaler mode")
 	}
 
-	var value any
-	face := (*nonEmptyInterface)(unsafe.Pointer(&value))
-	face.tab = unsafe.Pointer(typePointer(valueType))
-	face.data = data
-	unmarshaler, ok := value.(stdjson.Unmarshaler)
-	if !ok {
-		return p.errorf("%s does not implement json.Unmarshaler", valueType)
+	var unmarshaler stdjson.Unmarshaler
+	var dynamicValue any
+	if dynamic {
+		face := (*nonEmptyInterface)(unsafe.Pointer(&dynamicValue))
+		face.tab = unsafe.Pointer(typePointer(valueType))
+		face.data = data
+		var ok bool
+		unmarshaler, ok = dynamicValue.(stdjson.Unmarshaler)
+		if !ok {
+			return p.errorf("%s does not implement json.Unmarshaler", valueType)
+		}
+	} else {
+		if plan.customItab == nil {
+			return p.errorf("missing custom unmarshaler itab")
+		}
+		face := (*nonEmptyInterface)(unsafe.Pointer(&unmarshaler))
+		face.tab = plan.customItab
+		face.data = data
 	}
 	if err := unmarshaler.UnmarshalJSON(raw); err != nil {
 		return p.errorf("error calling UnmarshalJSON for type %s: %v", valueType, err)

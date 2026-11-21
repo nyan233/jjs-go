@@ -67,11 +67,7 @@ fails fast otherwise.
 
 The latest local results, raw output, and bottleneck notes are in
 [`RESULTS.md`](RESULTS.md) and
-[`results-windows-amd64-ir-direct.txt`](results-windows-amd64-ir-direct.txt).
-The first optimization pass remains in
-[`results-windows-amd64-optimized.txt`](results-windows-amd64-optimized.txt),
-and the pre-optimization run remains in
-[`results-windows-amd64.txt`](results-windows-amd64.txt) for comparison.
+[`results-windows-amd64-custom-codecs.txt`](results-windows-amd64-custom-codecs.txt).
 
 ## Code generation metrics
 

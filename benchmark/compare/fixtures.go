@@ -1,4 +1,4 @@
-//go:generate go run github.com/mailru/easyjson/easyjson@v0.9.2 -all fixtures.go
+//go:generate go run github.com/mailru/easyjson/easyjson@v0.9.2 -all -no_std_marshalers fixtures.go
 
 package compare
 

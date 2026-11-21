@@ -33,7 +33,7 @@ type jitEncodeProgram struct {
 	functions   []func(*jitEncodeContext) uintptr
 	mapTypes    []uintptr
 	fields      []jitEncodeFieldMeta
-	customTypes []uintptr
+	customTypes []jitCustomTypeInfo
 }
 
 type jitEncodeFieldMeta struct {

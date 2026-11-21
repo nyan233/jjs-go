@@ -70,23 +70,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare(out *jwriter.Wr
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v UserEntities) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v UserEntities) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *UserEntities) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -585,23 +571,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare1(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v User) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare1(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v User) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare1(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *User) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare1(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -712,23 +684,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare2(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v URLInfo) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare2(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v URLInfo) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare2(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *URLInfo) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare2(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -809,23 +767,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare3(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v URLEntity) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare3(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v URLEntity) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare3(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *URLEntity) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare3(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -917,23 +861,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare4(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v TwitterResponse) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare4(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v TwitterResponse) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare4(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *TwitterResponse) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare4(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -1274,23 +1204,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare5(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Status) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare5(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Status) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare5(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Status) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare5(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -1427,23 +1343,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare6(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v SearchMetadata) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare6(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v SearchMetadata) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare6(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *SearchMetadata) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare6(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -1503,23 +1405,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare7(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Metadata) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare7(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Metadata) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare7(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Metadata) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare7(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -1611,23 +1499,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare8(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Hashtag) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare8(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Hashtag) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare8(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Hashtag) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare8(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -1810,23 +1684,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare9(out *jwriter.W
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Entities) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare9(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Entities) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare9(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Entities) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare9(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -1915,23 +1775,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare10(out *jwriter.
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Description) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare10(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Description) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare10(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Description) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare10(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -2282,23 +2128,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare11(out *jwriter.
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Book) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare11(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Book) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare11(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Book) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare11(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
@@ -2369,23 +2201,9 @@ func easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare12(out *jwriter.
 	out.RawByte('}')
 }
 
-// MarshalJSON supports json.Marshaler interface
-func (v Author) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare12(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Author) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4da5edb2EncodeGithubComNyan233JjsGoBenchmarkCompare12(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Author) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4da5edb2DecodeGithubComNyan233JjsGoBenchmarkCompare12(&r, v)
-	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
