@@ -81,3 +81,7 @@ Inspect the current metrics with:
 ```powershell
 go run ./cmd/codegenstats
 ```
+
+For hardware counters such as LLC misses, IPC and branch mispredictions on
+Windows, see [`PROFILING.md`](PROFILING.md) and the elevated
+[`profile-hardware.ps1`](profile-hardware.ps1) harness.
