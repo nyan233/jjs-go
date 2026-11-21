@@ -21,6 +21,7 @@ const (
 type jitCustomTypeInfo struct {
 	typePtr uintptr
 	itab    uintptr
+	typ     reflect.Type
 }
 
 var (
@@ -84,7 +85,7 @@ func (c *jitEncoderCompiler) customTypeIndex(typ reflect.Type) int {
 }
 
 func makeJITMarshalerTypeInfo(typ reflect.Type) jitCustomTypeInfo {
-	info := jitCustomTypeInfo{typePtr: typePointer(typ)}
+	info := jitCustomTypeInfo{typePtr: typePointer(typ), typ: typ}
 	if typ.Kind() == reflect.Interface {
 		return info
 	}
@@ -99,7 +100,7 @@ func makeJITMarshalerTypeInfo(typ reflect.Type) jitCustomTypeInfo {
 }
 
 func makeJITUnmarshalerTypeInfo(typ reflect.Type) jitCustomTypeInfo {
-	info := jitCustomTypeInfo{typePtr: typePointer(typ)}
+	info := jitCustomTypeInfo{typePtr: typePointer(typ), typ: typ}
 	if typ.Kind() == reflect.Interface {
 		return info
 	}
@@ -117,31 +118,38 @@ func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, ca
 	if ctx == nil || ctx.program == nil || typeIndex < 0 || typeIndex >= len(ctx.program.customTypes) {
 		return
 	}
-	var (
-		info    = ctx.program.customTypes[typeIndex]
-		typePtr = unsafe.Pointer(info.typePtr)
-		tab     = unsafe.Pointer(info.itab)
-		data    = fieldPtr
-		dynamic bool
-	)
+	info := ctx.program.customTypes[typeIndex]
+	var value reflect.Value
 	switch jitCustomCallKind(callKind) {
 	case jitCustomPointer:
-		data = *(*unsafe.Pointer)(fieldPtr)
-		if data == nil {
+		if info.typ == nil || info.typ.Kind() != reflect.Pointer {
+			ctx.setError(errors.New("json: invalid custom pointer type"))
+			return
+		}
+		value = reflect.NewAt(info.typ, fieldPtr).Elem()
+		if value.IsNil() {
 			jitAppendNull(ctx)
 			return
 		}
-	case jitCustomValue, jitCustomAddress:
+	case jitCustomValue:
+		if info.typ == nil {
+			ctx.setError(errors.New("json: missing custom value type"))
+			return
+		}
+		value = reflect.NewAt(info.typ, fieldPtr).Elem()
+	case jitCustomAddress:
+		if info.typ == nil || info.typ.Kind() != reflect.Pointer {
+			ctx.setError(errors.New("json: invalid custom address type"))
+			return
+		}
+		value = reflect.NewAt(info.typ.Elem(), fieldPtr)
 	case jitCustomInterface:
-		dynamic = true
-		itab := *(*unsafe.Pointer)(fieldPtr)
-		if itab == nil {
-			jitAppendNull(ctx)
+		if info.typ == nil || info.typ.Kind() != reflect.Interface {
+			ctx.setError(errors.New("json: invalid custom interface type"))
 			return
 		}
-		typePtr = *(*unsafe.Pointer)(unsafe.Add(itab, 8))
-		data = *(*unsafe.Pointer)(unsafe.Add(fieldPtr, 8))
-		if data == nil {
+		value = reflect.NewAt(info.typ, fieldPtr).Elem()
+		if value.IsNil() {
 			jitAppendNull(ctx)
 			return
 		}
@@ -150,26 +158,10 @@ func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, ca
 		return
 	}
 
-	var marshaler stdjson.Marshaler
-	var dynamicValue any
-	if dynamic {
-		face := (*nonEmptyInterface)(unsafe.Pointer(&dynamicValue))
-		face.tab = typePtr
-		face.data = data
-		var ok bool
-		marshaler, ok = dynamicValue.(stdjson.Marshaler)
-		if !ok {
-			ctx.setError(fmt.Errorf("json: %T does not implement json.Marshaler", dynamicValue))
-			return
-		}
-	} else {
-		if tab == nil {
-			ctx.setError(errors.New("json: missing custom marshaler itab"))
-			return
-		}
-		face := (*nonEmptyInterface)(unsafe.Pointer(&marshaler))
-		face.tab = tab
-		face.data = data
+	marshaler, ok := value.Interface().(stdjson.Marshaler)
+	if !ok {
+		ctx.setError(fmt.Errorf("json: %s does not implement json.Marshaler", info.typ))
+		return
 	}
 	encoded, err := marshaler.MarshalJSON()
 	if err != nil {
