@@ -29,7 +29,7 @@ func TestFixtureSizes(t *testing.T) {
 	}{
 		{name: "Small", data: SmallJSON, minLength: 300, maxLength: 500},
 		{name: "Medium", data: MediumJSON, minLength: 13_000, maxLength: 14_000},
-		{name: "Large", data: LargeJSON, exactBytes: 646_995},
+		{name: "Large", data: LargeJSON, exactBytes: 631_514},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

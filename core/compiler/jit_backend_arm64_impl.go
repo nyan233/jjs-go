@@ -145,6 +145,10 @@ func (c *jitCodeBuilder) restoreJITRegs() {
 	c.loadMemory(mem(_R10, c.dataOffset), _R12, false)
 }
 
+func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
+	c.loadMemory(mem(_RSP, jitFrameContext), to, false)
+}
+
 func (c *jitCodeBuilder) call(reg obj.Addr) {
 	c.word(0xd63f0000 | arm64Register(reg)<<5)
 }
@@ -205,11 +209,11 @@ func (c *jitCodeBuilder) storeMemory(from, to obj.Addr, width int) {
 		baseOp := uint32(0xf8000000)
 		switch width {
 		case 32:
-			baseOp = 0xb8000000
+			baseOp = 0xb9000000
 		case 16:
-			baseOp = 0x78000000
+			baseOp = 0x79000000
 		case 8:
-			baseOp = 0x38000000
+			baseOp = 0x39000000
 		}
 		c.word(baseOp | uint32(offset&0x1ff)<<12 | base<<5 | arm64Register(from))
 		return

@@ -92,6 +92,10 @@ func (c *jitCodeBuilder) restoreJITRegs() {
 	c.loadMem(_R10, c.dataOffset, _R12)
 }
 
+func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
+	c.loadMem(_RSP, 0, to)
+}
+
 func (c *jitCodeBuilder) call(reg obj.Addr) {
 	c.emit(&obj.Prog{As: obj.ACALL, To: reg})
 }

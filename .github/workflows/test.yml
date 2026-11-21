@@ -77,7 +77,8 @@ jobs:
       - name: Install ARM64 user-mode emulation
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static
+          sudo apt-get install -y qemu-user qemu-user-binfmt
+          qemu-aarch64 --version
       - name: Run compiler tests under QEMU
         env:
           GOOS: linux
@@ -85,7 +86,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/compiler-arm64.test ./core/compiler
-          qemu-aarch64-static /tmp/compiler-arm64.test -test.v
+          qemu-aarch64 /tmp/compiler-arm64.test -test.v
       - name: Run codec tests under QEMU
         env:
           GOOS: linux
@@ -93,7 +94,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/jjs-arm64.test .
-          qemu-aarch64-static /tmp/jjs-arm64.test -test.v
+          qemu-aarch64 /tmp/jjs-arm64.test -test.v
 
   go-version-matrix:
     runs-on: ubuntu-latest

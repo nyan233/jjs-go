@@ -12,6 +12,7 @@ import (
 func TestARM64JITAssembly(t *testing.T) {
 	code := newJITCodeBuilder("arm64_test")
 	code.functionPrologue(64, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
+	code.loadJITContext(_R11)
 	code.movConst(7, _R11)
 	code.store8(_R11, mem(_RSP, 32))
 	code.loadImm64(0x1122334455667788)
@@ -30,7 +31,10 @@ func TestARM64JITAssembly(t *testing.T) {
 	}
 	for _, instruction := range [][]byte{
 		{0xfe, 0x0f, 0x1c, 0xf8}, // STR X30, [SP, #-64]!
+		{0xe5, 0x0b, 0x40, 0xf9}, // LDR X5, [SP, #16]
 		{0xe5, 0x00, 0x80, 0xd2}, // MOVZ X5, #7
+		{0xe5, 0x03, 0x02, 0x39}, // STRB W5, [SP, #32]
+		{0xe5, 0x83, 0x02, 0xb9}, // STR W5, [SP, #40]
 		{0xa0, 0x00, 0x3f, 0xd6}, // BLR X5
 		{0xc0, 0x03, 0x5f, 0xd6}, // RET
 	} {

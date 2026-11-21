@@ -405,7 +405,7 @@ func (g *jitDecoderGenerator) addPath(path []jitPathSegment) (int, int) {
 }
 
 func (g *jitDecoderGenerator) emitHelper(index int) {
-	g.code.loadMem(_RSP, 0, _R11)
+	g.code.loadJITContext(_R11)
 	g.code.loadMem(_R11, int64(unsafe.Offsetof(jitDecodeContext{}.program)), _R11)
 	g.code.loadMem(_R11, int64(index*8), _R11)
 	g.code.call(_R11)
@@ -418,7 +418,7 @@ func (c *jitCodeBuilder) loadProgramStatic(context obj.Addr, programOffset int64
 }
 
 func (c *jitCodeBuilder) reloadDecodeContext() {
-	c.loadMem(_RSP, 0, _R10)
+	c.loadJITContext(_R10)
 	c.loadMem(_R10, int64(unsafe.Offsetof(jitDecodeContext{}.data)), _R12)
 }
 

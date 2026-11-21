@@ -22,8 +22,8 @@ stay compatible with the other codecs.
 | Size | Source | JSON bytes | Shape |
 | --- | --- | ---: | --- |
 | Small | Sonic `Book` | 365 | 11 keys, 3 layers |
-| Medium | Sonic Twitter sample | 13,437 | 300+ keys, 6 layers |
-| Large | Sonic `twitter.json` | 646,995 | 100 statuses, 10,000+ keys |
+| Medium | Sonic Twitter sample | 13,023 | 300+ keys, 6 layers |
+| Large | Sonic `twitter.json` | 631,514 | 100 statuses, 10,000+ keys |
 
 The exact upstream sources and license are recorded in
 [`testdata/SOURCE.md`](testdata/SOURCE.md).
