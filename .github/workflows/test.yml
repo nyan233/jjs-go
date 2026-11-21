@@ -100,7 +100,9 @@ jobs:
           go test -c -o /tmp/jjs-arm64.test .
           # linux-user can retain chained translations for freshly executable
           # JIT pages. One-instruction TBs make code-cache validation stable.
-          qemu-aarch64 -one-insn-per-tb /tmp/jjs-arm64.test -test.v
+          # Native macOS runs TestJITConcurrentUse with real multicore JIT.
+          qemu-aarch64 -one-insn-per-tb /tmp/jjs-arm64.test -test.v \
+            -test.skip '^TestJITConcurrentUse$'
 
   go-version-matrix:
     runs-on: ubuntu-latest
