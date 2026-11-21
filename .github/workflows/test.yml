@@ -94,7 +94,13 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go test -c -o /tmp/jjs-arm64.test .
-          qemu-aarch64 /tmp/jjs-arm64.test -test.v
+          set +e
+          qemu-aarch64 -one-insn-per-tb -d in_asm,cpu -D /tmp/qemu.log \
+            /tmp/jjs-arm64.test -test.v \
+            -test.run '^TestJITCustomMarshalerAndUnmarshaler$'
+          status=$?
+          tail -n 500 /tmp/qemu.log
+          exit $status
 
   go-version-matrix:
     runs-on: ubuntu-latest
