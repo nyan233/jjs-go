@@ -5,9 +5,11 @@ import (
 	"unsafe"
 )
 
-// Short strings are faster with the scalar state machine because the AVX2
-// scanner has a fixed setup cost that dominates a few dozen bytes.
-const jitEncodeStringScalarBytes = 256
+// AVX2 has a higher setup cost than the SSE4.2 short-string scanner.
+const jitEncodeStringAVXBytes = 256
+
+// Four bytes amortize the SSE4.2 range setup; shorter values stay scalar.
+const jitEncodeShortScanBytes = 4
 
 func splitJSONTag(tag string) (name, options string) {
 	if tag == "" {
@@ -43,9 +45,14 @@ func appendQuoted(dst []byte, value string) []byte {
 	dst = append(dst, '"')
 	useVector := true
 	for i := 0; i < len(value); {
-		if remaining := len(value) - i; useVector && remaining >= jitEncodeStringScalarBytes {
+		if remaining := len(value) - i; useVector && remaining >= jitEncodeShortScanBytes {
 			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.StringData(value)), i))
-			special := avx2FindJSONEscape(ptr, remaining)
+			special := -1
+			if remaining >= jitEncodeStringAVXBytes {
+				special = avx2FindJSONEscape(ptr, remaining)
+			} else {
+				special = sseFindJSONEscape(ptr, remaining)
+			}
 			if special < 0 {
 				dst = append(dst, value[i:]...)
 				i = len(value)

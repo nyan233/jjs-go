@@ -40,7 +40,7 @@ type jitJSONParser struct {
 
 // Keep short keys and values out of AVX2; decode the remaining unescaped
 // portion as one direct string conversion.
-const jitDecodeStringScalarBytes = 256
+const jitDecodeStringAVXBytes = 256
 
 // Escape decoding usually produces strings shorter than this. Keep the
 // working buffer on the parser stack instead of allocating and growing it for
@@ -181,7 +181,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 	}
 	p.index++
 	start := p.index
-	scalarEnd := start + jitDecodeStringScalarBytes
+	scalarEnd := start + jitDecodeStringAVXBytes
 	if scalarEnd > len(p.data) {
 		scalarEnd = len(p.data)
 	}
@@ -212,7 +212,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 
 	useVector := true
 	for p.index < len(p.data) {
-		if remaining := len(p.data) - p.index; useVector && remaining >= jitDecodeStringScalarBytes {
+		if remaining := len(p.data) - p.index; useVector && remaining >= jitDecodeStringAVXBytes {
 			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(p.data)), p.index))
 			special := avx2FindJSONStringEnd(ptr, remaining)
 			if special < 0 {

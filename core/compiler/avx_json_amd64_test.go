@@ -3,7 +3,9 @@
 package compiler
 
 import (
+	"bytes"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -61,6 +63,25 @@ func TestAVX2FindJSONStringEnd(t *testing.T) {
 	}
 }
 
+func TestSSEFindJSONEscape(t *testing.T) {
+	escapeBytes := []byte{0x00, '"', '\\', '<', '>', '&', 0x1f, 0x80, 0xff}
+	for length := 0; length <= 255; length++ {
+		safe := bytes.Repeat([]byte{'a'}, length)
+		if got := sseFindJSONEscape((*byte)(unsafe.SliceData(safe)), len(safe)); got != -1 {
+			t.Fatalf("SSE escape length %d: got %d, want -1", length, got)
+		}
+		for _, special := range escapeBytes {
+			for position := 0; position < length; position++ {
+				value := bytes.Clone(safe)
+				value[position] = special
+				if got := sseFindJSONEscape((*byte)(unsafe.SliceData(value)), len(value)); got != position {
+					t.Fatalf("SSE escape length %d position %d byte %#x: got %d", length, position, special, got)
+				}
+			}
+		}
+	}
+}
+
 func TestAVX2QuotedMatchesEncodingJSON(t *testing.T) {
 	values := []string{
 		strings.Repeat("a", 1024),
@@ -69,6 +90,15 @@ func TestAVX2QuotedMatchesEncodingJSON(t *testing.T) {
 		strings.Repeat("<html>&", 100),
 		strings.Repeat("control\x01", 50),
 		strings.Repeat("a", 127) + "\u2028" + strings.Repeat("b", 128),
+	}
+	for length := 0; length <= 300; length++ {
+		values = append(values, strings.Repeat("a", length))
+		if length > 0 {
+			values = append(values,
+				strings.Repeat("a", length/2)+`"`+strings.Repeat("b", length-length/2-1),
+				strings.Repeat("a", length/2)+"\x01"+strings.Repeat("b", length-length/2-1),
+			)
+		}
 	}
 	for _, value := range values {
 		got := appendQuoted(nil, value)
@@ -113,5 +143,17 @@ func BenchmarkAVX2AppendQuotedLongASCII(b *testing.B) {
 	b.SetBytes(int64(len(value)))
 	for i := 0; i < b.N; i++ {
 		_ = appendQuoted(nil, value)
+	}
+}
+
+func BenchmarkShortJSONScan(b *testing.B) {
+	for _, length := range []int{8, 16, 32, 64, 128, 255} {
+		value := bytes.Repeat([]byte{'a'}, length)
+		b.Run("SSEEscape/"+strconv.Itoa(length), func(b *testing.B) {
+			ptr := (*byte)(unsafe.SliceData(value))
+			for i := 0; i < b.N; i++ {
+				_ = sseFindJSONEscape(ptr, len(value))
+			}
+		})
 	}
 }

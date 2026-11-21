@@ -1,5 +1,8 @@
 # Windows amd64 benchmark results
 
+The encoder's sub-256-byte string scanner was subsequently optimized. See
+[`SHORT_STRING_SCAN.md`](SHORT_STRING_SCAN.md) for the controlled A/B results.
+
 Measured on 2026-11-21 with:
 
 | Item | Value |

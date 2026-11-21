@@ -5,8 +5,8 @@ package compiler
 import "golang.org/x/sys/cpu"
 
 func init() {
-	if !cpu.X86.HasAVX2 {
-		panic("jjs-go requires an AVX2-capable CPU")
+	if !cpu.X86.HasAVX2 || !cpu.X86.HasSSE42 {
+		panic("jjs-go requires an AVX2 and SSE4.2 capable CPU")
 	}
 }
 
@@ -22,3 +22,9 @@ func avx2FindJSONEscape(ptr *byte, n int) int
 //
 //go:noescape
 func avx2FindJSONStringEnd(ptr *byte, n int) int
+
+// sseFindJSONEscape scans strings shorter than the AVX2 path using SSE4.2
+// range comparisons, with 8-byte, 4-byte, and scalar tails.
+//
+//go:noescape
+func sseFindJSONEscape(ptr *byte, n int) int
