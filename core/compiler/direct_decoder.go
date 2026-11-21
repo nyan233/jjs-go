@@ -718,5 +718,5 @@ func decodeDirectBytes(data []byte, plan *directDecodePlan, target unsafe.Pointe
 //go:linkname runtimeGrowSlice runtime.growslice
 func runtimeGrowSlice(oldPtr unsafe.Pointer, newLen, oldCap, num int, elemType unsafe.Pointer) sliceHeader
 
-//go:linkname runtimeTypedMemclr runtime.typedmemclr
+//go:linkname runtimeTypedMemclr reflect.typedmemclr
 func runtimeTypedMemclr(typ, ptr unsafe.Pointer)

@@ -7,7 +7,7 @@ layout, and machine-code emission.
 
 ## amd64 backend
 
-- Uses `golang-asm/obj/x86` and `github.com/bytedance/sonic/loader`.
+- Uses `golang-asm/obj/x86` and the repository-owned `internal/jitloader`.
 - Uses a fixed 64-byte Go ABI frame for helper calls and GC metadata.
 - Runs the x86 IR simplifier and linear-scan register allocator before
   assembling.
@@ -28,6 +28,30 @@ layout, and machine-code emission.
 - The direct decoder remains the primary decoder backend. The shared legacy
   decoder code generator can target the arm64 builder when a type cannot use a
   direct decode plan.
+
+## Runtime loader
+
+The repository owns its loader in `internal/jitloader`; it does not use the
+Sonic loader at runtime. The loader generates the runtime `moduledata`,
+`functab`, pcdata, funcdata, stack maps, and executable text mapping for one
+loaded JIT function.
+
+The runtime-private layout changes are separated across Go release families:
+
+| Go | Module metadata | Registration |
+| --- | --- | --- |
+| 1.21-1.22 | `pclntab`, pre-1.23 module layout | `runtime.lastmoduledatap` |
+| 1.23-1.25 | 1.23 module layout | linkname for 1.23; assembly `runtime.addmoduledata` for 1.24-1.25 |
+| 1.26 | adds `epclntab` | `runtime.lastmoduledatap` |
+| 1.27 | adds `typedesclen`, `itaboffset`, and `itabsize` | `runtime.lastmoduledatap` |
+
+Go 1.24 tightened `//go:linkname` validation. The loader's 1.24 and 1.25
+registration path therefore uses a small architecture assembly shim to call
+the runtime linker entry point directly; Go 1.26 and later expose the needed
+module-chain linkname again.
+
+The source-level comparison and runtime layout matrix are recorded in
+[`docs/go-runtime-loader-versions.md`](docs/go-runtime-loader-versions.md).
 
 The x86 IR optimizer and linear-scan allocator are currently compiled only on
 amd64. The arm64 frontend reserves fixed scalar registers for context, data,
@@ -68,13 +92,10 @@ entitlements or Darwin-specific executable-memory policy.
 
 ## macOS JIT notes
 
-Runtime JIT loading uses the arm64-capable Sonic loader implementation. A
-normal non-hardened development binary may allocate writable memory and change
-it to executable memory. Hardened or sandboxed macOS applications must grant
-the appropriate executable-memory entitlement in their code signature.
-
-The Sonic loader dependency is pinned to `v0.5.2-dev.arm64.0` because the
-stable `v0.5.3` loader does not provide ARM64 module metadata support.
+Runtime JIT loading uses the repository's own loader. A normal non-hardened
+development binary may allocate writable memory and change it to executable
+memory. Hardened or sandboxed macOS applications must grant the appropriate
+executable-memory entitlement in their code signature.
 
 The arm64 backend has been cross-compiled and its generated instruction
 sequences have been validated on the current Windows host. A real Apple

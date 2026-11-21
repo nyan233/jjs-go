@@ -2,16 +2,17 @@ package compiler
 
 import (
 	"fmt"
-	"github.com/bytedance/sonic/loader"
 	"sync"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/nyan233/jjs-go/internal/jitloader"
 )
 
 var jitFunctionID atomic.Uint64
 var jitTypeRegistry sync.Map
 
-func loadJITFunction(code []byte, prefix string) loader.Function {
+func loadJITFunction(code []byte, prefix string) jitloader.Function {
 	id := jitFunctionID.Add(1)
 	instance := jitLoader
 	instance.Name = fmt.Sprintf("jjs.jit.%d.", id)
@@ -22,17 +23,17 @@ func loadJITFunction(code []byte, prefix string) loader.Function {
 		16,
 		[]bool{true, false},
 		jitLocalPointers(),
-		loader.Pcdata{{PC: uint32(len(code)), Val: 64}},
+		jitloader.Pcdata{{PC: uint32(len(code)), Val: 64}},
 	)
 	entry := **(**uintptr)(unsafe.Pointer(&function))
 	flushJITCode(entry, len(code))
 	return function
 }
 
-var jitLoader = loader.Loader{
+var jitLoader = jitloader.Loader{
 	Name: "jjs.jit.",
 	File: "github.com/nyan233/jjs-go/jit.go",
-	Options: loader.Options{
+	Options: jitloader.Options{
 		NoPreempt: true,
 	},
 }

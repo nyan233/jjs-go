@@ -80,7 +80,7 @@ func main() {
 
 ## Requirements
 
-- Go 1.22 or newer
+- Go 1.21 or newer
 - amd64 on Windows or Linux with AVX2 and SSE4.2; initialization fails fast
   otherwise
 - arm64 on macOS (Apple M-series) through the native ARM64 JIT backend
@@ -93,6 +93,11 @@ The ARM64 backend is cross-compiled and instruction-tested, but still requires
 a real Apple Silicon runtime/CI pass before its performance is considered
 production-verified. String escaping and JSON string parsing use AVX2 and
 SSE4.2 fast paths on amd64; ARM64 uses native 64-bit word scans.
+
+The repository-owned loader and compiler JIT tests are validated against Go
+1.21 through Go 1.27.4. The broader codec differential suite still uses Go
+1.22 as its primary target because Go 1.26 introduced additional
+reflection/interface ABI differences outside the loader itself.
 
 The project does not claim a performance win until the generated path has
 passed broader differential and CPU-feature coverage.
