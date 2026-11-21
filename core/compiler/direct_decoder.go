@@ -353,9 +353,17 @@ func (p *jitJSONParser) decodeDirectSlice(plan *directDecodePlan, dst unsafe.Poi
 	}
 	p.index++
 	p.skipSpace()
-	header := sliceHeader{}
+	// Match encoding/json by retaining existing backing storage. Decode into
+	// the live elements directly, then clear only elements beyond the new
+	// length so stale pointers are not retained.
+	header := *(*sliceHeader)(dst)
+	previousLen := header.Len
+	header.Len = 0
 	if p.consumeByte(']') {
-		header.Ptr = runtimeMakeSlice(plan.elemType, 0, 0)
+		if header.Cap == 0 {
+			header.Ptr = runtimeMakeSlice(plan.elemType, 0, 0)
+		}
+		clearDirectSliceTail(header.Ptr, 0, previousLen, plan.elemSize, plan.elemType)
 		*(*sliceHeader)(dst) = header
 		return nil
 	}
@@ -376,12 +384,22 @@ func (p *jitJSONParser) decodeDirectSlice(plan *directDecodePlan, dst unsafe.Poi
 		header.Len++
 		p.skipSpace()
 		if p.consumeByte(']') {
+			clearDirectSliceTail(header.Ptr, header.Len, previousLen, plan.elemSize, plan.elemType)
 			*(*sliceHeader)(dst) = header
 			return nil
 		}
 		if !p.consumeByte(',') {
 			return p.errorf("expected ',' or ']'")
 		}
+	}
+}
+
+func clearDirectSliceTail(ptr unsafe.Pointer, start, end int, elemSize uintptr, elemType unsafe.Pointer) {
+	if start >= end {
+		return
+	}
+	for index := start; index < end; index++ {
+		runtimeTypedMemclr(elemType, unsafe.Add(ptr, uintptr(index)*elemSize))
 	}
 }
 
@@ -420,8 +438,12 @@ func (p *jitJSONParser) decodeDirectMap(plan *directDecodePlan, dst unsafe.Point
 		return p.errorf("expected object")
 	}
 	p.index++
-	hmap := runtimeMakeMap(plan.typePtr, 8, nil)
-	*(*unsafe.Pointer)(dst) = hmap
+	// Preserve map capacity and keys not mentioned by this JSON object.
+	hmap := *(*unsafe.Pointer)(dst)
+	if hmap == nil {
+		hmap = runtimeMakeMap(plan.typePtr, 8, nil)
+		*(*unsafe.Pointer)(dst) = hmap
+	}
 	p.skipSpace()
 	if p.consumeByte('}') {
 		return nil
@@ -695,3 +717,6 @@ func decodeDirectBytes(data []byte, plan *directDecodePlan, target unsafe.Pointe
 
 //go:linkname runtimeGrowSlice runtime.growslice
 func runtimeGrowSlice(oldPtr unsafe.Pointer, newLen, oldCap, num int, elemType unsafe.Pointer) sliceHeader
+
+//go:linkname runtimeTypedMemclr runtime.typedmemclr
+func runtimeTypedMemclr(typ, ptr unsafe.Pointer)

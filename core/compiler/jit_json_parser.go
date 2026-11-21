@@ -42,6 +42,11 @@ type jitJSONParser struct {
 // portion as one direct string conversion.
 const jitDecodeStringScalarBytes = 256
 
+// Escape decoding usually produces strings shorter than this. Keep the
+// working buffer on the parser stack instead of allocating and growing it for
+// every escaped string.
+const jitDecodeStringScratchBytes = 512
+
 func parseJITJSON(data []byte) (*jitJSONNode, error) {
 	parser := jitJSONParser{data: data}
 	parser.skipSpace()
@@ -281,7 +286,8 @@ func (p *jitJSONParser) rawString(start, end int, hasNonASCII, copyValue bool) (
 
 func (p *jitJSONParser) parseStringSlow(start int) (string, error) {
 	p.index = start
-	out := make([]byte, 0, 32)
+	var scratch [jitDecodeStringScratchBytes]byte
+	out := scratch[:0]
 	for p.index < len(p.data) {
 		c := p.data[p.index]
 		if c == '"' {

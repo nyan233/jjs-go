@@ -275,6 +275,52 @@ func TestUnmarshalJITScalarsAndArrays(t *testing.T) {
 	}
 }
 
+func TestUnmarshalJITReusesSliceCapacity(t *testing.T) {
+	type item struct {
+		Value int     `json:"value"`
+		Extra *string `json:"extra"`
+	}
+	target := struct {
+		Items []item `json:"items"`
+	}{
+		Items: make([]item, 3, 8),
+	}
+	for i := range target.Items {
+		target.Items[i].Extra = new(string)
+	}
+	before := reflect.ValueOf(target.Items).Pointer()
+
+	if err := Unmarshal([]byte(`{"items":[{"value":7}]}`), &target); err != nil {
+		t.Fatal(err)
+	}
+	if got := reflect.ValueOf(target.Items).Pointer(); got != before {
+		t.Fatalf("slice backing array was replaced: got %#x, want %#x", got, before)
+	}
+	if len(target.Items) != 1 || target.Items[0].Value != 7 {
+		t.Fatalf("unexpected decoded slice: %#v", target.Items)
+	}
+	for i, element := range target.Items[:cap(target.Items)] {
+		if i > 0 && element.Extra != nil {
+			t.Fatalf("stale pointer retained at index %d", i)
+		}
+	}
+}
+
+func TestUnmarshalJITReusesMap(t *testing.T) {
+	target := map[string]int{"keep": 1}
+	before := reflect.ValueOf(target).Pointer()
+
+	if err := Unmarshal([]byte(`{"new":2}`), &target); err != nil {
+		t.Fatal(err)
+	}
+	if got := reflect.ValueOf(target).Pointer(); got != before {
+		t.Fatalf("map was replaced: got %#x, want %#x", got, before)
+	}
+	if target["keep"] != 1 || target["new"] != 2 {
+		t.Fatalf("unexpected decoded map: %#v", target)
+	}
+}
+
 func TestUnmarshalJITStringPaths(t *testing.T) {
 	inputs := [][]byte{
 		[]byte(`"short"`),
