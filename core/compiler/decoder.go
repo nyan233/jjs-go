@@ -138,9 +138,7 @@ func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 		if err := generator.emitValue(unit.typ, 0, nil); err != nil {
 			return nil, err
 		}
-		generator.code.addConst(64, _RSP)
-		generator.code.xor(_RAX, _RAX)
-		generator.code.ret()
+		generator.emitReturn()
 	}
 	program := newJITDecodeProgram(compiler.static)
 	program.types = compiler.types
@@ -227,11 +225,12 @@ type jitDecoderGenerator struct {
 }
 
 func (g *jitDecoderGenerator) emitPrologue() error {
-	g.code.subConst(64, _RSP)
-	g.code.mov(_RAX, mem(_RSP, 0))
-	g.code.mov(_RAX, _R10)
-	g.code.loadMem(_R10, int64(unsafe.Offsetof(jitDecodeContext{}.data)), _R12)
+	g.code.functionPrologue(64, int64(unsafe.Offsetof(jitDecodeContext{}.data)))
 	return nil
+}
+
+func (g *jitDecoderGenerator) emitReturn() {
+	g.code.finishFunction(64)
 }
 
 type jitPathSegment struct {

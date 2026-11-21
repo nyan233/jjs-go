@@ -1,3 +1,5 @@
+//go:build amd64 && !arm64_asm_test
+
 package compiler
 
 import "testing"

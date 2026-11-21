@@ -81,13 +81,18 @@ func main() {
 ## Requirements
 
 - Go 1.22 or newer
-- AVX2-capable amd64 CPU; initialization fails fast otherwise
-- Windows amd64 or Linux amd64
+- amd64 on Windows or Linux with AVX2 and SSE4.2; initialization fails fast
+  otherwise
+- arm64 on macOS (Apple M-series) through the native ARM64 JIT backend
 
-Windows is the primary verification target for this branch. The experimental
-assembly packages remain amd64-specific. String escaping and JSON string parsing
-use an AVX2 fast path for 32-byte blocks, with runtime initialization refusing
-to start on CPUs without AVX2.
+The code-generation split and ARM64 validation commands are documented in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+Windows amd64 is the primary performance-verification target for this branch.
+The ARM64 backend is cross-compiled and instruction-tested, but still requires
+a real Apple Silicon runtime/CI pass before its performance is considered
+production-verified. String escaping and JSON string parsing use AVX2 and
+SSE4.2 fast paths on amd64; ARM64 uses native 64-bit word scans.
 
 The project does not claim a performance win until the generated path has
 passed broader differential and CPU-feature coverage.

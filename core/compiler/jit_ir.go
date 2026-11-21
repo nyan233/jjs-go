@@ -1,3 +1,5 @@
+//go:build amd64 && !arm64_asm_test
+
 package compiler
 
 import (
@@ -9,18 +11,6 @@ import (
 )
 
 const jitVirtualRegisterBase = 20000
-
-type jitCodegenStats struct {
-	InstructionsBefore  int
-	InstructionsAfter   int
-	RemovedInstructions int
-	FoldedInstructions  int
-	BranchesRemoved     int
-	VirtualRegisters    int
-	RegisterReuse       int
-	SpilledRegisters    int
-	CodeBytes           int
-}
 
 func (c *jitCodeBuilder) newVirtualRegister() obj.Addr {
 	register := jitVirtualRegisterBase + c.virtualCount

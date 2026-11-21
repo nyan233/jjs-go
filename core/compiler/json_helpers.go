@@ -5,12 +5,6 @@ import (
 	"unsafe"
 )
 
-// AVX2 has a higher setup cost than the SSE4.2 short-string scanner.
-const jitEncodeStringAVXBytes = 256
-
-// Four bytes amortize the SSE4.2 range setup; shorter values stay scalar.
-const jitEncodeShortScanBytes = 4
-
 func splitJSONTag(tag string) (name, options string) {
 	if tag == "" {
 		return "", ""
@@ -47,12 +41,7 @@ func appendQuoted(dst []byte, value string) []byte {
 	for i := 0; i < len(value); {
 		if remaining := len(value) - i; useVector && remaining >= jitEncodeShortScanBytes {
 			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.StringData(value)), i))
-			special := -1
-			if remaining >= jitEncodeStringAVXBytes {
-				special = avx2FindJSONEscape(ptr, remaining)
-			} else {
-				special = sseFindJSONEscape(ptr, remaining)
-			}
+			special := scanJSONEscape(ptr, remaining)
 			if special < 0 {
 				dst = append(dst, value[i:]...)
 				i = len(value)

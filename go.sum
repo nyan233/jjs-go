@@ -1,5 +1,5 @@
-github.com/bytedance/sonic/loader v0.5.3 h1:ziVGAbXQtLoaot/M6YQxntGkekxz6B/DyuJVwnTbMAA=
-github.com/bytedance/sonic/loader v0.5.3/go.mod h1:AR4NYCk5DdzZizZ5djGqQ92eEhCCcdf5x77udYiSJRo=
+github.com/bytedance/sonic/loader v0.5.2-dev.arm64.0 h1:d49HQh6EIQ64nbyW5EaqX2cqqjDZrgAfXyiVZXi49Tk=
+github.com/bytedance/sonic/loader v0.5.2-dev.arm64.0/go.mod h1:AR4NYCk5DdzZizZ5djGqQ92eEhCCcdf5x77udYiSJRo=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

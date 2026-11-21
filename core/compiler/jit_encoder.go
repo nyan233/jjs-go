@@ -9,10 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"unsafe"
-
-	golangasm "github.com/twitchyliquid64/golang-asm"
-	"github.com/twitchyliquid64/golang-asm/obj"
-	"github.com/twitchyliquid64/golang-asm/obj/x86"
 )
 
 var gEncoder = new(Encoder).init()
@@ -259,17 +255,12 @@ type jitEncoderGenerator struct {
 }
 
 func (g *jitEncoderGenerator) emitPrologue() error {
-	g.code.subConst(64, _RSP)
-	g.code.mov(_RAX, mem(_RSP, 0))
-	g.code.mov(_RAX, _R10)
-	g.code.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.data)), _R12)
+	g.code.functionPrologue(64, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
 	return nil
 }
 
 func (g *jitEncoderGenerator) emitReturn() {
-	g.code.addConst(64, _RSP)
-	g.code.xor(_RAX, _RAX)
-	g.code.ret()
+	g.code.finishFunction(64)
 }
 
 func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
@@ -512,29 +503,17 @@ func (g *jitEncoderGenerator) emitRaw(value []byte) error {
 	}
 	if remaining := len(value) - used; remaining >= 4 {
 		g.code.movConst(int64(binary.LittleEndian.Uint32(value[used:used+4])), _R11)
-		g.code.emit(&obj.Prog{
-			As:   x86.AMOVL,
-			From: _R11,
-			To:   mem(destination, int64(used)),
-		})
+		g.code.store32(_R11, mem(destination, int64(used)))
 		used += 4
 	}
 	if remaining := len(value) - used; remaining >= 2 {
 		g.code.movConst(int64(binary.LittleEndian.Uint16(value[used:used+2])), _R11)
-		g.code.emit(&obj.Prog{
-			As:   x86.AMOVW,
-			From: _R11,
-			To:   mem(destination, int64(used)),
-		})
+		g.code.store16(_R11, mem(destination, int64(used)))
 		used += 2
 	}
 	if used < len(value) {
 		g.code.movConst(int64(value[used]), _R11)
-		g.code.emit(&obj.Prog{
-			As:   x86.AMOVB,
-			From: _R11,
-			To:   mem(destination, int64(used)),
-		})
+		g.code.store8(_R11, mem(destination, int64(used)))
 	}
 	return nil
 }
@@ -576,122 +555,3 @@ func jitJSONField(field reflect.StructField) (name string, omitEmpty, supported 
 	}
 	return name, omitEmpty, true
 }
-
-type jitCodeBuilder struct {
-	name         string
-	instructions []*obj.Prog
-	virtualCount int
-	stats        jitCodegenStats
-}
-
-func newJITCodeBuilder(name string) *jitCodeBuilder {
-	return &jitCodeBuilder{name: name}
-}
-
-func (c *jitCodeBuilder) emit(prog *obj.Prog) {
-	c.instructions = append(c.instructions, prog)
-}
-
-func (c *jitCodeBuilder) mov(from, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.AMOVQ, From: from, To: to})
-}
-
-func (c *jitCodeBuilder) vectorMove32(from, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: from, To: _Y0})
-	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: _Y0, To: to})
-}
-
-func (c *jitCodeBuilder) vectorMove16(from, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: from, To: _X0})
-	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: _X0, To: to})
-}
-
-func (c *jitCodeBuilder) loadImm64(value uint64) {
-	c.emit(&obj.Prog{
-		As:   x86.AWORD,
-		From: obj.Addr{Type: obj.TYPE_CONST, Offset: 0xbb49},
-	})
-	c.emit(&obj.Prog{
-		As:   x86.AQUAD,
-		From: obj.Addr{Type: obj.TYPE_CONST, Offset: int64(value)},
-	})
-}
-
-func (c *jitCodeBuilder) movConst(value int64, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.AMOVQ, From: obj.Addr{Type: obj.TYPE_CONST, Offset: value}, To: to})
-}
-
-func (c *jitCodeBuilder) loadMem(base obj.Addr, offset int64, to obj.Addr) {
-	c.mov(mem(base, offset), to)
-}
-
-func (c *jitCodeBuilder) lea(base obj.Addr, offset int64, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.ALEAQ, From: mem(base, offset), To: to})
-}
-
-func (c *jitCodeBuilder) addConst(value int64, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.AADDQ, From: obj.Addr{Type: obj.TYPE_CONST, Offset: value}, To: to})
-}
-
-func (c *jitCodeBuilder) subConst(value int64, from obj.Addr) {
-	c.emit(&obj.Prog{As: x86.ASUBQ, From: obj.Addr{Type: obj.TYPE_CONST, Offset: value}, To: from})
-}
-
-func (c *jitCodeBuilder) xor(from, to obj.Addr) {
-	c.emit(&obj.Prog{As: x86.AXORQ, From: from, To: to})
-}
-
-func (c *jitCodeBuilder) restoreJITRegs() {
-	c.loadMem(_RSP, 0, _R10)
-	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.data)), _R12)
-}
-
-func (c *jitCodeBuilder) call(reg obj.Addr) {
-	c.emit(&obj.Prog{As: obj.ACALL, To: reg})
-}
-
-func (c *jitCodeBuilder) ret() {
-	c.emit(&obj.Prog{As: obj.ARET})
-}
-
-func (c *jitCodeBuilder) assemble() ([]byte, error) {
-	instructions, stats, err := c.prepareIR()
-	if err != nil {
-		return nil, err
-	}
-	builder, err := golangasm.NewBuilder("amd64", 64)
-	if err != nil {
-		return nil, err
-	}
-	for _, instruction := range instructions {
-		builder.AddInstruction(instruction)
-	}
-	code := builder.Assemble()
-	stats.CodeBytes = len(code)
-	c.stats = stats
-	return code, nil
-}
-
-func mem(base obj.Addr, offset int64) obj.Addr {
-	return obj.Addr{Type: obj.TYPE_MEM, Reg: base.Reg, Offset: offset}
-}
-
-func registerAddr(register int) obj.Addr {
-	return obj.Addr{Type: obj.TYPE_REG, Reg: int16(register)}
-}
-
-var (
-	_RAX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_AX}
-	_RBX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_BX}
-	_RCX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_CX}
-	_R9  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R9}
-	_R8  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R8}
-	_R10 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R10}
-	_R11 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R11}
-	_R12 = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_R12}
-	_RDI = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_DI}
-	_RSI = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SI}
-	_RSP = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SP}
-	_X0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_X0}
-	_Y0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_Y0}
-)
