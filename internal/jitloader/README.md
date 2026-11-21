@@ -25,3 +25,5 @@ Version-specific behavior:
 
 The source-level compatibility matrix is in
 [`docs/go-runtime-loader-versions.md`](../../docs/go-runtime-loader-versions.md).
+The detailed `moduledata` organization is in
+[`docs/moduledata-organization.md`](../../docs/moduledata-organization.md).
