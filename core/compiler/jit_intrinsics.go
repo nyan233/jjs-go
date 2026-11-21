@@ -184,7 +184,8 @@ func jitReserveRaw(ctx *jitEncodeContext, n int) unsafe.Pointer {
 		return nil
 	}
 	start := len(ctx.dst)
-	ctx.ensureCapacity(n)
+	// The JIT may complete a short literal with one 64-bit store.
+	ctx.ensureCapacity(n + 7)
 	ctx.dst = ctx.dst[:start+n]
 	return unsafe.Add(unsafe.Pointer(unsafe.SliceData(ctx.dst)), start)
 }

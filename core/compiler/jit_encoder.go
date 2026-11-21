@@ -501,19 +501,11 @@ func (g *jitEncoderGenerator) emitRaw(value []byte) error {
 		g.code.mov(_R11, mem(destination, int64(used)))
 		used += 8
 	}
-	if remaining := len(value) - used; remaining >= 4 {
-		g.code.movConst(int64(binary.LittleEndian.Uint32(value[used:used+4])), _R11)
-		g.code.store32(_R11, mem(destination, int64(used)))
-		used += 4
-	}
-	if remaining := len(value) - used; remaining >= 2 {
-		g.code.movConst(int64(binary.LittleEndian.Uint16(value[used:used+2])), _R11)
-		g.code.store16(_R11, mem(destination, int64(used)))
-		used += 2
-	}
-	if used < len(value) {
-		g.code.movConst(int64(value[used]), _R11)
-		g.code.store8(_R11, mem(destination, int64(used)))
+	if remaining := len(value) - used; remaining > 0 {
+		var tail [8]byte
+		copy(tail[:], value[used:])
+		g.code.loadImm64(binary.LittleEndian.Uint64(tail[:]))
+		g.code.mov(_R11, mem(destination, int64(used)))
 	}
 	return nil
 }
