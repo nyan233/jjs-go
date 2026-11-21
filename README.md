@@ -110,7 +110,7 @@ reflection/interface ABI differences outside the loader itself.
 ## Architecture
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): backend split, ABI, ARM64 and registration strategy.
-- [docs/moduledata-organization.md](docs/moduledata-organization.md): runtime metadata and GC layout.
+- [internal/jitloader/MODULEDATA.md](internal/jitloader/MODULEDATA.md): runtime metadata and GC layout.
 - [docs/go-runtime-loader-versions.md](docs/go-runtime-loader-versions.md): Go 1.21–1.27 source-level compatibility matrix.
 
 The type frontend is shared between architectures. amd64 uses the x86
@@ -121,10 +121,73 @@ direct instruction encoder and its own Go ABI frame/cache-flush sequence.
 
 `benchmark/compare` is an independent Go module that compares this checkout
 against `encoding/json`, goccy/go-json, json-iterator, EasyJSON and Sonic using
-Sonic's small/medium/large fixtures. See
-[`benchmark/compare/README.md`](benchmark/compare/README.md) for methodology
-and [`benchmark/compare/RESULTS.md`](benchmark/compare/RESULTS.md) for the
-latest Windows amd64 results.
+Sonic's small/medium/large fixtures. The tables below are medians of three
+one-second runs. Each cell is `ns/op (allocs/op)`; lower is better.
+
+Measured on 2026-11-21 with Windows 11 26200, Go 1.22.0, an Intel Core
+i7-14700KF, and `GOMAXPROCS=16`. Sonic uses `ConfigStd` and
+`SONIC_NO_ASYNC_GC=1`. EasyJSON is absent from Generic because the generic
+fixtures have no generated concrete type.
+
+```powershell
+cd benchmark/compare
+$env:SONIC_NO_ASYNC_GC='1'
+go test -run '^$' -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' `
+  -benchmem -benchtime 1s -count 3
+```
+
+Binding encoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 1,138 (2) | 7,616 (2) | 331,717 (1,112) |
+| `goccy/go-json` | 642 (2) | 3,145 (2) | 169,234 (2) |
+| `json-iterator/go` | 684 (2) | 8,486 (2) | 392,372 (1,322) |
+| Sonic (`ConfigStd`) | 396 (3) | 3,193 (3) | 126,150 (3) |
+| EasyJSON | 701 (6) | 8,607 (67) | 377,694 (2,547) |
+| **jjs-go** | **762 (3)** | **5,789 (3)** | **377,902 (107)** |
+
+Binding decoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 3,608 (15) | 65,729 (132) | 2,862,507 (4,903) |
+| `goccy/go-json` | 350 (0) | 7,050 (1) | 381,700 (444) |
+| `json-iterator/go` | 886 (18) | 18,667 (357) | 978,812 (18,715) |
+| Sonic (`ConfigStd`) | 698 (9) | 13,711 (109) | 510,542 (4,100) |
+| EasyJSON | 1,027 (7) | 17,162 (124) | 1,323,084 (4,338) |
+| **jjs-go** | **1,303 (7)** | **20,204 (107)** | **1,097,236 (5,142)** |
+
+Generic encoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 3,707 (52) | 55,827 (653) | 2,462,122 (27,955) |
+| `goccy/go-json` | 1,418 (1) | 22,051 (1) | 1,104,454 (1) |
+| `json-iterator/go` | 4,056 (61) | 61,998 (575) | 2,612,538 (22,565) |
+| Sonic (`ConfigStd`) | 1,186 (2) | 18,314 (2) | 857,194 (3) |
+| **jjs-go** | **2,850 (7)** | **24,338 (40)** | **1,351,242 (1,267)** |
+
+Generic decoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 3,935 (90) | 79,561 (771) | 3,590,047 (31,261) |
+| `goccy/go-json` | 1,612 (21) | 20,566 (118) | 939,846 (3,526) |
+| `json-iterator/go` | 3,535 (111) | 53,030 (1,075) | 2,318,649 (45,198) |
+| Sonic (`ConfigStd`) | 2,394 (72) | 38,046 (724) | 1,556,728 (29,781) |
+| **jjs-go** | **2,991 (70)** | **47,407 (724)** | **2,220,079 (30,009)** |
+
+The direct decoder is substantially faster than `encoding/json` on all typed
+sizes, including a 2.61x advantage on Large. Typed jjs-go encoding is faster
+than the standard library on Small and Medium, but remains slower than goccy,
+Sonic and the standard library on Large. Generic jjs-go performance is faster
+than stdlib on all sizes, while goccy and Sonic remain ahead.
+
+See [`benchmark/compare/README.md`](benchmark/compare/README.md) for the full
+methodology and
+[`benchmark/compare/results-windows-amd64-final.txt`](benchmark/compare/results-windows-amd64-final.txt)
+for all three raw samples.
 
 Hardware-counter profiling notes and raw results are in
 [`benchmark/compare/PROFILING.md`](benchmark/compare/PROFILING.md),

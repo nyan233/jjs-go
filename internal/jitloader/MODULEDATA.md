@@ -97,7 +97,7 @@ table 在 `moduledata` 中的字段偏移。
 
 Go 1.20 起 pclntab magic 为 `0xfffffff1`，Go 1.21 到 1.27 都继续使用这个值。
 当前 loader 的 `pcHeader` 位于
-[`module_common.go`](../internal/jitloader/module_common.go)。
+[`module_common.go`](module_common.go)。
 
 ### 2.2 `ftab` 和 `findfunctab`
 
@@ -193,7 +193,7 @@ pcDelta    = (currentPC - previousPC) / PCQuantum
 `PCQuantum` 在 amd64 为 1，在 arm64 为 4。序列遇到 0 结束。
 
 当前实现位于
-[`module_build.go`](../internal/jitloader/module_build.go) 的
+[`module_build.go`](module_build.go) 的
 `encodePCData`。
 
 ### 2.5 `funcdata` 和 StackMap
@@ -276,7 +276,7 @@ slice 为空。
 ## 3. 本项目如何构造单函数模块
 
 加载流程位于
-[`module_build.go`](../internal/jitloader/module_build.go)：
+[`module_build.go`](module_build.go)：
 
 ```text
 LoadOne
@@ -314,10 +314,10 @@ ftab[1] = {entryOff: uint32(len(code)), funcOff: 0}
 
 源码文件：
 
-- [`module_go121.go`](../internal/jitloader/module_go121.go)
-- [`module_go123.go`](../internal/jitloader/module_go123.go)
-- [`module_go126.go`](../internal/jitloader/module_go126.go)
-- [`module_go127.go`](../internal/jitloader/module_go127.go)
+- [`module_go121.go`](module_go121.go)
+- [`module_go123.go`](module_go123.go)
+- [`module_go126.go`](module_go126.go)
+- [`module_go127.go`](module_go127.go)
 
 ## 5. 模块注册
 
@@ -332,11 +332,11 @@ lastmoduledatap -> 新模块
 Go 1.24–1.25 的 linker 不允许普通包直接 linkname 私有
 `lastmoduledatap`。loader 使用 amd64/arm64 汇编把新模块指针放到平台约定寄存器，
 然后调用 runtime 自己的 `addmoduledata`。这段路径位于
-[`register_asm.go`](../internal/jitloader/register_asm.go) 和
+[`register_asm.go`](register_asm.go) 和
 `link_amd64.s` / `link_arm64.s`。
 
 Go 1.26 起 runtime 再次显式标记 module chain linkname，因此恢复
-[`register_link.go`](../internal/jitloader/register_link.go) 路径。
+[`register_link.go`](register_link.go) 路径。
 
 ## 6. 关键不变量
 

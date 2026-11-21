@@ -65,9 +65,9 @@ Compare results only on the same machine, Go toolchain, power mode, and
 `GOMAXPROCS`. Run `jjs-go` only on an AVX2-capable CPU; package initialization
 fails fast otherwise.
 
-The latest local results, raw output, and bottleneck notes are in
-[`RESULTS.md`](RESULTS.md) and
-[`results-windows-amd64-custom-codecs.txt`](results-windows-amd64-custom-codecs.txt).
+The latest local results are summarized in [`RESULTS.md`](RESULTS.md). The raw
+three-sample output behind that summary is
+[`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
 
 ## Code generation metrics
 

@@ -53,7 +53,7 @@ module-chain linkname again.
 The source-level comparison and runtime layout matrix are recorded in
 [`docs/go-runtime-loader-versions.md`](docs/go-runtime-loader-versions.md).
 The field-by-field organization and lookup flow are documented in
-[`docs/moduledata-organization.md`](docs/moduledata-organization.md).
+[`internal/jitloader/MODULEDATA.md`](internal/jitloader/MODULEDATA.md).
 
 The x86 IR optimizer and linear-scan allocator are currently compiled only on
 amd64. The arm64 frontend reserves fixed scalar registers for context, data,
