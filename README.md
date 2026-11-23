@@ -18,8 +18,10 @@ Encode and decode contexts are reused through `sync.Pool`. The generated code
 reserves output capacity once per static segment and writes compiled literals
 directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
 amd64 string scanning combines SSE4.2 for short encoder strings and AVX2 for
-longer runs. ARM64 combines 64-bit word scanning with NEON for long encoder
-strings; decoding retains word scanning based on full-document measurements.
+longer runs. ARM64 uses hand-written NEON quoting that fuses byte classification, copying,
+escaping and UTF-8 validation in one bounded assembly call. NEON handles 8/16-byte
+ASCII blocks; scalar ARM64 instructions handle escaping and UTF-8 sequences.
+Decoding retains word scanning based on full-document measurements.
 Unescaped decode strings are validated once, and short values are copied into
 append-only storage chunks. Encoders use a
 bounded previous-output size hint to avoid repeated growth copies, and
@@ -115,7 +117,7 @@ The code-generation split and ARM64 validation commands are documented in
 Windows amd64 and Apple M1 Pro ARM64 measurements are reported separately
 below. Native ARM64 execution is also covered by macOS CI. String escaping
 and JSON string parsing use AVX2 and SSE4.2 fast paths on amd64; ARM64 uses
-native 64-bit word scans and a NEON encoder scan with a short-prefix check.
+native word scans for decoding and fused NEON quoting for encoding.
 
 The repository-owned loader and compiler JIT tests are validated against Go
 1.21 through Go 1.27.4. The broader codec differential suite still uses Go
@@ -296,6 +298,10 @@ The subsequent [decoder optimization and encoder/SIMD study](benchmark/compare/C
 reports before/after results, encoding comparisons with map sorting disabled
 for every library, and the limits of the available hardware-counter tooling.
 The tables above retain the original `96ffa5b` measurements.
+
+The [ARM64 string-quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md)
+compares the fused assembly encoder with the previous Go implementation,
+including Clang `-O3` experiments, whole-document results and correctness checks.
 
 ## Verification
 

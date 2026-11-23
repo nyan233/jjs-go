@@ -24,7 +24,13 @@ layout, and machine-code emission.
 - Encodes MOVZ/MOVK, MOV, LDR/STR, ADD/SUB, EOR, BLR, and RET directly.
 - Invalidates data and instruction caches with `DC CVAU`, `IC IVAU`, `DSB`, and
   `ISB` before returning freshly loaded machine code.
-- Uses a WORD-at-a-time scanner for arm64 JSON string escaping.
+- Uses a fused hand-written ARM64 quote routine: NEON table classification and
+  8/16-byte copying, packed escape entries, and scalar UTF-8 range validation.
+  All source reads and destination writes are bounded. Calls process at most
+  64 KiB plus one complete rune before returning to preemptible Go code.
+- The Go quote wrapper owns allocation and output growth; the assembly has no
+  calls or stack changes. amd64 retains its existing Go/SSE/AVX quote path.
+  See [the quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md).
 - The direct decoder remains the primary decoder backend. The shared legacy
   decoder code generator can target the arm64 builder when a type cannot use a
   direct decode plan.
@@ -107,7 +113,5 @@ development binary may allocate writable memory and change it to executable
 memory. Hardened or sandboxed macOS applications must grant the appropriate
 executable-memory entitlement in their code signature.
 
-The arm64 backend has been cross-compiled and its generated instruction
-sequences have been validated on the current Windows host. A real Apple
-Silicon CI/device run remains required before calling its runtime performance
-production-verified.
+Native runtime tests and benchmarks run on an Apple M1 Pro. CI also covers
+macOS, Windows/Linux amd64, ARM64 cross-builds and Linux ARM64 under QEMU.

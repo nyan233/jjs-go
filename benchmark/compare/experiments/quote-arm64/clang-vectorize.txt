@@ -1,14 +1,40 @@
-benchmark/compare/experiments/quote-arm64/scan_copy.c:15:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:11:19: remark: loop not vectorized: Loop contains an unsupported switch [-Rpass-analysis=loop-vectorize]
+   11 |     return c < 32 || c >= 128 || c == '"' || c == '\\' || c == '<' || c == '>' || c == '&';
+      |                   ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:15:5: remark: loop not vectorized: Incorrect number of successors from early exiting block [-Rpass-analysis=loop-vectorize]
    15 |     for (;i<n;i++) {if(special(src[i]))break;dst[i]=src[i];}
       |     ^
-benchmark/compare/experiments/quote-arm64/scan_copy.c:20:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:15:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:21:22: remark: loop not vectorized: instruction return type cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   21 |         uint8x16_t x=vld1q_u8(src+i);
+      |                      ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:20:5: remark: loop not vectorized: Cannot vectorize early exit loop with writes to memory [-Rpass-analysis=loop-vectorize]
    20 |     for (;n-i>=16;i+=16) {
       |     ^
-benchmark/compare/experiments/quote-arm64/scan_copy.c:39:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:20:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:39:5: remark: loop not vectorized: loop control flow is not understood by vectorizer [-Rpass-analysis=loop-vectorize]
    39 |     for (;n-i>=16;i+=16) {
       |     ^
-benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:39:5: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:39:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:50: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
+      |                                                  ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
    61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
       |             ^
 benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:50: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
+      |                                                  ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
+      |             ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:50: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
+      |                                                  ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
+      |             ^
 benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
