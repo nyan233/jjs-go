@@ -99,6 +99,11 @@ equivalent `-test.*` flags to keep compilation separate from measurement.
 The ARM64 before/after study for the subsequent hot-path changes is in
 [`HOTPATH_OPTIMIZATION.md`](HOTPATH_OPTIMIZATION.md).
 
+The typed JIT inlining and NEON Base64 branch is measured separately in
+[`JIT_INLINE_ARM64.md`](JIT_INLINE_ARM64.md), including code size and uncached
+compilation costs. Its algorithm sources are in
+[`BASE64_ARM64_RESEARCH.md`](BASE64_ARM64_RESEARCH.md).
+
 ## Code generation metrics
 
 The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from

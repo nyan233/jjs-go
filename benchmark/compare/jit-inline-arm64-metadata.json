@@ -1,0 +1,24 @@
+{
+  "baseline": "ca8e881441d94d252ad2d21305cfc8272160c2f4",
+  "implementation": "c03d162b75b88ea37676b00cf41fac60b8498dae",
+  "go": "go version go1.25.0 darwin/arm64",
+  "started": "2026-11-23T18:11:57+0800",
+  "count": 5,
+  "benchtime": "300ms",
+  "GOMAXPROCS": 10,
+  "finished": "2026-11-23T18:14:50+0800",
+  "hardware": "Apple M1 Pro, 10 CPU cores, 32 GiB",
+  "os": "macOS 27.0.1 (26A434)",
+  "power": "AC, normal desktop use",
+  "SONIC_NO_ASYNC_GC": "1",
+  "cold_benchtime": "50x",
+  "steady_state_cases_per_stage": 39,
+  "cold_micro_cases_per_stage": 7,
+  "raw_samples_per_stage": 230,
+  "binding_recheck": {
+    "rounds": 5,
+    "benchtime": "500ms",
+    "order": "before then after each round",
+    "samples": 30
+  }
+}

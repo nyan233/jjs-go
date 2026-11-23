@@ -1,0 +1,100 @@
+
+# before sample=0
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  862063	       667.7 ns/op	 546.68 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  113139	      5382 ns/op	2419.93 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3246	    184363 ns/op	3425.39 MB/s	  282375 B/op	     210 allocs/op
+PASS
+
+# after sample=0
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	 1200932	       498.8 ns/op	 731.69 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  158308	      3799 ns/op	3428.30 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3904	    223376 ns/op	2827.13 MB/s	  282376 B/op	     210 allocs/op
+PASS
+
+# before sample=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  921823	       644.1 ns/op	 566.72 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  114374	      5377 ns/op	2422.01 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3189	    182963 ns/op	3451.59 MB/s	  282373 B/op	     210 allocs/op
+PASS
+
+# after sample=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	 1201941	       497.8 ns/op	 733.17 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  155178	      3853 ns/op	3379.80 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3706	    157420 ns/op	4011.66 MB/s	  282378 B/op	     210 allocs/op
+PASS
+
+# before sample=2
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  908877	       645.1 ns/op	 565.84 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  114127	      5297 ns/op	2458.40 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3234	    183370 ns/op	3443.94 MB/s	  282377 B/op	     210 allocs/op
+PASS
+
+# after sample=2
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	 1000000	       507.5 ns/op	 719.17 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  153523	      4158 ns/op	3131.92 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3738	    163424 ns/op	3864.27 MB/s	  282378 B/op	     210 allocs/op
+PASS
+
+# before sample=3
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  899814	       654.3 ns/op	 557.83 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  107842	      5586 ns/op	2331.55 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3087	    189870 ns/op	3326.03 MB/s	  282374 B/op	     210 allocs/op
+PASS
+
+# after sample=3
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	 1000000	       526.7 ns/op	 692.93 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  145129	      4070 ns/op	3199.50 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3446	    176811 ns/op	3571.70 MB/s	  282377 B/op	     210 allocs/op
+PASS
+
+# before sample=4
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  887349	       661.9 ns/op	 551.44 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  111189	      5571 ns/op	2337.56 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3169	    190408 ns/op	3316.64 MB/s	  282371 B/op	     210 allocs/op
+PASS
+
+# after sample=4
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	 1000000	       514.3 ns/op	 709.70 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	  150548	      3903 ns/op	3336.95 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    3804	    162912 ns/op	3876.42 MB/s	  282378 B/op	     210 allocs/op
+PASS
