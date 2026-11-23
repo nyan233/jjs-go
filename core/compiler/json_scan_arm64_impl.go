@@ -15,7 +15,7 @@ const (
 	jsonByteHigh uint64 = 0x8080808080808080
 )
 
-func scanJSONEscape(ptr *byte, n int) int {
+func scanJSONEscapeWord(ptr *byte, n int) int {
 	for index := 0; index+8 <= n; index += 8 {
 		word := *(*uint64)(unsafe.Add(unsafe.Pointer(ptr), index))
 		mask := jsonByteEqualMask(word, 0x2222222222222222) |
@@ -32,7 +32,7 @@ func scanJSONEscape(ptr *byte, n int) int {
 	return scanJSONEscapeBytes(ptr, n, n&^7)
 }
 
-func scanJSONStringEnd(ptr *byte, n int) int {
+func scanJSONStringEndWord(ptr *byte, n int) int {
 	for index := 0; index+8 <= n; index += 8 {
 		word := *(*uint64)(unsafe.Add(unsafe.Pointer(ptr), index))
 		mask := jsonByteEqualMask(word, 0x2222222222222222) |

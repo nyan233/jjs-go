@@ -33,9 +33,10 @@ type jitJSONObjectField struct {
 }
 
 type jitJSONParser struct {
-	data  []byte
-	index int
-	depth int
+	data    []byte
+	index   int
+	depth   int
+	storage *decodeStorage
 }
 
 // Escape decoding usually produces strings shorter than this. Keep the
@@ -208,10 +209,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 			if special < 0 {
 				return "", p.errorf("unexpected end of string")
 			}
-			if special > 0 {
-				p.index += special
-				continue
-			}
+			p.index += special
 		}
 		c := p.data[p.index]
 		if c == '"' {
@@ -244,7 +242,7 @@ func (p *jitJSONParser) rawString(start, end int, copyValue bool) string {
 	if !copyValue {
 		return unsafe.String(unsafe.SliceData(raw), len(raw))
 	}
-	return string(raw)
+	return p.copyString(raw)
 }
 
 func (p *jitJSONParser) parseStringSlow(start int) (string, error) {
@@ -256,7 +254,7 @@ func (p *jitJSONParser) parseStringSlow(start int) (string, error) {
 		c := p.data[p.index]
 		if c == '"' {
 			p.index++
-			return string(out), nil
+			return p.copyString(out), nil
 		}
 		if c == '\\' {
 			p.index++
@@ -396,14 +394,24 @@ func (p *jitJSONParser) consumeNumber() error {
 }
 
 func (p *jitJSONParser) skipSpace() {
-	for p.index < len(p.data) && p.data[p.index] <= ' ' {
-		switch p.data[p.index] {
+	// Most boundaries have no whitespace. Keep that path small and inlinable.
+	if p.index < len(p.data) && p.data[p.index] <= ' ' {
+		p.skipSpaceRun()
+	}
+}
+
+func (p *jitJSONParser) skipSpaceRun() {
+	index, data := p.index, p.data
+	for index < len(data) {
+		switch data[index] {
 		case ' ', '\t', '\r', '\n':
-			p.index++
+			index++
 		default:
+			p.index = index
 			return
 		}
 	}
+	p.index = index
 }
 
 func (p *jitJSONParser) consumeLiteral(literal string) bool {

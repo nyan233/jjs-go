@@ -16,6 +16,7 @@ type directDecodePlan struct {
 	fields     []directDecodeField
 	byLength   [][]int
 	byName     map[string]int
+	byFolded   map[string]int
 	bits       int
 	elemType   unsafe.Pointer
 	elemSize   uintptr
@@ -104,6 +105,9 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 		if len(fields) > 12 {
 			plan.byName = make(map[string]int, len(fields))
 		}
+		if len(fields) > 4 {
+			plan.byFolded = make(map[string]int, len(fields))
+		}
 		for _, field := range fields {
 			child, err := buildDirectDecodePlan(field.typ, cache)
 			if err != nil {
@@ -121,6 +125,12 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 			plan.byLength[len(field.name)] = append(plan.byLength[len(field.name)], index)
 			if plan.byName != nil {
 				plan.byName[field.name] = index
+			}
+			if plan.byFolded != nil {
+				folded := string(appendFoldedField(nil, field.name))
+				if _, exists := plan.byFolded[folded]; !exists {
+					plan.byFolded[folded] = index
+				}
 			}
 		}
 	case reflect.Pointer:
@@ -181,11 +191,17 @@ func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer)
 	if plan.custom != jitCustomNone {
 		return p.decodeDirectCustom(plan, dst)
 	}
-	p.depth++
-	if p.depth > 1000 {
+	if p.depth >= 1000 {
 		return p.errorf("maximum JSON depth exceeded")
 	}
+	p.depth++
+	// Keep cleanup in this small wrapper: a defer in the many-return parser
+	// body otherwise uses runtime bookkeeping instead of open-coded cleanup.
 	defer func() { p.depth-- }()
+	return p.decodeDirectBody(plan, dst)
+}
+
+func (p *jitJSONParser) decodeDirectBody(plan *directDecodePlan, dst unsafe.Pointer) error {
 	p.skipSpace()
 	if p.consumeLiteral("null") {
 		switch plan.kind {
@@ -369,6 +385,12 @@ func (plan *directDecodePlan) lookupField(name string) (int, bool) {
 	}
 	// Exact matches take priority; folded matches use declaration order. A
 	// Unicode fold can change byte length (for example K and the Kelvin sign).
+	if plan.byFolded != nil {
+		var scratch [64]byte
+		folded := appendFoldedField(scratch[:0], name)
+		index, ok := plan.byFolded[string(folded)]
+		return index, ok
+	}
 	for index, field := range plan.fields {
 		if strings.EqualFold(field.name, name) {
 			return index, true
@@ -552,11 +574,15 @@ func (p *jitJSONParser) decodeDirectInterface(plan *directDecodePlan, dst unsafe
 }
 
 func (p *jitJSONParser) decodeDirectAny() (any, error) {
-	p.depth++
-	if p.depth > 1000 {
+	if p.depth >= 1000 {
 		return nil, p.errorf("maximum JSON depth exceeded")
 	}
+	p.depth++
 	defer func() { p.depth-- }()
+	return p.decodeDirectAnyBody()
+}
+
+func (p *jitJSONParser) decodeDirectAnyBody() (any, error) {
 	p.skipSpace()
 	if p.consumeLiteral("null") {
 		return nil, nil
@@ -566,7 +592,11 @@ func (p *jitJSONParser) decodeDirectAny() (any, error) {
 	}
 	switch p.data[p.index] {
 	case '"':
-		return p.parseString()
+		value, err := p.parseString()
+		if err != nil {
+			return nil, err
+		}
+		return p.boxString(value), nil
 	case 't':
 		if !p.consumeLiteral("true") {
 			return nil, p.errorf("invalid literal")
@@ -578,56 +608,9 @@ func (p *jitJSONParser) decodeDirectAny() (any, error) {
 		}
 		return false, nil
 	case '[':
-		p.index++
-		values := make([]any, 0, 8)
-		p.skipSpace()
-		if p.consumeByte(']') {
-			return values, nil
-		}
-		for {
-			value, err := p.decodeDirectAny()
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, value)
-			p.skipSpace()
-			if p.consumeByte(']') {
-				return values, nil
-			}
-			if !p.consumeByte(',') {
-				return nil, p.errorf("expected ',' or ']'")
-			}
-		}
+		return p.decodeAnyArray()
 	case '{':
-		p.index++
-		values := make(map[string]any, 8)
-		p.skipSpace()
-		if p.consumeByte('}') {
-			return values, nil
-		}
-		for {
-			p.skipSpace()
-			key, err := p.parseString()
-			if err != nil {
-				return nil, err
-			}
-			p.skipSpace()
-			if !p.consumeByte(':') {
-				return nil, p.errorf("expected ':'")
-			}
-			value, err := p.decodeDirectAny()
-			if err != nil {
-				return nil, err
-			}
-			values[key] = value
-			p.skipSpace()
-			if p.consumeByte('}') {
-				return values, nil
-			}
-			if !p.consumeByte(',') {
-				return nil, p.errorf("expected ',' or '}'")
-			}
-		}
+		return p.decodeAnyObject()
 	default:
 		text, err := p.parseNumberView()
 		if err != nil {
@@ -637,16 +620,20 @@ func (p *jitJSONParser) decodeDirectAny() (any, error) {
 		if err != nil {
 			return nil, p.errorf("%v", err)
 		}
-		return value, nil
+		return p.boxFloat(value), nil
 	}
 }
 
 func (p *jitJSONParser) skipDirectValue() error {
-	p.depth++
-	if p.depth > 1000 {
+	if p.depth >= 1000 {
 		return p.errorf("maximum JSON depth exceeded")
 	}
+	p.depth++
 	defer func() { p.depth-- }()
+	return p.skipDirectValueBody()
+}
+
+func (p *jitJSONParser) skipDirectValueBody() error {
 	p.skipSpace()
 	if p.consumeLiteral("null") || p.consumeLiteral("true") || p.consumeLiteral("false") {
 		return nil
@@ -656,8 +643,7 @@ func (p *jitJSONParser) skipDirectValue() error {
 	}
 	switch p.data[p.index] {
 	case '"':
-		_, err := p.parseStringKey()
-		return err
+		return p.skipString()
 	case '[':
 		p.index++
 		p.skipSpace()
@@ -684,7 +670,7 @@ func (p *jitJSONParser) skipDirectValue() error {
 		}
 		for {
 			p.skipSpace()
-			if _, err := p.parseStringKey(); err != nil {
+			if err := p.skipString(); err != nil {
 				return err
 			}
 			p.skipSpace()
@@ -708,7 +694,9 @@ func (p *jitJSONParser) skipDirectValue() error {
 }
 
 func decodeDirectBytes(data []byte, plan *directDecodePlan, target unsafe.Pointer) error {
-	parser := jitJSONParser{data: data}
+	storage := decodeStoragePool.Get().(*decodeStorage)
+	defer storage.release()
+	parser := jitJSONParser{data: data, storage: storage}
 	if err := parser.decodeDirect(plan, target); err != nil {
 		return err
 	}
