@@ -43,10 +43,7 @@ func TestAppendQuotedDifferential(t *testing.T) {
 		values = append(values, string(data))
 	}
 	for _, value := range values {
-		want, err := json.Marshal(value)
-		if err != nil {
-			t.Fatal(err)
-		}
+		want := referenceQuoted(t, value)
 		for _, extra := range []int{0, 1, 7, len(value) + 2, 6*len(value) + 2} {
 			dst := make([]byte, 3, 3+extra)
 			copy(dst, "pre")
@@ -93,12 +90,50 @@ func FuzzAppendQuoted(f *testing.F) {
 		dst := make([]byte, 3, 3+int(capacity))
 		copy(dst, "pre")
 		got := appendQuoted(dst, value)
-		want, err := json.Marshal(value)
-		if err != nil {
-			t.Fatal(err)
-		}
+		want := referenceQuoted(t, value)
 		if !bytes.Equal(got[:3], []byte("pre")) || !bytes.Equal(got[3:], want) {
 			t.Fatalf("input=%q cap=%d got=%q want=%q", value, capacity, got, want)
 		}
 	})
+}
+
+// Keep jjs-go's existing byte representation stable across Go releases. For
+// example, Go 1.21 emits \u0008 for backspace while later versions use \b;
+// Go 1.27 may emit the UTF-8 replacement rune instead of an escaped \ufffd.
+// Check the Go reference against encoding/json semantically, then require the
+// native encoder to match that reference byte-for-byte (including HTML escapes).
+func referenceQuoted(t testing.TB, value string) []byte {
+	t.Helper()
+	want := appendQuotedGo(nil, value)
+	standard, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotValue, standardValue string
+	if err := json.Unmarshal(want, &gotValue); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(standard, &standardValue); err != nil {
+		t.Fatal(err)
+	}
+	if gotValue != standardValue {
+		t.Fatalf("reference differs from encoding/json for %q", value)
+	}
+	return want
+}
+
+func TestAppendQuotedEscapeSpelling(t *testing.T) {
+	for _, test := range []struct{ value, want string }{
+		{"\b\f\n\r\t", `"\b\f\n\r\t"`},
+		{"<>&", `"\u003c\u003e\u0026"`},
+		{"\x00\x1f", `"\u0000\u001f"`},
+		{"\u2028\u2029", `"\u2028\u2029"`},
+		{"\xff", `"\ufffd"`},
+		{"\ufffd", `"�"`},
+		{"\\\"", `"\\\""`},
+	} {
+		if got := string(appendQuoted(nil, test.value)); got != test.want {
+			t.Fatalf("input=%q got=%s want=%s", test.value, got, test.want)
+		}
+	}
 }

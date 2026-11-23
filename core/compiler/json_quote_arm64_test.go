@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
 	"unsafe"
@@ -17,10 +16,7 @@ func checkQuotePrefix(t *testing.T, source, output []byte, capacity int) {
 	if len(source) != 0 && capacity >= 6 && consumed == 0 {
 		t.Fatal("encoder made no progress with room for an escaped byte")
 	}
-	want, err := json.Marshal(string(source[:consumed]))
-	if err != nil {
-		t.Fatal(err)
-	}
+	want := referenceQuoted(t, string(source[:consumed]))
 	if !bytes.Equal(output[:written], want[1:len(want)-1]) {
 		t.Fatalf("prefix mismatch: input=%q cap=%d consumed=%d got=%q want=%q", source, capacity, consumed, output[:written], want)
 	}
@@ -62,10 +58,7 @@ func TestARM64QuoteChunkBoundaries(t *testing.T) {
 	for _, unit := range []string{"x", "\u0080", "中文", "😀", "\u2028\u2029", "\xff", "\n<"} {
 		for offset := 0; offset < 4; offset++ {
 			value := strings.Repeat("a", (64<<10)-offset) + unit + strings.Repeat(unit, 200)
-			want, err := json.Marshal(value)
-			if err != nil {
-				t.Fatal(err)
-			}
+			want := referenceQuoted(t, value)
 			got := appendQuoted(nil, value)
 			if !bytes.Equal(got, want) {
 				t.Fatalf("chunk boundary mismatch: unit=%q offset=%d", unit, offset)
