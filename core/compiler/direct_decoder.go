@@ -1,9 +1,11 @@
 package compiler
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"unsafe"
 )
@@ -119,9 +121,6 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 		}
 		plan.elem = child
 	case reflect.Slice:
-		if typ.Elem().Kind() == reflect.Uint8 {
-			return nil, fmt.Errorf("json: direct decoder does not support byte slices")
-		}
 		child, err := buildDirectDecodePlan(typ.Elem(), cache)
 		if err != nil {
 			return nil, err
@@ -279,6 +278,18 @@ func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer)
 		}
 		return p.decodeDirect(plan.elem, *(*unsafe.Pointer)(dst))
 	case reflect.Slice:
+		if plan.elem.kind == reflect.Uint8 && p.index < len(p.data) && p.data[p.index] == '"' {
+			text, err := p.parseString()
+			if err != nil {
+				return err
+			}
+			decoded, err := base64.StdEncoding.DecodeString(text)
+			if err != nil {
+				return err
+			}
+			*(*sliceHeader)(dst) = *(*sliceHeader)(unsafe.Pointer(&decoded))
+			return nil
+		}
 		return p.decodeDirectSlice(plan, dst)
 	case reflect.Array:
 		return p.decodeDirectArray(plan, dst)
@@ -336,11 +347,17 @@ func (p *jitJSONParser) decodeDirectStruct(plan *directDecodePlan, dst unsafe.Po
 }
 
 func (plan *directDecodePlan) lookupField(name string) (int, bool) {
-	if len(name) >= len(plan.byLength) {
-		return 0, false
+	if len(name) < len(plan.byLength) {
+		for _, index := range plan.byLength[len(name)] {
+			if plan.fields[index].name == name {
+				return index, true
+			}
+		}
 	}
-	for _, index := range plan.byLength[len(name)] {
-		if plan.fields[index].name == name {
+	// Exact matches take priority; folded matches use declaration order. A
+	// Unicode fold can change byte length (for example K and the Kelvin sign).
+	for index, field := range plan.fields {
+		if strings.EqualFold(field.name, name) {
 			return index, true
 		}
 	}
@@ -411,6 +428,7 @@ func (p *jitJSONParser) decodeDirectArray(plan *directDecodePlan, dst unsafe.Poi
 	p.skipSpace()
 	index := 0
 	if p.consumeByte(']') {
+		clearDirectSliceTail(dst, 0, plan.typ.Len(), plan.elemSize, plan.elem.typePtr)
 		return nil
 	}
 	for {
@@ -425,6 +443,7 @@ func (p *jitJSONParser) decodeDirectArray(plan *directDecodePlan, dst unsafe.Poi
 		index++
 		p.skipSpace()
 		if p.consumeByte(']') {
+			clearDirectSliceTail(dst, index, plan.typ.Len(), plan.elemSize, plan.elem.typePtr)
 			return nil
 		}
 		if !p.consumeByte(',') {
@@ -467,6 +486,9 @@ func (p *jitJSONParser) decodeDirectMap(plan *directDecodePlan, dst unsafe.Point
 			Cap: len(key),
 		}
 		element := runtimeMapAssign(plan.typePtr, hmap, unsafe.Pointer(&header))
+		// Each map value starts from zero, including repeated keys. Reusing the
+		// map's buckets must not merge a new value into an old struct or pointer.
+		runtimeTypedMemclr(plan.elem.typePtr, element)
 		if err := p.decodeDirect(plan.elem, element); err != nil {
 			return err
 		}
@@ -487,37 +509,24 @@ func (p *jitJSONParser) decodeDirectInterface(plan *directDecodePlan, dst unsafe
 		if plan.nonEmpty {
 			typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
 		}
-		cached, ok := directDynamicPlans.Load(uintptr(typePtr))
-		var plan *directDecodePlan
-		if ok {
-			plan = cached.(*directDecodePlan)
-		} else {
-			var value any
-			dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
-			dynamic.tab = typeWord
-			dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
-			typ := reflect.TypeOf(value)
-			if typ == nil {
-				return p.errorf("invalid interface type")
-			}
-			var err error
-			plan, err = loadDirectDecodePlan(typ)
+		var value any
+		dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
+		dynamic.tab = typePtr
+		dynamic.data = *(*unsafe.Pointer)(unsafe.Add(dst, 8))
+		typ := reflect.TypeOf(value)
+		// Only a non-nil pointer supplies an addressable decode target. Other
+		// dynamic values in an empty interface are replaced with generic JSON.
+		if typ.Kind() == reflect.Pointer && dynamic.data != nil && !(dynamic.data == dst && typ.Elem() == plan.typ) {
+			child, err := loadDirectDecodePlan(typ)
 			if err != nil {
 				return err
 			}
+			data := dynamic.data
+			return p.decodeDirect(child, unsafe.Pointer(&data))
 		}
-		data := runtimeMallocGC(plan.size, plan.typePtr, true)
-		if err := p.decodeDirect(plan, data); err != nil {
-			return err
-		}
-		if IsDirectInterfaceType(plan.typ) {
-			data = *(*unsafe.Pointer)(data)
-		}
-		*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = data
-		return nil
 	}
 	if plan.nonEmpty {
-		return p.errorf("cannot unmarshal into nil non-empty interface")
+		return p.errorf("cannot unmarshal into non-empty interface without a non-nil pointer")
 	}
 	value, err := p.decodeDirectAny()
 	if err != nil {

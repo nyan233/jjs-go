@@ -140,7 +140,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 			return nil, err
 		}
 		stats = stats.add(unit.code.stats)
-		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_encoder_%d", index))
+		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_encoder_%d", index), unit.code.pcsp)
 		program.functions[index] = *(*func(*jitEncodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
 	function := program.functions[0]
@@ -157,7 +157,7 @@ type jitEncoderCompiler struct {
 	static      []byte
 	units       []*jitEncoderUnit
 	unitByType  map[jitEncoderUnitKey]int
-	mapTypes    []uintptr
+	mapTypes    []jitMapType
 	fields      []jitEncodeFieldMeta
 	customTypes []jitCustomTypeInfo
 }
@@ -244,7 +244,7 @@ func (c *jitEncoderCompiler) unitIndex(typ reflect.Type, addressable bool) (int,
 }
 
 func (c *jitEncoderCompiler) mapTypeIndex(typ reflect.Type) int {
-	c.mapTypes = append(c.mapTypes, typePointer(typ))
+	c.mapTypes = append(c.mapTypes, jitMapType{typePtr: typePointer(typ), key: typ.Key()})
 	return len(c.mapTypes) - 1
 }
 
@@ -255,12 +255,12 @@ type jitEncoderGenerator struct {
 }
 
 func (g *jitEncoderGenerator) emitPrologue() error {
-	g.code.functionPrologue(64, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
+	g.code.functionPrologue(jitFrameSize, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
 	return nil
 }
 
 func (g *jitEncoderGenerator) emitReturn() {
-	g.code.finishFunction(64)
+	g.code.finishFunction(jitFrameSize)
 }
 
 func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
@@ -344,9 +344,11 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		g.code.movConst(int64(typ.Elem().Size()), _RDI)
 		g.emitHelper(jitHelperSlice)
 	case reflect.Map:
-		keyUnit, err := g.compiler.unitIndex(typ.Key(), false)
-		if err != nil {
-			return err
+		switch typ.Key().Kind() {
+		case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		default:
+			return fmt.Errorf("json: JIT encoder does not support map key type %s", typ.Key())
 		}
 		valueUnit, err := g.compiler.unitIndex(typ.Elem(), false)
 		if err != nil {
@@ -355,9 +357,8 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		typeIndex := g.compiler.mapTypeIndex(typ)
 		g.code.mov(_R10, _RAX)
 		g.code.lea(_R12, offset, _RBX)
-		g.code.movConst(int64(keyUnit), _RCX)
-		g.code.movConst(int64(valueUnit), _RDI)
-		g.code.movConst(int64(typeIndex), _RSI)
+		g.code.movConst(int64(valueUnit), _RCX)
+		g.code.movConst(int64(typeIndex), _RDI)
 		g.emitHelper(jitHelperMap)
 	case reflect.Interface:
 		g.code.mov(_R10, _RAX)
@@ -384,7 +385,7 @@ func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 	}
 	for _, field := range fields {
 		if _, static := jitFieldStaticOffset(field.path); field.omitEmpty || !static || field.typ.Kind() == reflect.Pointer {
-			return g.emitStructDynamic(fields)
+			return g.emitStructDynamic(fields, offset)
 		}
 	}
 	for index, field := range fields {
@@ -411,7 +412,7 @@ func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 	return nil
 }
 
-func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField) error {
+func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField, offset int64) error {
 	if err := g.emitRaw([]byte("{")); err != nil {
 		return err
 	}
@@ -450,7 +451,7 @@ func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField) error {
 			customType: customMetadataIndex(g.compiler, customKind, customType),
 		})
 		g.code.mov(_R10, _RAX)
-		g.code.lea(_R12, 0, _RBX)
+		g.code.lea(_R12, offset, _RBX)
 		g.code.movConst(int64(metaIndex), _RCX)
 		g.emitHelper(jitHelperResolvedField)
 	}

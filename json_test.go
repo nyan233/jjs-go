@@ -244,8 +244,12 @@ func TestUnmarshalJIT(t *testing.T) {
 	if err := Unmarshal(data, &output); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(output, input) {
-		t.Fatalf("round trip mismatch\ngot:  %#v\nwant: %#v", output, input)
+	standard := jitFixture{Any: jitChild{}}
+	if err := json.Unmarshal(data, &standard); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(output, standard) {
+		t.Fatalf("round trip mismatch\ngot:  %#v\nwant: %#v", output, standard)
 	}
 }
 
@@ -362,14 +366,18 @@ func TestJITInterfaceDispatch(t *testing.T) {
 	}
 
 	output := jitInterfaceFixture{
-		Empty:   jitNamed{},
-		NonZero: jitNamed{},
+		Empty:   &jitNamed{},
+		NonZero: &jitNamed{},
 	}
 	if err := Unmarshal(data, &output); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(output, input) {
-		t.Fatalf("interface dispatch mismatch\ngot:  %#v\nwant: %#v", output, input)
+	standard := jitInterfaceFixture{Empty: &jitNamed{}, NonZero: &jitNamed{}}
+	if err := json.Unmarshal(data, &standard); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(output, standard) {
+		t.Fatalf("interface dispatch mismatch\ngot:  %#v\nwant: %#v", output, standard)
 	}
 }
 

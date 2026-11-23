@@ -12,18 +12,18 @@ import (
 var jitFunctionID atomic.Uint64
 var jitTypeRegistry sync.Map
 
-func loadJITFunction(code []byte, prefix string) jitloader.Function {
+func loadJITFunction(code []byte, prefix string, pcsp jitloader.Pcdata) jitloader.Function {
 	id := jitFunctionID.Add(1)
 	instance := jitLoader
 	instance.Name = fmt.Sprintf("jjs.jit.%d.", id)
 	function := instance.LoadOne(
 		code,
 		fmt.Sprintf("%s_%d", prefix, id),
-		64,
-		16,
-		[]bool{true, false},
+		jitFrameSize,
+		0, // arguments/results are in registers; incoming spill slots are uninitialized
+		nil,
 		jitLocalPointers(),
-		jitloader.Pcdata{{PC: uint32(len(code)), Val: 64}},
+		pcsp,
 	)
 	entry := **(**uintptr)(unsafe.Pointer(&function))
 	flushJITCode(entry, len(code))

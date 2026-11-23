@@ -3,9 +3,17 @@
 package compiler
 
 import (
+	"github.com/nyan233/jjs-go/internal/jitloader"
 	golangasm "github.com/twitchyliquid64/golang-asm"
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/x86"
+)
+
+const (
+	jitFrameSize = 64
+	// Six helper argument spill slots occupy SP+0 through SP+40.
+	jitFrameContext = 48
+	jitFramePointer = 56
 )
 
 func (c *jitCodeBuilder) mov(from, to obj.Addr) {
@@ -72,28 +80,31 @@ func (c *jitCodeBuilder) store8(from, to obj.Addr) {
 func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
 	c.dataOffset = dataOffset
 	c.subConst(frameSize, _RSP)
-	c.mov(_RAX, mem(_RSP, 0))
+	c.mov(_RBP, mem(_RSP, jitFramePointer))
+	c.lea(_RSP, jitFramePointer, _RBP)
+	c.mov(_RAX, mem(_RSP, jitFrameContext))
 	c.mov(_RAX, _R10)
 	c.loadMem(_R10, dataOffset, _R12)
 }
 
 func (c *jitCodeBuilder) finishFunction(frameSize int64) {
+	c.loadMem(_RSP, jitFramePointer, _RBP)
 	c.addConst(frameSize, _RSP)
 	c.xor(_RAX, _RAX)
 	c.ret()
 }
 
 func jitLocalPointers() []bool {
-	return []bool{true, false, false, false, false, false, false, false}
+	return []bool{true}
 }
 
 func (c *jitCodeBuilder) restoreJITRegs() {
-	c.loadMem(_RSP, 0, _R10)
+	c.loadMem(_RSP, jitFrameContext, _R10)
 	c.loadMem(_R10, c.dataOffset, _R12)
 }
 
 func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
-	c.loadMem(_RSP, 0, to)
+	c.loadMem(_RSP, jitFrameContext, to)
 }
 
 func (c *jitCodeBuilder) call(reg obj.Addr) {
@@ -117,6 +128,20 @@ func (c *jitCodeBuilder) assemble() ([]byte, error) {
 		builder.AddInstruction(instruction)
 	}
 	code := builder.Assemble()
+	var stackDelta int32
+	for index, instruction := range instructions {
+		if instruction.To == _RSP && (instruction.As == x86.ASUBQ || instruction.As == x86.AADDQ) {
+			c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(instructions[index+1].Pc), Val: stackDelta})
+			if instruction.As == x86.ASUBQ {
+				stackDelta += int32(instruction.From.Offset)
+			} else {
+				stackDelta -= int32(instruction.From.Offset)
+			}
+		}
+	}
+	if len(c.pcsp) != 0 {
+		c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(len(code)), Val: stackDelta})
+	}
 	stats.CodeBytes = len(code)
 	c.stats = stats
 	return code, nil
@@ -134,6 +159,7 @@ var (
 	_RDI = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_DI}
 	_RSI = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SI}
 	_RSP = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_SP}
+	_RBP = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_BP}
 	_X0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_X0}
 	_Y0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_Y0}
 )

@@ -1,6 +1,9 @@
 package compiler
 
-import "github.com/twitchyliquid64/golang-asm/obj"
+import (
+	"github.com/nyan233/jjs-go/internal/jitloader"
+	"github.com/twitchyliquid64/golang-asm/obj"
+)
 
 type jitCodegenStats struct {
 	InstructionsBefore  int
@@ -21,6 +24,7 @@ type jitCodeBuilder struct {
 	stats        jitCodegenStats
 	codeWords    []uint32
 	dataOffset   int64
+	pcsp         jitloader.Pcdata
 }
 
 func newJITCodeBuilder(name string) *jitCodeBuilder {

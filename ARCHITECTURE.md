@@ -18,7 +18,7 @@ layout, and machine-code emission.
 
 - Targets `darwin/arm64`, including Apple M-series CPUs.
 - Emits ARM64 instructions directly instead of reusing the x86 object model.
-- Uses register arguments from the Go internal ABI and a 64-byte ARM64 frame.
+- Uses register arguments from the Go internal ABI and an 80-byte ARM64 frame.
 - Saves LR and FP, spills the encode context into a GC-visible frame slot, and
   calls the same architecture-neutral encoder intrinsics used by amd64.
 - Encodes MOVZ/MOVK, MOV, LDR/STR, ADD/SUB, EOR, BLR, and RET directly.
@@ -28,6 +28,14 @@ layout, and machine-code emission.
 - The direct decoder remains the primary decoder backend. The shared legacy
   decoder code generator can target the arm64 builder when a type cannot use a
   direct decode plan.
+
+Both backends reserve helper argument spill slots separately from the saved
+context. amd64 keeps the context at SP+48 and the saved BP at SP+56. ARM64
+reserves SP+8 through SP+48 for up to six helper arguments, keeps the context
+at SP+64, and follows Go's FP convention at SP-8. Local GC maps cover the
+context slot relative to the runtime's `varp`; PC-to-SP tables describe the
+prologue and epilogue as well as the body. Incoming register spill slots are
+not marked as initialized stack arguments.
 
 ## Runtime loader
 

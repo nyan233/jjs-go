@@ -11,7 +11,7 @@ import (
 
 func TestARM64JITAssembly(t *testing.T) {
 	code := newJITCodeBuilder("arm64_test")
-	code.functionPrologue(64, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
+	code.functionPrologue(jitFrameSize, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
 	code.loadJITContext(_R11)
 	code.movConst(7, _R11)
 	code.store8(_R11, mem(_RSP, 32))
@@ -20,7 +20,7 @@ func TestARM64JITAssembly(t *testing.T) {
 	code.vectorMove16(mem(_RSP, 0), mem(_RSP, 32))
 	code.call(_R11)
 	code.restoreJITRegs()
-	code.finishFunction(64)
+	code.finishFunction(jitFrameSize)
 
 	text, err := code.assemble()
 	if err != nil {
@@ -30,8 +30,8 @@ func TestARM64JITAssembly(t *testing.T) {
 		t.Fatalf("invalid ARM64 text size %d", len(text))
 	}
 	for _, instruction := range [][]byte{
-		{0xfe, 0x0f, 0x1c, 0xf8}, // STR X30, [SP, #-64]!
-		{0xe5, 0x0b, 0x40, 0xf9}, // LDR X5, [SP, #16]
+		{0xfe, 0x0f, 0x1b, 0xf8}, // STR X30, [SP, #-80]!
+		{0xe5, 0x23, 0x40, 0xf9}, // LDR X5, [SP, #64]
 		{0xe5, 0x00, 0x80, 0xd2}, // MOVZ X5, #7
 		{0xe5, 0x03, 0x02, 0x39}, // STRB W5, [SP, #32]
 		{0xe5, 0x83, 0x02, 0xb9}, // STR W5, [SP, #40]
@@ -93,13 +93,13 @@ func TestARM64EncoderAssembly(t *testing.T) {
 
 func TestARM64StackAdjust(t *testing.T) {
 	code := newJITCodeBuilder("arm64_stack")
-	code.functionPrologue(64, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
-	code.finishFunction(64)
+	code.functionPrologue(jitFrameSize, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
+	code.finishFunction(jitFrameSize)
 	text, err := code.assemble()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(text) < 12 || !bytes.Equal(text[:4], []byte{0xfe, 0x0f, 0x1c, 0xf8}) {
+	if len(text) < 12 || !bytes.Equal(text[:4], []byte{0xfe, 0x0f, 0x1b, 0xf8}) {
 		t.Fatalf("ARM64 frame prologue not assembled: %x", text)
 	}
 }

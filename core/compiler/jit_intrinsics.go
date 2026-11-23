@@ -31,9 +31,14 @@ type jitEncodeProgram struct {
 	helpers     [13]uintptr
 	static      []byte
 	functions   []func(*jitEncodeContext) uintptr
-	mapTypes    []uintptr
+	mapTypes    []jitMapType
 	fields      []jitEncodeFieldMeta
 	customTypes []jitCustomTypeInfo
+}
+
+type jitMapType struct {
+	typePtr uintptr
+	key     reflect.Type
 }
 
 type jitEncodeFieldMeta struct {
@@ -366,7 +371,7 @@ type jitMapIterator struct {
 }
 
 //go:noinline
-func jitEncodeMap(ctx *jitEncodeContext, mapFieldPtr unsafe.Pointer, keyIndex, valueIndex, typeIndex int) {
+func jitEncodeMap(ctx *jitEncodeContext, mapFieldPtr unsafe.Pointer, valueIndex, typeIndex int) {
 	if ctx == nil || ctx.program == nil || typeIndex < 0 || typeIndex >= len(ctx.program.mapTypes) {
 		if ctx != nil {
 			ctx.setError(fmt.Errorf("json: invalid map type index %d (types=%d)", typeIndex, len(ctx.program.mapTypes)))
@@ -379,7 +384,8 @@ func jitEncodeMap(ctx *jitEncodeContext, mapFieldPtr unsafe.Pointer, keyIndex, v
 		return
 	}
 	var iterator jitMapIterator
-	runtimeMapIterInit(unsafe.Pointer(ctx.program.mapTypes[typeIndex]), mapPtr, unsafe.Pointer(&iterator))
+	mapType := ctx.program.mapTypes[typeIndex]
+	runtimeMapIterInit(unsafe.Pointer(mapType.typePtr), mapPtr, unsafe.Pointer(&iterator))
 	ctx.dst = append(ctx.dst, '{')
 	written := 0
 	for iterator.key != nil {
@@ -387,11 +393,16 @@ func jitEncodeMap(ctx *jitEncodeContext, mapFieldPtr unsafe.Pointer, keyIndex, v
 			ctx.dst = append(ctx.dst, ',')
 		}
 		previous := ctx.data
-		ctx.data = iterator.key
-		ctx.program.functions[keyIndex](ctx)
-		if ctx.err != nil {
-			ctx.data = previous
-			return
+		if mapType.key.Kind() == reflect.String {
+			ctx.dst = appendQuoted(ctx.dst, *(*string)(iterator.key))
+		} else {
+			ctx.dst = append(ctx.dst, '"')
+			signed := 0
+			if mapType.key.Kind() >= reflect.Int && mapType.key.Kind() <= reflect.Int64 {
+				signed = 1
+			}
+			jitAppendIntPtr(ctx, iterator.key, mapType.key.Bits()/8, signed)
+			ctx.dst = append(ctx.dst, '"')
 		}
 		ctx.dst = append(ctx.dst, ':')
 		ctx.data = iterator.elem

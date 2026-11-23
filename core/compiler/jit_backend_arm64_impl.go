@@ -5,14 +5,18 @@ package compiler
 import (
 	"encoding/binary"
 
+	"github.com/nyan233/jjs-go/internal/jitloader"
 	"github.com/twitchyliquid64/golang-asm/obj"
 	"github.com/twitchyliquid64/golang-asm/obj/arm64"
 )
 
 const (
+	// Go helpers can spill six register arguments into SP+8 through SP+48.
+	// The caller's saved FP occupies SP+72. Keep our context between them.
+	jitFrameSize    = 80
 	jitFrameLink    = 0
-	jitFramePointer = 8
-	jitFrameContext = 16
+	jitFramePointer = -8
+	jitFrameContext = 64
 
 	arm64LinkRegister  = 30
 	arm64FrameRegister = 29
@@ -116,11 +120,12 @@ func (c *jitCodeBuilder) store8(from, to obj.Addr) {
 
 func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
 	c.dataOffset = dataOffset
-	if frameSize != 64 {
-		panic("arm64 JIT currently requires a 64-byte frame")
+	if frameSize != jitFrameSize {
+		panic("arm64 JIT: invalid frame size")
 	}
-	// STR X30, [SP, #-64]! allocates the frame and preserves the link register.
-	c.word(0xf81c0ffe)
+	// STR X30, [SP, #-80]! allocates the frame and preserves the link register.
+	c.word(0xf81b0ffe)
+	c.pcsp = jitloader.Pcdata{{PC: uint32(len(c.codeWords) * 4), Val: 0}}
 	c.storeMemory(_R29, mem(_RSP, jitFramePointer), 64)
 	c.storeMemory(_RAX, mem(_RSP, jitFrameContext), 64)
 	c.addImmediate(arm64StackPointer, jitFramePointer, arm64FrameRegister)
@@ -133,11 +138,13 @@ func (c *jitCodeBuilder) finishFunction(frameSize int64) {
 	c.loadMemory(mem(_RSP, jitFramePointer), _R29, false)
 	c.loadMemory(mem(_RSP, jitFrameLink), _R30, false)
 	c.addImmediate(arm64StackPointer, frameSize, arm64StackPointer)
+	c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(len(c.codeWords) * 4), Val: int32(frameSize)})
 	c.ret()
 }
 
 func jitLocalPointers() []bool {
-	return []bool{false, false, true, false, false, false, false, false}
+	// Local maps end at frame.varp = entry SP - 8, so this bit covers SP+64.
+	return []bool{true}
 }
 
 func (c *jitCodeBuilder) restoreJITRegs() {
@@ -168,6 +175,9 @@ func (c *jitCodeBuilder) assemble() ([]byte, error) {
 	}
 	if padding := (16 - len(code)%16) % 16; padding != 0 {
 		code = append(code, make([]byte, padding)...)
+	}
+	if len(c.pcsp) != 0 {
+		c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(len(code)), Val: 0})
 	}
 	c.stats = jitCodegenStats{
 		InstructionsBefore: len(c.codeWords),

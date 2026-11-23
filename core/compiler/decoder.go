@@ -153,7 +153,7 @@ func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 			return nil, err
 		}
 		stats = stats.add(unit.code.stats)
-		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_decoder_%d", index))
+		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_decoder_%d", index), unit.code.pcsp)
 		program.functions[index] = *(*func(*jitDecodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
 	function := program.functions[0]
@@ -225,12 +225,12 @@ type jitDecoderGenerator struct {
 }
 
 func (g *jitDecoderGenerator) emitPrologue() error {
-	g.code.functionPrologue(64, int64(unsafe.Offsetof(jitDecodeContext{}.data)))
+	g.code.functionPrologue(jitFrameSize, int64(unsafe.Offsetof(jitDecodeContext{}.data)))
 	return nil
 }
 
 func (g *jitDecoderGenerator) emitReturn() {
-	g.code.finishFunction(64)
+	g.code.finishFunction(jitFrameSize)
 }
 
 type jitPathSegment struct {
