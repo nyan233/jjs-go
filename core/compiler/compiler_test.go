@@ -85,33 +85,39 @@ func TestEncodeJITPointer(t *testing.T) {
 }
 
 func TestMapIteratorLayout(t *testing.T) {
-	if size := unsafe.Sizeof(jitMapIterator{}); size != 12*unsafe.Sizeof(uintptr(0)) {
-		t.Fatalf("iterator size = %d", size)
+	if !jitMapLayout.valid {
+		t.Fatal("unsupported reflect.MapIter pointer fields")
 	}
-	if offset := unsafe.Offsetof(jitMapIterator{}.key); offset != 0 {
-		t.Fatalf("key offset = %d", offset)
-	}
-	if offset := unsafe.Offsetof(jitMapIterator{}.elem); offset != unsafe.Sizeof(uintptr(0)) {
-		t.Fatalf("elem offset = %d", offset)
-	}
-	if offset := unsafe.Offsetof(jitMapIterator{}.bucket); offset != 10*unsafe.Sizeof(uintptr(0)) {
-		t.Fatalf("bucket offset = %d", offset)
+	if jitMapLayout.elem != jitMapLayout.key+int64(unsafe.Sizeof(unsafe.Pointer(nil))) {
+		t.Fatalf("unexpected iterator layout: %+v", jitMapLayout)
 	}
 }
 
 func TestMapIteratorRuntime(t *testing.T) {
 	value := map[string]int{"answer": 42}
-	var iterator jitMapIterator
-	runtimeMapIterInit(
-		unsafe.Pointer(typePointer(reflect.TypeOf(value))),
-		*(*unsafe.Pointer)(unsafe.Pointer(&value)),
-		unsafe.Pointer(&iterator),
-	)
-	if iterator.key == nil || iterator.elem == nil {
+	frame := new(jitMapFrame)
+	frame.iterator.Reset(reflect.ValueOf(value))
+	if !frame.iterator.Next() {
+		t.Fatal("missing map entry")
+	}
+	key := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.key))
+	elem := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.elem))
+	if key == nil || elem == nil {
 		t.Fatal("runtime iterator returned nil key or elem")
 	}
-	if got := *(*int)(iterator.elem); got != 42 {
-		t.Fatalf("iterator elem = %d, want 42", got)
+	if got := *(*string)(key); got != "answer" {
+		t.Fatalf("key = %q", got)
+	}
+	if got := *(*int)(elem); got != 42 {
+		t.Fatalf("element = %d", got)
+	}
+	if frame.iterator.Next() {
+		t.Fatal("unexpected additional entry")
+	}
+	frame.iterator.Reset(reflect.Value{})
+	if *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.key)) != nil ||
+		*(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.elem)) != nil {
+		t.Fatal("Reset retained key/element")
 	}
 }
 

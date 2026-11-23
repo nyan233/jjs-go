@@ -84,7 +84,7 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 
 func (program *jitCompiledEncoder) encode(dst []byte, data unsafe.Pointer) ([]byte, error) {
 	dst = dst[:0]
-	if data == nil {
+	if data == nil && !program.nilMapMarshaler {
 		return append(dst, "null"...), nil
 	}
 	ctx := jitEncodeContextPool.Get().(*jitEncodeContext)
@@ -98,13 +98,14 @@ func (program *jitCompiledEncoder) encode(dst []byte, data unsafe.Pointer) ([]by
 		// as well so an exact size hint does not force a final growth.
 		dst = make([]byte, 0, capacity+7)
 	}
-	*ctx = jitEncodeContext{dst: dst, data: data, program: program.program}
-	if program.rootKind == reflect.Map {
+	*ctx = jitEncodeContext{dst: dst, data: data, program: program.program, mapFrames: ctx.mapFrames}
+	if program.rootKind == reflect.Map && !program.mapIndirect {
 		ctx.mapValue = data
 		ctx.data = unsafe.Pointer(&ctx.mapValue)
 	}
 	defer func() {
-		*ctx = jitEncodeContext{}
+		ctx.releaseMaps()
+		*ctx = jitEncodeContext{mapFrames: ctx.mapFrames}
 		jitEncodeContextPool.Put(ctx)
 	}()
 	program.function(ctx)
@@ -124,6 +125,8 @@ type jitCompiledEncoder struct {
 	function        func(*jitEncodeContext) uintptr
 	initialCapacity int
 	rootKind        reflect.Kind
+	mapIndirect     bool
+	nilMapMarshaler bool
 	directInterface bool
 	capacityHint    atomic.Uint64 // bounded last output size; unchanged sizes avoid atomic writes
 	stats           CodegenStats
@@ -178,6 +181,8 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 		function:        function,
 		initialCapacity: estimateInitialCapacity(rootType, len(compiler.static)),
 		rootKind:        rootType.Kind(),
+		mapIndirect:     typ.Kind() == reflect.Pointer && rootType.Kind() == reflect.Map,
+		nilMapMarshaler: typ.Kind() == reflect.Map && typ.Implements(jitMarshalerType),
 		directInterface: typ.Kind() != reflect.Pointer && typ.Kind() != reflect.Map && IsDirectInterfaceType(typ),
 		stats:           stats,
 	}, nil
@@ -187,7 +192,7 @@ type jitEncoderCompiler struct {
 	static      []byte
 	units       []*jitEncoderUnit
 	unitByType  map[jitEncoderUnitKey]int
-	mapTypes    []jitMapType
+	mapTypes    []reflect.Type
 	fields      []jitEncodeFieldMeta
 	customTypes []jitCustomTypeInfo
 }
@@ -274,7 +279,7 @@ func (c *jitEncoderCompiler) unitIndex(typ reflect.Type, addressable bool) (int,
 }
 
 func (c *jitEncoderCompiler) mapTypeIndex(typ reflect.Type) int {
-	c.mapTypes = append(c.mapTypes, jitMapType{typePtr: typePointer(typ), key: typ.Key()})
+	c.mapTypes = append(c.mapTypes, typ)
 	return len(c.mapTypes) - 1
 }
 
@@ -330,10 +335,7 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 	case reflect.Float32, reflect.Float64:
 		g.emitFloat(offset, typ.Bits()/8)
 	case reflect.String:
-		g.code.loadMem(_R12, offset, _RBX)
-		g.code.loadMem(_R12, offset+8, _RCX)
-		g.code.mov(_R10, _RAX)
-		g.emitHelper(jitHelperString)
+		g.emitString(offset)
 	case reflect.Pointer:
 		if g.canInline(typ.Elem()) {
 			return g.emitPointer(typ.Elem(), offset)
@@ -385,22 +387,7 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		g.code.movConst(int64(typ.Elem().Size()), _RDI)
 		g.emitHelper(jitHelperSlice)
 	case reflect.Map:
-		switch typ.Key().Kind() {
-		case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		default:
-			return fmt.Errorf("json: JIT encoder does not support map key type %s", typ.Key())
-		}
-		valueUnit, err := g.compiler.unitIndex(typ.Elem(), false)
-		if err != nil {
-			return err
-		}
-		typeIndex := g.compiler.mapTypeIndex(typ)
-		g.code.mov(_R10, _RAX)
-		g.code.lea(_R12, offset, _RBX)
-		g.code.movConst(int64(valueUnit), _RCX)
-		g.code.movConst(int64(typeIndex), _RDI)
-		g.emitHelper(jitHelperMap)
+		return g.emitMap(typ, offset)
 	case reflect.Interface:
 		g.code.mov(_R10, _RAX)
 		g.code.lea(_R12, offset, _RBX)

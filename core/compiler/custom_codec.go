@@ -19,8 +19,9 @@ const (
 )
 
 type jitCustomTypeInfo struct {
-	typePtr uintptr
-	itab    uintptr
+	typePtr     uintptr
+	itab        uintptr
+	directValue bool
 }
 
 var (
@@ -84,7 +85,7 @@ func (c *jitEncoderCompiler) customTypeIndex(typ reflect.Type) int {
 }
 
 func makeJITMarshalerTypeInfo(typ reflect.Type) jitCustomTypeInfo {
-	info := jitCustomTypeInfo{typePtr: typePointer(typ)}
+	info := jitCustomTypeInfo{typePtr: typePointer(typ), directValue: IsDirectInterfaceType(typ)}
 	if typ.Kind() == reflect.Interface {
 		return info
 	}
@@ -163,6 +164,11 @@ func jitEncodeCustomMarshaler(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, ca
 			return
 		}
 	} else {
+		if jitCustomCallKind(callKind) == jitCustomValue && info.directValue {
+			// Named maps and single-pointer aggregates occupy the interface
+			// data word directly, rather than pointing at their field/header.
+			data = *(*unsafe.Pointer)(fieldPtr)
+		}
 		if tab == nil {
 			ctx.setError(errors.New("json: missing custom marshaler itab"))
 			return

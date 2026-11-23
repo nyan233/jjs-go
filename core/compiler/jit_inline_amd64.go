@@ -80,6 +80,13 @@ func (c *jitCodeBuilder) loadFloat(base obj.Addr, offset int64, width int) {
 }
 func (c *jitCodeBuilder) floatBitsArgument(bits int64) { c.movConst(bits, _R8) }
 
+func (g *jitEncoderGenerator) emitString(offset int64) {
+	g.code.loadMem(_R12, offset, _RBX)
+	g.code.loadMem(_R12, offset+8, _RCX)
+	g.code.mov(_R10, _RAX)
+	g.emitHelper(jitHelperString)
+}
+
 func (g *jitEncoderGenerator) emitByteSlice(offset int64) {
 	g.code.mov(_R10, _RAX)
 	g.code.lea(_R12, offset, _RBX)

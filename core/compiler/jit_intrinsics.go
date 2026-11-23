@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"reflect"
 	"runtime"
@@ -18,7 +17,6 @@ const (
 	jitHelperNull
 	jitHelperPointer
 	jitHelperSlice
-	jitHelperMap
 	jitHelperInterface
 	jitHelperReserve
 	jitHelperByteSlice
@@ -27,6 +25,12 @@ const (
 	jitHelperFieldPrefix
 	jitHelperFloatFormat
 	jitHelperYield
+	jitHelperMapStart
+	jitHelperMapNext
+	jitHelperMapEnd
+	jitHelperValue
+	jitHelperQuote
+	jitHelperQuoteTail
 	jitHelperCount
 )
 
@@ -34,16 +38,11 @@ type jitEncodeProgram struct {
 	helpers     [jitHelperCount]uintptr
 	static      []byte
 	functions   []func(*jitEncodeContext) uintptr
-	mapTypes    []jitMapType
+	mapTypes    []reflect.Type
 	fields      []jitEncodeFieldMeta
 	customTypes []jitCustomTypeInfo
 	digits      string
 	base64      string
-}
-
-type jitMapType struct {
-	typePtr uintptr
-	key     reflect.Type
 }
 
 type jitEncodeFieldMeta struct {
@@ -60,11 +59,13 @@ type jitEncodeFieldMeta struct {
 }
 
 type jitEncodeContext struct {
-	dst      []byte
-	data     unsafe.Pointer
-	program  *jitEncodeProgram
-	err      error
-	mapValue unsafe.Pointer
+	dst       []byte
+	data      unsafe.Pointer
+	program   *jitEncodeProgram
+	err       error
+	mapValue  unsafe.Pointer
+	mapFrames *jitMapFrame
+	mapActive *jitMapFrame
 }
 
 func newJITEncodeProgram(static []byte) *jitEncodeProgram {
@@ -76,7 +77,6 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperNull] = reflect.ValueOf(jitAppendNull).Pointer()
 	program.helpers[jitHelperPointer] = reflect.ValueOf(jitEncodePointer).Pointer()
 	program.helpers[jitHelperSlice] = reflect.ValueOf(jitEncodeSlice).Pointer()
-	program.helpers[jitHelperMap] = reflect.ValueOf(jitEncodeMap).Pointer()
 	program.helpers[jitHelperInterface] = reflect.ValueOf(jitEncodeInterface).Pointer()
 	program.helpers[jitHelperReserve] = reflect.ValueOf(jitReserveRaw).Pointer()
 	program.helpers[jitHelperByteSlice] = reflect.ValueOf(jitEncodeByteSlice).Pointer()
@@ -85,6 +85,11 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperFieldPrefix] = reflect.ValueOf(jitWriteFieldPrefix).Pointer()
 	program.helpers[jitHelperFloatFormat] = reflect.ValueOf(strconv.AppendFloat).Pointer()
 	program.helpers[jitHelperYield] = reflect.ValueOf(runtime.Gosched).Pointer()
+	program.helpers[jitHelperMapStart] = reflect.ValueOf(jitMapStart).Pointer()
+	program.helpers[jitHelperMapNext] = reflect.ValueOf((*reflect.MapIter).Next).Pointer()
+	program.helpers[jitHelperMapEnd] = reflect.ValueOf(jitMapEnd).Pointer()
+	program.helpers[jitHelperValue] = reflect.ValueOf(jitEncodeValue).Pointer()
+	initJITQuoteHelpers(program)
 	return program
 }
 
@@ -376,78 +381,6 @@ func jitEncodeByteSlice(ctx *jitEncodeContext, headerPtr unsafe.Pointer) {
 const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 const base64ChunkBytes = 49152 // Multiple of 48; each chunk writes 64 KiB.
 
-type jitMapIterator struct {
-	key         unsafe.Pointer
-	elem        unsafe.Pointer
-	MapType     unsafe.Pointer
-	hmap        unsafe.Pointer
-	buckets     unsafe.Pointer
-	bucketPtr   unsafe.Pointer
-	overflow    unsafe.Pointer
-	oldOverflow unsafe.Pointer
-	startBucket uintptr
-	offset      uint8
-	wrapped     bool
-	B           uint8
-	i           uint8
-	_           uint8
-	bucket      uintptr
-	checkBucket uintptr
-}
-
-//go:noinline
-func jitEncodeMap(ctx *jitEncodeContext, mapFieldPtr unsafe.Pointer, valueIndex, typeIndex int) {
-	if ctx == nil || ctx.program == nil || typeIndex < 0 || typeIndex >= len(ctx.program.mapTypes) {
-		if ctx != nil {
-			ctx.setError(fmt.Errorf("json: invalid map type index %d (types=%d)", typeIndex, len(ctx.program.mapTypes)))
-		}
-		return
-	}
-	mapPtr := *(*unsafe.Pointer)(mapFieldPtr)
-	if mapPtr == nil {
-		jitAppendNull(ctx)
-		return
-	}
-	var iterator jitMapIterator
-	mapType := ctx.program.mapTypes[typeIndex]
-	runtimeMapIterInit(unsafe.Pointer(mapType.typePtr), mapPtr, unsafe.Pointer(&iterator))
-	ctx.dst = append(ctx.dst, '{')
-	written := 0
-	for iterator.key != nil {
-		if written > 0 {
-			ctx.dst = append(ctx.dst, ',')
-		}
-		previous := ctx.data
-		if mapType.key.Kind() == reflect.String {
-			ctx.dst = appendQuoted(ctx.dst, *(*string)(iterator.key))
-		} else {
-			ctx.dst = append(ctx.dst, '"')
-			signed := 0
-			if mapType.key.Kind() >= reflect.Int && mapType.key.Kind() <= reflect.Int64 {
-				signed = 1
-			}
-			jitAppendIntPtr(ctx, iterator.key, mapType.key.Bits()/8, signed)
-			ctx.dst = append(ctx.dst, '"')
-		}
-		ctx.dst = append(ctx.dst, ':')
-		ctx.data = iterator.elem
-		ctx.program.functions[valueIndex](ctx)
-		ctx.data = previous
-		if ctx.err != nil {
-			return
-		}
-		written++
-		runtimeMapIterNext(unsafe.Pointer(&iterator))
-	}
-	ctx.dst = append(ctx.dst, '}')
-}
-
-//go:linkname runtimeMapIterInit runtime.mapiterinit
-func runtimeMapIterInit(mapType, hmap, iterator unsafe.Pointer)
-
-//go:linkname runtimeMapIterNext runtime.mapiternext
-func runtimeMapIterNext(iterator unsafe.Pointer)
-
 var (
 	jitStringType  = unsafe.Pointer(typePointer(reflect.TypeOf("")))
 	jitIntType     = unsafe.Pointer(typePointer(reflect.TypeOf(int(0))))
@@ -459,13 +392,20 @@ var (
 func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonEmpty int) {
 	typeWord := *(*unsafe.Pointer)(interfacePtr)
 	data := *(*unsafe.Pointer)(unsafe.Add(interfacePtr, 8))
-	if typeWord == nil || data == nil {
+	if typeWord == nil {
 		jitAppendNull(ctx)
 		return
 	}
 	typePtr := typeWord
 	if nonEmpty != 0 {
 		typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
+	}
+	// A nil named map can still have a value-receiver MarshalJSON method.
+	// Nil pointers keep their normal null behavior; map dispatch must inspect
+	// the actual type before deciding whether to invoke its marshaler.
+	if data == nil && reflect.Kind((*runtimeTypeHeader)(typePtr).Kind&31) != reflect.Map {
+		jitAppendNull(ctx)
+		return
 	}
 	// Exact built-in types cannot have custom methods. Named types still use
 	// the compiled path so json.Marshaler semantics remain unchanged.
@@ -501,7 +441,7 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 	// across the call instead of borrowing another pooled context per value.
 	previousData, previousProgram, previousMap := ctx.data, ctx.program, ctx.mapValue
 	ctx.data, ctx.program = data, child.program
-	if child.rootKind == reflect.Map || child.directInterface {
+	if (child.rootKind == reflect.Map && !child.mapIndirect) || child.directInterface {
 		ctx.mapValue = data
 		ctx.data = unsafe.Pointer(&ctx.mapValue)
 	}

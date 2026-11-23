@@ -21,5 +21,5 @@ func IsDirectInterfaceType(typ reflect.Type) bool {
 		return false
 	}
 	header := (*runtimeTypeHeader)(runtimeTypePointer(typ))
-	return header.Kind&runtimeDirectIface != 0
+	return runtimeDirectInterface(header)
 }

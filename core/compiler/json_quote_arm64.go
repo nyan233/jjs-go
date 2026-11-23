@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"reflect"
 	"slices"
 	"unsafe"
 )
@@ -21,6 +22,13 @@ func appendQuoted(dst []byte, value string) []byte {
 	}
 	dst = slices.Grow(dst, len(value)+2)
 	dst = append(dst, '"')
+	return appendQuotedTail(dst, value)
+}
+
+// appendQuotedTail completes a string after the opening quote and any prefix
+// already emitted by the JIT. This is the growth/budget slow path; normal
+// strings go straight from generated code to quoteJSONString.
+func appendQuotedTail(dst []byte, value string) []byte {
 	for len(value) != 0 {
 		start := len(dst)
 		output := dst[start : cap(dst)-1] // Reserve the closing quote.
@@ -35,4 +43,14 @@ func appendQuoted(dst []byte, value string) []byte {
 		}
 	}
 	return append(dst, '"')
+}
+
+//go:noinline
+func jitQuoteTail(ctx *jitEncodeContext, ptr unsafe.Pointer, length int) {
+	ctx.dst = appendQuotedTail(ctx.dst, unsafe.String((*byte)(ptr), length))
+}
+
+func initJITQuoteHelpers(program *jitEncodeProgram) {
+	program.helpers[jitHelperQuote] = reflect.ValueOf(quoteJSONString).Pointer()
+	program.helpers[jitHelperQuoteTail] = reflect.ValueOf(jitQuoteTail).Pointer()
 }
