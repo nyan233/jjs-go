@@ -1,0 +1,14 @@
+benchmark/compare/experiments/quote-arm64/scan_copy.c:15:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+   15 |     for (;i<n;i++) {if(special(src[i]))break;dst[i]=src[i];}
+      |     ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:20:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+   20 |     for (;n-i>=16;i+=16) {
+      |     ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:39:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+   39 |     for (;n-i>=16;i+=16) {
+      |     ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+   61 |             for(size_t i=0;i<loops;i++)checksum+=functions[j](dst,src,n);
+      |             ^
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmark/compare/experiments/quote-arm64/scan_copy.c:61:13: remark: loop not vectorized [-Rpass-missed=loop-vectorize]

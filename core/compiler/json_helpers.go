@@ -34,7 +34,7 @@ func isValidJSONTagName(name string) bool {
 	return true
 }
 
-func appendQuoted(dst []byte, value string) []byte {
+func appendQuotedGo(dst []byte, value string) []byte {
 	const hex = "0123456789abcdef"
 	dst = append(dst, '"')
 	start, scanAt := 0, 0
