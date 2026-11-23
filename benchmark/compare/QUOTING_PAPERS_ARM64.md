@@ -171,3 +171,123 @@ benefit for every JSON workload.
 - `go vet ./...` still reports pre-existing JIT/unsafe and duplicate-tag
   diagnostics; it is not a passing check. The untouched baseline emits the
   same diagnostics.
+
+## M1 Pro measurements
+
+Baseline: `2426eeb`; implementation: `fcda8e4`. Apple M1 Pro, macOS 27.0.1,
+Go 1.25.0 darwin/arm64; `GOMAXPROCS=10`, `-test.cpu=10` and
+`SONIC_NO_ASYNC_GC=1`. Baseline binaries use the same added benchmark harness.
+All binaries were built before timing; no builds, tests or profilers ran
+concurrently. Each before/after series has five pairs, alternating run order.
+String/hotpath cases run for 200 ms per sample; document cases for 500 ms.
+These are median elapsed times, not cycle counts or confidence intervals.
+
+Raw samples, including discarded screening variants, are in
+[results-darwin-arm64-quoting-papers.txt](results-darwin-arm64-quoting-papers.txt).
+The standalone C prefix experiment is not included in these API timings.
+The Go quoting wrapper and allocation policy are unchanged. The native routine
+in the measured binary grows from 832 to 1,120 bytes; the added lookup tables
+contain 48 declared bytes. There is no extra runtime compilation stage.
+
+### String quoting with reused output
+
+All cases below remain at zero allocations per operation. The corpus benchmarks
+rotate through 1,024 deterministic strings of about 256 bytes each. UTF8 mixes
+ASCII, accented Latin, Greek, CJK, emoji and curly quotes; Mixed additionally
+contains escapes, HTML, U+2028 and invalid bytes.
+
+| Case | Before ns/op | After ns/op | Time change | Faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| Unicode (768 B) | 643.000 | 166.100 | -74.2% | 5/5 |
+| Emoji (512 B) | 357.700 | 108.300 | -69.7% | 5/5 |
+| Unicode then ASCII | 69.140 | 60.770 | -12.1% | 5/5 |
+| UTF-8 (8 B) | 13.100 | 13.060 | -0.3% | 4/5 |
+| UTF-8 (16 B) | 17.490 | 9.569 | -45.3% | 5/5 |
+| UTF-8 (32 B) | 29.690 | 12.730 | -57.1% | 5/5 |
+| ASCII (8 B) | 7.344 | 7.340 | -0.1% | 4/5 |
+| ASCII (16 B) | 6.727 | 6.658 | -1.0% | 3/5 |
+| ASCII (1 KiB) | 54.400 | 54.590 | +0.3% | 3/5 |
+| Escapes | 420.100 | 419.000 | -0.3% | 2/5 |
+| HTML | 638.100 | 646.500 | +1.3% | 0/5 |
+| Controls | 926.000 | 932.200 | +0.7% | 1/5 |
+| Invalid UTF-8 | 613.500 | 636.100 | +3.7% | 0/5 |
+| Late escape | 57.140 | 57.310 | +0.3% | 2/5 |
+| Rotating UTF8 corpus | 536.300 | 138.100 | -74.2% | 5/5 |
+| Rotating Mixed corpus | 862.400 | 872.200 | +1.1% | 1/5 |
+
+The improvement is concentrated in valid non-ASCII blocks. The 3.7% regression
+on dense invalid bytes is a real retained tradeoff across all five pairs:
+failed vector validation does extra work before scalar replacement. Dense HTML
+is 1.3% slower and the mixed corpus is 1.1% slower; long ASCII is essentially
+unchanged. The validator does not make variable-length escaping universally
+faster.
+
+With allocation included, Unicode moves from 737.3 to 257.5 ns (-65.1%) and
+emoji from 424.7 to 171.0 ns (-59.7%). Both retain one allocation. Other
+allocation-heavy medians are noisier: the invalid-input candidate series has a
+91.9% sample span, so its lower allocation-case median is not evidence that
+invalid-byte processing improved. No samples were removed.
+
+### Complete documents and public string API
+
+| Case | Before ns/op | After ns/op | Time change | Faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| Binding / Small | 651.0 | 646.2 | -0.7% | 3/5 |
+| Binding / Medium | 5,354.0 | 5,376.0 | +0.4% | 2/5 |
+| Binding / Large | 216,365.0 | 188,300.0 | -13.0% | 5/5 |
+| Generic / Small | 1,901.0 | 1,897.0 | -0.2% | 4/5 |
+| Generic / Medium | 19,742.0 | 20,069.0 | +1.7% | 2/5 |
+| Generic / Large | 987,846.0 | 939,374.0 | -4.9% | 5/5 |
+| UnorderedGeneric / Small | 1,868.0 | 1,873.0 | +0.3% | 3/5 |
+| UnorderedGeneric / Medium | 19,716.0 | 19,939.0 | +1.1% | 1/5 |
+| UnorderedGeneric / Large | 983,960.0 | 944,154.0 | -4.0% | 5/5 |
+
+Binding Large improves in all five pairs; the before/after sample spans are
+6.6%/2.7%. Large generic documents improve about 4–5%. Small/Medium changes are
+roughly -0.7% to +1.7%; the UnorderedGeneric Small candidate has a 36.4% span,
+so small percentage differences should not be overinterpreted.
+
+Whole-document allocation counts are unchanged: Binding Small/Medium/Large
+uses 2/2/210 and Generic/UnorderedGeneric uses 11/77/2,529. Minor large-case B/op
+variation comes from amortized runtime/pool behavior.
+
+The public Unicode string encode benchmark moves from 790.7 to 290.4 ns
+(-63.3%). Public ASCII encode is essentially unchanged, while the escape-heavy
+encode case is 2.3% slower. Decode-only controls move between -0.8% and -4.0%
+with no decoding change, illustrating environmental/code-layout noise; this
+work does not claim a decoding improvement.
+
+### Comparison with other libraries
+
+Three 500 ms samples per case, median ns/op, goccy v0.11.0 and Sonic v1.15.5.
+These are a separate run from the paired table, so its jjs-go absolute times
+can differ. Binding uses the repository's existing configurations.
+UnorderedGeneric disables map sorting for all libraries and retains HTML
+escaping and string validation. Default Generic measurements also appear in
+the raw output; differing sorting defaults make them unsuitable for a blanket
+library ranking.
+
+| Case | jjs-go ns/op | goccy ns/op | Sonic ns/op |
+| --- | ---: | ---: | ---: |
+| Binding / Small | 634.8 | 561.1 | 1,594.0 |
+| Binding / Medium | 4,802.0 | 3,998.0 | 16,647.0 |
+| Binding / Large | 173,364.0 | 218,372.0 | 491,263.0 |
+| UnorderedGeneric / Small | 1,867.0 | 1,447.0 | 4,070.0 |
+| UnorderedGeneric / Medium | 19,949.0 | 15,225.0 | 43,043.0 |
+| UnorderedGeneric / Large | 934,820.0 | 856,184.0 | 1,918,091.0 |
+
+Binding Large is about 20.6% faster than goccy in this run. jjs-go still trails
+goccy for Binding Small/Medium and unordered generic documents; this change
+does not establish an across-the-board lead. These ARM64 results do not replace
+the historical amd64 README measurements.
+
+No cache-miss or branch-misprediction rates were measured: hardware-counter
+access is unavailable in this environment. The SIMD gains above are measured
+API time; neither the paper's instructions-per-byte figure nor another CPU's
+throughput is substituted for a local measurement.
+
+### CI
+
+[Implementation CI for fcda8e4](https://github.com/nyan233/jjs-go/actions/runs/45137638278)
+passed all 15 jobs: Windows amd64 and Ubuntu on Go 1.22/1.25, native macOS,
+ARM64 cross-compilation and QEMU, and the Go 1.21–1.27 compiler/loader matrix.
