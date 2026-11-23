@@ -6,6 +6,8 @@ import (
 )
 
 type jitCodegenStats struct {
+	SSAValuesBefore     int
+	SSAValuesAfter      int
 	InstructionsBefore  int
 	InstructionsAfter   int
 	RemovedInstructions int
@@ -18,6 +20,8 @@ type jitCodegenStats struct {
 }
 
 type jitCodeBuilder struct {
+	ssa jitSSA
+
 	name         string
 	instructions []*obj.Prog
 	virtualCount int

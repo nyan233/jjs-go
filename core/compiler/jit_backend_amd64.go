@@ -16,107 +16,84 @@ const (
 	jitFramePointer = 56
 )
 
-func (c *jitCodeBuilder) mov(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineMov(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AMOVQ, From: from, To: to})
 }
 
-func (c *jitCodeBuilder) vectorMove32(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineVectorMove32(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: from, To: _Y0})
 	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: _Y0, To: to})
 }
 
-func (c *jitCodeBuilder) vectorMove16(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineVectorMove16(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: from, To: _X0})
 	c.emit(&obj.Prog{As: x86.AVMOVDQU, From: _X0, To: to})
 }
 
-func (c *jitCodeBuilder) loadImm64(value uint64) {
-	c.emit(&obj.Prog{
-		As:   x86.AWORD,
-		From: obj.Addr{Type: obj.TYPE_CONST, Offset: 0xbb49},
-	})
-	c.emit(&obj.Prog{
-		As:   x86.AQUAD,
-		From: obj.Addr{Type: obj.TYPE_CONST, Offset: int64(value)},
-	})
-}
-
-func (c *jitCodeBuilder) movConst(value int64, to obj.Addr) {
+func (c *jitCodeBuilder) machineMovConst(value int64, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AMOVQ, From: obj.Addr{Type: obj.TYPE_CONST, Offset: value}, To: to})
 }
 
-func (c *jitCodeBuilder) loadMem(base obj.Addr, offset int64, to obj.Addr) {
-	c.mov(mem(base, offset), to)
+func (c *jitCodeBuilder) machineLoadMem(base obj.Addr, offset int64, to obj.Addr) {
+	c.machineMov(mem(base, offset), to)
 }
 
-func (c *jitCodeBuilder) lea(base obj.Addr, offset int64, to obj.Addr) {
+func (c *jitCodeBuilder) machineLea(base obj.Addr, offset int64, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.ALEAQ, From: mem(base, offset), To: to})
 }
 
-func (c *jitCodeBuilder) addConst(value int64, to obj.Addr) {
+func (c *jitCodeBuilder) machineAddConst(value int64, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AADDQ, From: obj.Addr{Type: obj.TYPE_CONST, Offset: value}, To: to})
 }
 
-func (c *jitCodeBuilder) subConst(value int64, from obj.Addr) {
+func (c *jitCodeBuilder) machineSubConst(value int64, from obj.Addr) {
 	c.emit(&obj.Prog{As: x86.ASUBQ, From: obj.Addr{Type: obj.TYPE_CONST, Offset: value}, To: from})
 }
 
-func (c *jitCodeBuilder) xor(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineXor(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AXORQ, From: from, To: to})
 }
 
-func (c *jitCodeBuilder) store32(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineStore32(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AMOVL, From: from, To: to})
 }
 
-func (c *jitCodeBuilder) store16(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineStore16(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AMOVW, From: from, To: to})
 }
 
-func (c *jitCodeBuilder) store8(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineStore8(from, to obj.Addr) {
 	c.emit(&obj.Prog{As: x86.AMOVB, From: from, To: to})
 }
 
-func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
-	c.dataOffset = dataOffset
-	c.subConst(frameSize, _RSP)
-	c.mov(_RBP, mem(_RSP, jitFramePointer))
-	c.lea(_RSP, jitFramePointer, _RBP)
-	c.mov(_RAX, mem(_RSP, jitFrameContext))
-	c.mov(_RAX, _R10)
-	c.loadMem(_R10, dataOffset, _R12)
+func (c *jitCodeBuilder) machineFunctionPrologue(frameSize int64) {
+	c.machineSubConst(frameSize, _RSP)
+	c.machineMov(_RBP, mem(_RSP, jitFramePointer))
+	c.machineLea(_RSP, jitFramePointer, _RBP)
+	c.machineMov(_RAX, mem(_RSP, jitFrameContext))
 }
 
-func (c *jitCodeBuilder) finishFunction(frameSize int64) {
-	c.loadMem(_RSP, jitFramePointer, _RBP)
-	c.addConst(frameSize, _RSP)
-	c.xor(_RAX, _RAX)
-	c.ret()
+func (c *jitCodeBuilder) machineFinishFunction(frameSize int64) {
+	c.machineLoadMem(_RSP, jitFramePointer, _RBP)
+	c.machineAddConst(frameSize, _RSP)
+	c.machineXor(_RAX, _RAX)
+	c.machineRet()
 }
 
 func jitLocalPointers() []bool {
 	return []bool{true}
 }
 
-func (c *jitCodeBuilder) restoreJITRegs() {
-	c.loadMem(_RSP, jitFrameContext, _R10)
-	c.loadMem(_R10, c.dataOffset, _R12)
-}
-
-func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
-	c.loadMem(_RSP, jitFrameContext, to)
-}
-
-func (c *jitCodeBuilder) call(reg obj.Addr) {
+func (c *jitCodeBuilder) machineCall(reg obj.Addr) {
 	c.emit(&obj.Prog{As: obj.ACALL, To: reg})
 }
 
-func (c *jitCodeBuilder) ret() {
+func (c *jitCodeBuilder) machineRet() {
 	c.emit(&obj.Prog{As: obj.ARET})
 }
 
 func (c *jitCodeBuilder) assemble() ([]byte, error) {
-	instructions, stats, err := c.prepareIR()
+	instructions, stats, err := c.prepareMachineCode()
 	if err != nil {
 		return nil, err
 	}
@@ -163,3 +140,7 @@ var (
 	_X0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_X0}
 	_Y0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_Y0}
 )
+
+func (c *jitCodeBuilder) machineInstructionCount() int { return len(c.instructions) }
+
+func jitCopyScratch() int16 { return 0 }

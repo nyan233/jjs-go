@@ -24,7 +24,7 @@ const (
 	arm64ZeroRegister  = 31
 )
 
-func (c *jitCodeBuilder) mov(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineMov(from, to obj.Addr) {
 	switch {
 	case from.Type == obj.TYPE_REG && to.Type == obj.TYPE_REG:
 		c.word(0xaa0003e0 | arm64Register(from)<<16 | arm64Register(to))
@@ -37,11 +37,11 @@ func (c *jitCodeBuilder) mov(from, to obj.Addr) {
 	}
 }
 
-func (c *jitCodeBuilder) vectorMove32(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineVectorMove32(from, to obj.Addr) {
 	c.copyWords(from, to, 32)
 }
 
-func (c *jitCodeBuilder) vectorMove16(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineVectorMove16(from, to obj.Addr) {
 	c.copyWords(from, to, 16)
 }
 
@@ -52,11 +52,7 @@ func (c *jitCodeBuilder) copyWords(from, to obj.Addr, size int) {
 	}
 }
 
-func (c *jitCodeBuilder) loadImm64(value uint64) {
-	c.movConst(int64(value), _R11)
-}
-
-func (c *jitCodeBuilder) movConst(value int64, to obj.Addr) {
+func (c *jitCodeBuilder) machineMovConst(value int64, to obj.Addr) {
 	raw := uint64(value)
 	register := arm64Register(to)
 	first := true
@@ -78,25 +74,15 @@ func (c *jitCodeBuilder) movConst(value int64, to obj.Addr) {
 	}
 }
 
-func (c *jitCodeBuilder) loadMem(base obj.Addr, offset int64, to obj.Addr) {
+func (c *jitCodeBuilder) machineLoadMem(base obj.Addr, offset int64, to obj.Addr) {
 	c.loadMemory(mem(base, offset), to, false)
 }
 
-func (c *jitCodeBuilder) lea(base obj.Addr, offset int64, to obj.Addr) {
+func (c *jitCodeBuilder) machineLea(base obj.Addr, offset int64, to obj.Addr) {
 	c.addImmediate(arm64Register(base), offset, arm64Register(to))
 }
 
-func (c *jitCodeBuilder) addConst(value int64, to obj.Addr) {
-	register := arm64Register(to)
-	c.addImmediate(register, value, register)
-}
-
-func (c *jitCodeBuilder) subConst(value int64, from obj.Addr) {
-	register := arm64Register(from)
-	c.addImmediate(register, -value, register)
-}
-
-func (c *jitCodeBuilder) xor(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineXor(from, to obj.Addr) {
 	source := arm64Register(from)
 	destination := arm64Register(to)
 	if source == destination {
@@ -106,20 +92,19 @@ func (c *jitCodeBuilder) xor(from, to obj.Addr) {
 	c.word(0xca000000 | source<<16 | destination<<5 | destination)
 }
 
-func (c *jitCodeBuilder) store32(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineStore32(from, to obj.Addr) {
 	c.storeMemory(from, to, 32)
 }
 
-func (c *jitCodeBuilder) store16(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineStore16(from, to obj.Addr) {
 	c.storeMemory(from, to, 16)
 }
 
-func (c *jitCodeBuilder) store8(from, to obj.Addr) {
+func (c *jitCodeBuilder) machineStore8(from, to obj.Addr) {
 	c.storeMemory(from, to, 8)
 }
 
-func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
-	c.dataOffset = dataOffset
+func (c *jitCodeBuilder) machineFunctionPrologue(frameSize int64) {
 	if frameSize != jitFrameSize {
 		panic("arm64 JIT: invalid frame size")
 	}
@@ -129,17 +114,15 @@ func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
 	c.storeMemory(_R29, mem(_RSP, jitFramePointer), 64)
 	c.storeMemory(_RAX, mem(_RSP, jitFrameContext), 64)
 	c.addImmediate(arm64StackPointer, jitFramePointer, arm64FrameRegister)
-	c.mov(_RAX, _R10)
-	c.loadMemory(mem(_R10, dataOffset), _R12, false)
 }
 
-func (c *jitCodeBuilder) finishFunction(frameSize int64) {
-	c.mov(_ZR, _RAX)
+func (c *jitCodeBuilder) machineFinishFunction(frameSize int64) {
+	c.machineMov(_ZR, _RAX)
 	c.loadMemory(mem(_RSP, jitFramePointer), _R29, false)
 	c.loadMemory(mem(_RSP, jitFrameLink), _R30, false)
 	c.addImmediate(arm64StackPointer, frameSize, arm64StackPointer)
 	c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(len(c.codeWords) * 4), Val: int32(frameSize)})
-	c.ret()
+	c.machineRet()
 }
 
 func jitLocalPointers() []bool {
@@ -147,20 +130,11 @@ func jitLocalPointers() []bool {
 	return []bool{true}
 }
 
-func (c *jitCodeBuilder) restoreJITRegs() {
-	c.loadMemory(mem(_RSP, jitFrameContext), _R10, false)
-	c.loadMemory(mem(_R10, c.dataOffset), _R12, false)
-}
-
-func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
-	c.loadMemory(mem(_RSP, jitFrameContext), to, false)
-}
-
-func (c *jitCodeBuilder) call(reg obj.Addr) {
+func (c *jitCodeBuilder) machineCall(reg obj.Addr) {
 	c.word(0xd63f0000 | arm64Register(reg)<<5)
 }
 
-func (c *jitCodeBuilder) ret() {
+func (c *jitCodeBuilder) machineRet() {
 	c.word(0xd65f0000 | arm64LinkRegister<<5)
 }
 
@@ -169,6 +143,7 @@ func (c *jitCodeBuilder) newVirtualRegister() obj.Addr {
 }
 
 func (c *jitCodeBuilder) assemble() ([]byte, error) {
+	c.lowerSSA()
 	code := make([]byte, len(c.codeWords)*4)
 	for index, word := range c.codeWords {
 		binary.LittleEndian.PutUint32(code[index*4:], word)
@@ -179,11 +154,7 @@ func (c *jitCodeBuilder) assemble() ([]byte, error) {
 	if len(c.pcsp) != 0 {
 		c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(len(code)), Val: 0})
 	}
-	c.stats = jitCodegenStats{
-		InstructionsBefore: len(c.codeWords),
-		InstructionsAfter:  len(c.codeWords),
-		CodeBytes:          len(code),
-	}
+	c.stats.CodeBytes = len(code)
 	return code, nil
 }
 
@@ -251,7 +222,7 @@ func (c *jitCodeBuilder) addImmediate(register uint32, value int64, destination 
 		c.word(0xd1000000 | uint32(-value)<<10 | register<<5 | destination)
 		return
 	}
-	c.movConst(value, registerAddr(arm64.REG_R16))
+	c.machineMovConst(value, registerAddr(arm64.REG_R16))
 	c.word(0x8b000000 | 16<<16 | register<<5 | destination)
 }
 
@@ -286,3 +257,7 @@ var (
 	_RSP = registerAddr(arm64.REGSP)
 	_ZR  = registerAddr(arm64.REGZERO)
 )
+
+func (c *jitCodeBuilder) machineInstructionCount() int { return len(c.codeWords) }
+
+func jitCopyScratch() int16 { return _R7.Reg }
