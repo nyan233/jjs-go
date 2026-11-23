@@ -1,0 +1,55 @@
+{
+  "baseline": "2813ca6957cf1797a9ef294e2221de9d6f857181",
+  "implementation": "6c7194b6f8a0072a2958b74f988b029eedcef731",
+  "started": "2026-11-23T19:24:37.939726+08:00",
+  "go": "go version go1.25.0 darwin/arm64",
+  "GOMAXPROCS": 10,
+  "SONIC_NO_ASYNC_GC": "1",
+  "rounds": 5,
+  "suites": [
+    [
+      "micro",
+      "core",
+      "^BenchmarkJIT(Inline|Map)$",
+      "300ms"
+    ],
+    [
+      "cold",
+      "core",
+      "^BenchmarkJIT(InlineCompile|MapCompile)$",
+      "50x"
+    ],
+    [
+      "codegen",
+      "core",
+      "^BenchmarkJITCodegen$",
+      "300ms"
+    ],
+    [
+      "compare",
+      "compare",
+      "^BenchmarkEncoder_(Binding|Generic|UnorderedGeneric)$/(Small|Medium|Large)/(jjs-go|goccy|sonic)$",
+      "300ms"
+    ],
+    [
+      "fixture",
+      "compare",
+      "^BenchmarkSSACompileFixture$",
+      "50x"
+    ]
+  ],
+  "finished": "2026-11-23T19:28:42.106673+08:00",
+  "CPU": "Apple M1 Pro",
+  "cores": 10,
+  "memory_gib": 32,
+  "macOS": "27.0.1",
+  "power": "AC",
+  "primary_samples": 700,
+  "disabled_control_samples": 65,
+  "recheck_samples": 40,
+  "recheck_benchtime": "500ms",
+  "profile_benchtime": "2s",
+  "ci_measured_revision": "https://github.com/nyan233/jjs-go/actions/runs/45164877368",
+  "followup_guard_revision": "36454ac33941cf54c94ec8625be51829d8d4785e",
+  "followup_ci": "https://github.com/nyan233/jjs-go/actions/runs/45165970303"
+}

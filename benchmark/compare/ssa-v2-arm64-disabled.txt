@@ -1,0 +1,85 @@
+# codegen
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields4-10         	   30501	     10225 ns/op	   25476 B/op	     204 allocs/op
+BenchmarkJITCodegen/Fields4-10         	   34767	     10174 ns/op	   25476 B/op	     204 allocs/op
+BenchmarkJITCodegen/Fields4-10         	   34888	     10310 ns/op	   25476 B/op	     204 allocs/op
+BenchmarkJITCodegen/Fields4-10         	   34605	     10434 ns/op	   25476 B/op	     204 allocs/op
+BenchmarkJITCodegen/Fields4-10         	   35170	     10311 ns/op	   25476 B/op	     204 allocs/op
+BenchmarkJITCodegen/Fields32-10        	    4849	     75392 ns/op	  205675 B/op	    1285 allocs/op
+BenchmarkJITCodegen/Fields32-10        	    4814	     74695 ns/op	  205675 B/op	    1285 allocs/op
+BenchmarkJITCodegen/Fields32-10        	    4848	     74430 ns/op	  205676 B/op	    1285 allocs/op
+BenchmarkJITCodegen/Fields32-10        	    4874	     74845 ns/op	  205674 B/op	    1285 allocs/op
+BenchmarkJITCodegen/Fields32-10        	    4784	     75591 ns/op	  205678 B/op	    1285 allocs/op
+PASS
+
+# compare
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  750670	       458.9 ns/op	 795.45 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  760228	       456.9 ns/op	 798.80 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  786003	       459.6 ns/op	 794.23 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  773894	       458.2 ns/op	 796.59 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  753492	       460.3 ns/op	 792.96 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  111762	      3225 ns/op	4038.25 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  114561	      3197 ns/op	4072.90 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  111591	      3221 ns/op	4042.63 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  111350	      3204 ns/op	4064.26 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  111092	      3214 ns/op	4052.23 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2554	    134017 ns/op	4712.18 MB/s	  262398 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2707	    134727 ns/op	4687.35 MB/s	  262397 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2623	    133862 ns/op	4717.67 MB/s	  262396 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2664	    134453 ns/op	4696.90 MB/s	  262396 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2761	    133374 ns/op	4734.90 MB/s	  262395 B/op	       2 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  256352	      1390 ns/op	 262.51 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  258451	      1389 ns/op	 262.80 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  255861	      1391 ns/op	 262.46 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  255117	      1389 ns/op	 262.76 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  254282	      1389 ns/op	 262.70 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24696	     14552 ns/op	 894.95 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24730	     14605 ns/op	 891.70 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24638	     14529 ns/op	 896.36 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24631	     14991 ns/op	 868.74 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24235	     14911 ns/op	 873.41 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     451	    758428 ns/op	 832.66 MB/s	  475296 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     475	    753007 ns/op	 838.66 MB/s	  475299 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     476	    754061 ns/op	 837.48 MB/s	  475297 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     475	    754146 ns/op	 837.39 MB/s	  475298 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     474	    753154 ns/op	 838.49 MB/s	  475295 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  258320	      1390 ns/op	 262.52 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  260511	      1395 ns/op	 261.68 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  256050	      1396 ns/op	 261.41 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  256514	      1392 ns/op	 262.28 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  253078	      1396 ns/op	 261.39 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   24776	     14949 ns/op	 871.18 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   24205	     14655 ns/op	 888.66 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   24553	     14730 ns/op	 884.10 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   24621	     14578 ns/op	 893.35 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   24804	     14637 ns/op	 889.70 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     476	    754544 ns/op	 836.95 MB/s	  475296 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     474	    750374 ns/op	 841.60 MB/s	  475294 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     481	    755429 ns/op	 835.97 MB/s	  475295 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     480	    752704 ns/op	 838.99 MB/s	  475297 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     475	    749752 ns/op	 842.30 MB/s	  475297 B/op	       1 allocs/op
+PASS
+
+# fixture
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSSACompileFixture/Book-10         	      50	    119227 ns/op	      8576 code-B	      2144 instructions	  116816 B/op	     851 allocs/op
+BenchmarkSSACompileFixture/Book-10         	      50	     99880 ns/op	      8576 code-B	      2144 instructions	  116705 B/op	     851 allocs/op
+BenchmarkSSACompileFixture/Book-10         	      50	     89313 ns/op	      8576 code-B	      2144 instructions	  116846 B/op	     851 allocs/op
+BenchmarkSSACompileFixture/Book-10         	      50	     83314 ns/op	      8576 code-B	      2144 instructions	  116571 B/op	     851 allocs/op
+BenchmarkSSACompileFixture/Book-10         	      50	     82453 ns/op	      8576 code-B	      2144 instructions	  117136 B/op	     851 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	    265762 ns/op	     27520 code-B	      6875 instructions	  405413 B/op	    2407 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	    267613 ns/op	     27520 code-B	      6875 instructions	  406608 B/op	    2408 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	    256106 ns/op	     27520 code-B	      6875 instructions	  405385 B/op	    2407 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	    258367 ns/op	     27520 code-B	      6875 instructions	  405383 B/op	    2407 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	    256197 ns/op	     27520 code-B	      6875 instructions	  405397 B/op	    2408 allocs/op
+PASS

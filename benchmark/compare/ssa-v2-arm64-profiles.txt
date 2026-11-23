@@ -1,0 +1,144 @@
+
+# main codegen
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields32-10         	   27987	     85308 ns/op	  205687 B/op	    1285 allocs/op
+PASS
+File: jjs-ssa-v2-main-core.test
+Type: cpu
+Time: 2026-11-23 19:29:22 CST
+Duration: 3.41s, Total samples = 4.12s (120.84%)
+Showing nodes accounting for 3.86s, 93.69% of 4.12s total
+Dropped 74 nodes (cum <= 0.02s)
+Showing top 20 nodes out of 90
+      flat  flat%   sum%        cum   cum%
+        2s 48.54% 48.54%         2s 48.54%  runtime.kevent
+     0.43s 10.44% 58.98%      0.43s 10.44%  runtime.pthread_kill
+     0.34s  8.25% 67.23%      0.34s  8.25%  runtime.pthread_cond_wait
+     0.33s  8.01% 75.24%      0.33s  8.01%  runtime.madvise
+     0.20s  4.85% 80.10%      0.20s  4.85%  runtime.usleep
+     0.18s  4.37% 84.47%      0.18s  4.37%  runtime.pthread_cond_signal
+     0.07s  1.70% 86.17%      0.08s  1.94%  runtime.findObject
+     0.07s  1.70% 87.86%      0.07s  1.70%  runtime.typePointers.next
+     0.05s  1.21% 89.08%      0.16s  3.88%  runtime.scanobject
+     0.04s  0.97% 90.05%      0.04s  0.97%  runtime.pthread_cond_timedwait_relative_np
+     0.04s  0.97% 91.02%      0.04s  0.97%  runtime.pthread_mutex_lock
+     0.03s  0.73% 91.75%      0.03s  0.73%  runtime.memclrNoHeapPointers
+     0.03s  0.73% 92.48%      0.06s  1.46%  runtime.stealWork
+     0.02s  0.49% 92.96%      0.03s  0.73%  runtime.scanblock
+     0.01s  0.24% 93.20%      0.07s  1.70%  runtime.mallocgcSmallScanNoHeader
+     0.01s  0.24% 93.45%      0.04s  0.97%  runtime.wbBufFlush1
+     0.01s  0.24% 93.69%      0.03s  0.73%  sort.insertionSort_func
+         0     0% 93.69%      0.09s  2.18%  github.com/nyan233/jjs-go/core/compiler.(*jitCodeBuilder).newLabel (inline)
+         0     0% 93.69%      0.10s  2.43%  github.com/nyan233/jjs-go/core/compiler.(*jitEncoderGenerator).emitInteger
+         0     0% 93.69%      0.07s  1.70%  github.com/nyan233/jjs-go/core/compiler.(*jitEncoderGenerator).emitReserve
+
+# main encode
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Large/jjs-go-10  	   19231	    124199 ns/op	5084.71 MB/s	  262370 B/op	       2 allocs/op
+PASS
+File: jjs-ssa-v2-main-compare.test
+Type: cpu
+Time: 2026-11-23 19:29:26 CST
+Duration: 3.82s, Total samples = 7.78s (203.51%)
+Showing nodes accounting for 7.31s, 93.96% of 7.78s total
+Dropped 93 nodes (cum <= 0.04s)
+Showing top 20 nodes out of 87
+      flat  flat%   sum%        cum   cum%
+     2.19s 28.15% 28.15%      2.19s 28.15%  runtime.kevent
+     1.82s 23.39% 51.54%      1.83s 23.52%  runtime.pthread_kill
+     0.90s 11.57% 63.11%      0.90s 11.57%  runtime.pthread_cond_wait
+     0.68s  8.74% 71.85%      0.68s  8.74%  runtime.usleep
+     0.29s  3.73% 75.58%      0.29s  3.73%  runtime.pthread_cond_signal
+     0.23s  2.96% 78.53%      0.45s  5.78%  runtime.greyobject
+     0.17s  2.19% 80.72%      0.17s  2.19%  runtime.madvise
+     0.16s  2.06% 82.78%      0.16s  2.06%  github.com/nyan233/jjs-go/core/compiler.quoteJSONString
+     0.15s  1.93% 84.70%      0.15s  1.93%  runtime.markBits.setMarked (inline)
+     0.13s  1.67% 86.38%      0.72s  9.25%  runtime.scanobject
+     0.11s  1.41% 87.79%      2.85s 36.63%  runtime.gcDrain
+     0.10s  1.29% 89.07%      0.16s  2.06%  runtime.findObject
+     0.10s  1.29% 90.36%      0.10s  1.29%  runtime.nanotime1
+     0.06s  0.77% 91.13%      0.06s  0.77%  runtime.typePointers.next
+     0.05s  0.64% 91.77%      0.05s  0.64%  runtime.markBits.isMarked (inline)
+     0.04s  0.51% 92.29%      0.04s  0.51%  runtime.(*lfstack).pop (inline)
+     0.04s  0.51% 92.80%      0.04s  0.51%  runtime.spanOf (inline)
+     0.04s  0.51% 93.32%      0.15s  1.93%  runtime.stealWork
+     0.03s  0.39% 93.70%      0.36s  4.63%  jjs.jit.2.jjs_encoder_1_2
+     0.02s  0.26% 93.96%      0.16s  2.06%  gcWriteBarrier
+
+# final codegen
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields32-10         	    3666	    649023 ns/op	  352037 B/op	    1299 allocs/op
+PASS
+File: jjs-ssa-v2-final-core.test
+Type: cpu
+Time: 2026-11-23 19:29:30 CST
+Duration: 2.64s, Total samples = 2.15s (81.46%)
+Showing nodes accounting for 2.06s, 95.81% of 2.15s total
+Dropped 32 nodes (cum <= 0.01s)
+Showing top 20 nodes out of 76
+      flat  flat%   sum%        cum   cum%
+     1.14s 53.02% 53.02%      1.14s 53.02%  runtime.kevent
+     0.37s 17.21% 70.23%      0.37s 17.21%  runtime.madvise
+     0.08s  3.72% 73.95%      0.08s  3.72%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).canonical
+     0.06s  2.79% 76.74%      0.06s  2.79%  runtime.pthread_kill
+     0.05s  2.33% 79.07%      0.06s  2.79%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).constant
+     0.05s  2.33% 81.40%      0.26s 12.09%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).optimize
+     0.04s  1.86% 83.26%      0.04s  1.86%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).operands (inline)
+     0.04s  1.86% 85.12%      0.07s  3.26%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).propagate
+     0.03s  1.40% 86.51%      0.40s 18.60%  github.com/nyan233/jjs-go/core/compiler.(*jitCodeBuilder).optimizeARM64SSA
+     0.03s  1.40% 87.91%      0.03s  1.40%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.02s  0.93% 88.84%      0.02s  0.93%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).append (inline)
+     0.02s  0.93% 89.77%      0.07s  3.26%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).build
+     0.02s  0.93% 90.70%      0.04s  1.86%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).markLive
+     0.02s  0.93% 91.63%      0.02s  0.93%  runtime.(*spanSet).push
+     0.02s  0.93% 92.56%      0.02s  0.93%  runtime.pthread_cond_wait
+     0.02s  0.93% 93.49%      0.04s  1.86%  runtime.stealWork
+     0.02s  0.93% 94.42%      0.02s  0.93%  runtime.usleep
+     0.01s  0.47% 94.88%      0.07s  3.26%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).numberValues
+     0.01s  0.47% 95.35%      0.02s  0.93%  github.com/nyan233/jjs-go/core/compiler.(*armSSA).read
+     0.01s  0.47% 95.81%      0.05s  2.33%  runtime.growslice
+
+# final encode
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Large/jjs-go-10  	   19224	    124890 ns/op	5056.56 MB/s	  262371 B/op	       2 allocs/op
+PASS
+File: jjs-ssa-v2-final-compare.test
+Type: cpu
+Time: 2026-11-23 19:29:33 CST
+Duration: 3.82s, Total samples = 7.87s (206.03%)
+Showing nodes accounting for 7.33s, 93.14% of 7.87s total
+Dropped 78 nodes (cum <= 0.04s)
+Showing top 20 nodes out of 91
+      flat  flat%   sum%        cum   cum%
+     2.35s 29.86% 29.86%      2.35s 29.86%  runtime.kevent
+     1.74s 22.11% 51.97%      1.74s 22.11%  runtime.pthread_kill
+     1.04s 13.21% 65.18%      1.04s 13.21%  runtime.pthread_cond_wait
+     0.51s  6.48% 71.66%      0.51s  6.48%  runtime.usleep
+     0.37s  4.70% 76.37%      0.37s  4.70%  runtime.pthread_cond_signal
+     0.19s  2.41% 78.78%      0.67s  8.51%  runtime.scanobject
+     0.15s  1.91% 80.69%      0.30s  3.81%  runtime.greyobject
+     0.13s  1.65% 82.34%      0.13s  1.65%  runtime.madvise
+     0.12s  1.52% 83.86%      2.67s 33.93%  runtime.gcDrain
+     0.12s  1.52% 85.39%      0.12s  1.52%  runtime.typePointers.next
+     0.10s  1.27% 86.66%      0.10s  1.27%  github.com/nyan233/jjs-go/core/compiler.quoteJSONString
+     0.09s  1.14% 87.80%      0.11s  1.40%  runtime.findObject
+     0.09s  1.14% 88.95%      0.09s  1.14%  runtime.markBits.setMarked (inline)
+     0.08s  1.02% 89.96%      0.09s  1.14%  runtime.nanotime1
+     0.08s  1.02% 90.98%      0.18s  2.29%  runtime.stealWork
+     0.04s  0.51% 91.49%      0.04s  0.51%  runtime.(*lfstack).push
+     0.04s  0.51% 91.99%      0.04s  0.51%  runtime.markBits.isMarked (inline)
+     0.04s  0.51% 92.50%      0.04s  0.51%  runtime.pthread_mutex_lock
+     0.03s  0.38% 92.88%      0.13s  1.65%  runtime.wbBufFlush1
+     0.02s  0.25% 93.14%      0.11s  1.40%  gcWriteBarrier

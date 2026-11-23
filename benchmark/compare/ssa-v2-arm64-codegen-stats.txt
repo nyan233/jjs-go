@@ -1,0 +1,7 @@
+# main
+encoder: {Functions:2 InstructionsBefore:6875 InstructionsAfter:6875 RemovedInstructions:0 FoldedInstructions:0 BranchesRemoved:0 VirtualRegisters:0 RegisterReuse:0 SpilledRegisters:0 CodeBytes:27520 DirectDecoder:false DirectPlanNodes:0 DirectFields:0} instruction-reduction=0.00%
+decoder: {Functions:0 InstructionsBefore:0 InstructionsAfter:0 RemovedInstructions:0 FoldedInstructions:0 BranchesRemoved:0 VirtualRegisters:0 RegisterReuse:0 SpilledRegisters:0 CodeBytes:0 DirectDecoder:true DirectPlanNodes:22 DirectFields:85} instruction-reduction=0.00%
+
+# SSA
+encoder: {Functions:2 InstructionsBefore:6875 InstructionsAfter:6649 RemovedInstructions:226 FoldedInstructions:419 BranchesRemoved:0 VirtualRegisters:0 RegisterReuse:0 SpilledRegisters:0 CodeBytes:26608 SSABlocks:862 SSAValues:13685 SSAPhis:6740 DirectDecoder:false DirectPlanNodes:0 DirectFields:0} instruction-reduction=3.29%
+decoder: {Functions:0 InstructionsBefore:0 InstructionsAfter:0 RemovedInstructions:0 FoldedInstructions:0 BranchesRemoved:0 VirtualRegisters:0 RegisterReuse:0 SpilledRegisters:0 CodeBytes:0 SSABlocks:0 SSAValues:0 SSAPhis:0 DirectDecoder:true DirectPlanNodes:22 DirectFields:85} instruction-reduction=0.00%

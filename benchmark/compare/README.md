@@ -109,6 +109,11 @@ The subsequent typed-map JIT and direct NEON quoting changes are measured in
 Large-fixture rechecks and code-size costs. Runtime compatibility details
 are in [`MAP_ITERATOR_RESEARCH.md`](MAP_ITERATOR_RESEARCH.md).
 
+The post-inlining SSA reassessment is isolated on `codex/experiment-ssa-v2`.
+See [`SSA_V2_ARM64.md`](SSA_V2_ARM64.md) for the measured code-size, steady-state
+and compilation tradeoffs. On that branch, `-tags jitnossa` selects the
+same-source control.
+
 ## Code generation metrics
 
 The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from

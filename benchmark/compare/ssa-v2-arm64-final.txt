@@ -1,0 +1,509 @@
+# micro
+# round=1 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInline/Bool-10         	19387542	        18.96 ns/op	       208.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntSmall-10     	19230554	        19.07 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntLarge-10     	11799457	        30.40 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Record-10       	 4242852	        86.62 ns/op	      1584 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Pointer-10      	 4074302	        88.83 ns/op	      1888 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Ints-10         	 4119438	        86.80 ns/op	       832.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Records-10      	   38474	      9108 ns/op	      2064 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-10       	19354275	        19.27 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-10      	13672118	        25.23 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-10      	17009380	        22.05 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-10    	 4558555	        75.98 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-10   	   89064	      4094 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10             	100000000	         3.519 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Empty-10           	10287783	        35.25 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Small-10           	 3630225	        98.61 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringInt-10       	  102928	      3465 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringString-10    	   91539	      3944 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/IntUint-10         	  134244	      2661 ns/op	      1280 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Struct-10          	   74208	      4830 ns/op	      1904 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nested-10          	   91714	      3930 ns/op	      1968 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Interface-10       	   54874	      6512 ns/op	       896.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/EscapedKeys-10     	 1000000	       329.1 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+PASS
+# round=2 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInline/Bool-10         	19359435	        18.51 ns/op	       208.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntSmall-10     	19217294	        18.75 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntLarge-10     	11969245	        30.09 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Record-10       	 4184146	        85.82 ns/op	      1584 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Pointer-10      	 4065918	        88.48 ns/op	      1888 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Ints-10         	 4134746	        86.74 ns/op	       832.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Records-10      	   40293	      9001 ns/op	      2064 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-10       	19183928	        19.42 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-10      	14119308	        25.94 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-10      	15831220	        22.29 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-10    	 4748368	        76.02 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-10   	   87202	      4157 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10             	100000000	         3.463 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Empty-10           	 9917970	        37.30 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Small-10           	 3611928	       100.8 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringInt-10       	  105040	      3542 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringString-10    	   91446	      3904 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/IntUint-10         	  135918	      2646 ns/op	      1280 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Struct-10          	   73929	      4868 ns/op	      1904 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nested-10          	   93734	      3823 ns/op	      1968 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Interface-10       	   55645	      6414 ns/op	       896.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/EscapedKeys-10     	 1000000	       328.9 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+PASS
+# round=3 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInline/Bool-10         	19353190	        18.05 ns/op	       208.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntSmall-10     	19400122	        18.32 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntLarge-10     	12219198	        29.39 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Record-10       	 4310028	        83.80 ns/op	      1584 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Pointer-10      	 4169907	        85.81 ns/op	      1888 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Ints-10         	 4246642	        84.67 ns/op	       832.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Records-10      	   40936	      8755 ns/op	      2064 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-10       	19600724	        18.37 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-10      	14539138	        24.44 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-10      	17029462	        21.37 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-10    	 4883385	        73.86 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-10   	   95142	      3742 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10             	100000000	         3.336 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Empty-10           	10476244	        34.59 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Small-10           	 3706586	        95.70 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringInt-10       	  107082	      3358 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringString-10    	   94495	      3821 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/IntUint-10         	  142993	      2515 ns/op	      1280 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Struct-10          	   76256	      4736 ns/op	      1904 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nested-10          	   96049	      3841 ns/op	      1968 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Interface-10       	   54308	      6550 ns/op	       896.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/EscapedKeys-10     	 1000000	       337.6 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+PASS
+# round=4 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInline/Bool-10         	19309203	        18.20 ns/op	       208.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntSmall-10     	19679344	        18.51 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntLarge-10     	12190028	        29.65 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Record-10       	 4331293	        83.40 ns/op	      1584 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Pointer-10      	 4176410	        86.24 ns/op	      1888 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Ints-10         	 4255462	        84.89 ns/op	       832.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Records-10      	   40986	      8751 ns/op	      2064 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-10       	19545609	        18.65 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-10      	14819083	        24.34 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-10      	16813688	        21.38 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-10    	 4879423	        73.80 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-10   	   96516	      3754 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10             	100000000	         3.335 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Empty-10           	10515822	        34.31 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Small-10           	 3754858	        96.10 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringInt-10       	  106641	      3411 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringString-10    	   91180	      3854 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/IntUint-10         	  136569	      2583 ns/op	      1280 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Struct-10          	   76515	      4708 ns/op	      1904 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nested-10          	   94320	      3805 ns/op	      1968 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Interface-10       	   57234	      6258 ns/op	       896.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/EscapedKeys-10     	 1000000	       324.3 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+PASS
+# round=5 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInline/Bool-10         	19211270	        17.95 ns/op	       208.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntSmall-10     	19942711	        18.41 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/IntLarge-10     	12226392	        29.38 ns/op	       368.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Record-10       	 4331881	        82.56 ns/op	      1584 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Pointer-10      	 4168114	        86.31 ns/op	      1888 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Ints-10         	 4236880	        84.68 ns/op	       832.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Records-10      	   40902	      8753 ns/op	      2064 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-10       	19599525	        19.30 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-10      	14776580	        24.38 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-10      	16833015	        21.27 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-10    	 4881561	        74.31 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-10   	   96453	      3770 ns/op	       624.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10             	100000000	         3.318 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Empty-10           	10366485	        34.40 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Small-10           	 3739014	        96.83 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringInt-10       	  106956	      3395 ns/op	      1168 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/StringString-10    	   94222	      3839 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/IntUint-10         	  139794	      2570 ns/op	      1280 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Struct-10          	   75350	      4839 ns/op	      1904 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nested-10          	   94195	      3848 ns/op	      1968 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Interface-10       	   55977	      6338 ns/op	       896.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/EscapedKeys-10     	 1000000	       322.6 ns/op	      1120 code-B	       0 B/op	       0 allocs/op
+PASS
+
+# cold
+# round=1 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInlineCompile/Bool-10         	      50	     15421 ns/op	    5982 B/op	      74 allocs/op
+BenchmarkJITInlineCompile/IntSmall-10     	      50	     25228 ns/op	    8525 B/op	      91 allocs/op
+BenchmarkJITInlineCompile/IntLarge-10     	      50	     22612 ns/op	    8676 B/op	      91 allocs/op
+BenchmarkJITInlineCompile/Record-10       	      50	     92562 ns/op	   25152 B/op	     220 allocs/op
+BenchmarkJITInlineCompile/Pointer-10      	      50	    113818 ns/op	   28904 B/op	     254 allocs/op
+BenchmarkJITInlineCompile/Ints-10         	      50	     53299 ns/op	   16440 B/op	     146 allocs/op
+BenchmarkJITInlineCompile/Records-10      	      50	    120491 ns/op	   33392 B/op	     268 allocs/op
+BenchmarkJITMapCompile/Nil-10             	      50	     72561 ns/op	   18968 B/op	     164 allocs/op
+BenchmarkJITMapCompile/Empty-10           	      50	     67875 ns/op	   22992 B/op	     165 allocs/op
+BenchmarkJITMapCompile/Small-10           	      50	     70632 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringInt-10       	      50	     74344 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringString-10    	      50	     68618 ns/op	   19772 B/op	     150 allocs/op
+BenchmarkJITMapCompile/IntUint-10         	      50	     75632 ns/op	   24025 B/op	     186 allocs/op
+BenchmarkJITMapCompile/Struct-10          	      50	    113043 ns/op	   31692 B/op	     242 allocs/op
+BenchmarkJITMapCompile/Nested-10          	      50	    109590 ns/op	   32314 B/op	     230 allocs/op
+BenchmarkJITMapCompile/Interface-10       	      50	     52523 ns/op	   14030 B/op	     136 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10     	      50	     62588 ns/op	   17520 B/op	     149 allocs/op
+PASS
+# round=2 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInlineCompile/Bool-10         	      50	     28974 ns/op	    5981 B/op	      74 allocs/op
+BenchmarkJITInlineCompile/IntSmall-10     	      50	     43203 ns/op	    8525 B/op	      91 allocs/op
+BenchmarkJITInlineCompile/IntLarge-10     	      50	     42910 ns/op	    7865 B/op	      90 allocs/op
+BenchmarkJITInlineCompile/Record-10       	      50	    100908 ns/op	   28385 B/op	     221 allocs/op
+BenchmarkJITInlineCompile/Pointer-10      	      50	    114250 ns/op	   33956 B/op	     255 allocs/op
+BenchmarkJITInlineCompile/Ints-10         	      50	     54598 ns/op	   16439 B/op	     146 allocs/op
+BenchmarkJITInlineCompile/Records-10      	      50	    124056 ns/op	   38507 B/op	     269 allocs/op
+BenchmarkJITMapCompile/Nil-10             	      50	     73732 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/Empty-10           	      50	     74368 ns/op	   20157 B/op	     164 allocs/op
+BenchmarkJITMapCompile/Small-10           	      50	     69996 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringInt-10       	      50	     69424 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringString-10    	      50	     65745 ns/op	   19772 B/op	     150 allocs/op
+BenchmarkJITMapCompile/IntUint-10         	      50	     77296 ns/op	   21088 B/op	     185 allocs/op
+BenchmarkJITMapCompile/Struct-10          	      50	    115555 ns/op	   31692 B/op	     242 allocs/op
+BenchmarkJITMapCompile/Nested-10          	      50	    114018 ns/op	   27296 B/op	     229 allocs/op
+BenchmarkJITMapCompile/Interface-10       	      50	     52592 ns/op	   12368 B/op	     135 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10     	      50	     65794 ns/op	   19772 B/op	     150 allocs/op
+PASS
+# round=3 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInlineCompile/Bool-10         	      50	     18025 ns/op	    6391 B/op	      75 allocs/op
+BenchmarkJITInlineCompile/IntSmall-10     	      50	     25398 ns/op	    8525 B/op	      91 allocs/op
+BenchmarkJITInlineCompile/IntLarge-10     	      50	     24512 ns/op	    7865 B/op	      90 allocs/op
+BenchmarkJITInlineCompile/Record-10       	      50	    101416 ns/op	   25152 B/op	     220 allocs/op
+BenchmarkJITInlineCompile/Pointer-10      	      50	    117362 ns/op	   28904 B/op	     254 allocs/op
+BenchmarkJITInlineCompile/Ints-10         	      50	     51282 ns/op	   16439 B/op	     146 allocs/op
+BenchmarkJITInlineCompile/Records-10      	      50	    127962 ns/op	   38507 B/op	     269 allocs/op
+BenchmarkJITMapCompile/Nil-10             	      50	     75198 ns/op	   18968 B/op	     164 allocs/op
+BenchmarkJITMapCompile/Empty-10           	      50	     79708 ns/op	   22992 B/op	     165 allocs/op
+BenchmarkJITMapCompile/Small-10           	      50	     73147 ns/op	   18968 B/op	     164 allocs/op
+BenchmarkJITMapCompile/StringInt-10       	      50	     78769 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringString-10    	      50	     62344 ns/op	   19772 B/op	     150 allocs/op
+BenchmarkJITMapCompile/IntUint-10         	      50	     80384 ns/op	   21088 B/op	     185 allocs/op
+BenchmarkJITMapCompile/Struct-10          	      50	    119817 ns/op	   27600 B/op	     241 allocs/op
+BenchmarkJITMapCompile/Nested-10          	      50	    114634 ns/op	   32314 B/op	     230 allocs/op
+BenchmarkJITMapCompile/Interface-10       	      50	     52149 ns/op	   14030 B/op	     136 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10     	      50	     77103 ns/op	   17520 B/op	     149 allocs/op
+PASS
+# round=4 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInlineCompile/Bool-10         	      50	     17108 ns/op	    6391 B/op	      75 allocs/op
+BenchmarkJITInlineCompile/IntSmall-10     	      50	     24159 ns/op	    7714 B/op	      90 allocs/op
+BenchmarkJITInlineCompile/IntLarge-10     	      50	     23761 ns/op	    7864 B/op	      90 allocs/op
+BenchmarkJITInlineCompile/Record-10       	      50	     98295 ns/op	   25152 B/op	     220 allocs/op
+BenchmarkJITInlineCompile/Pointer-10      	      50	    115017 ns/op	   33956 B/op	     255 allocs/op
+BenchmarkJITInlineCompile/Ints-10         	      50	     48915 ns/op	   16439 B/op	     146 allocs/op
+BenchmarkJITInlineCompile/Records-10      	      50	    117553 ns/op	   33392 B/op	     268 allocs/op
+BenchmarkJITMapCompile/Nil-10             	      50	     69895 ns/op	   18968 B/op	     164 allocs/op
+BenchmarkJITMapCompile/Empty-10           	      50	     68052 ns/op	   20157 B/op	     164 allocs/op
+BenchmarkJITMapCompile/Small-10           	      50	     70674 ns/op	   18968 B/op	     164 allocs/op
+BenchmarkJITMapCompile/StringInt-10       	      50	     67959 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringString-10    	      50	     61698 ns/op	   19772 B/op	     150 allocs/op
+BenchmarkJITMapCompile/IntUint-10         	      50	     75201 ns/op	   24025 B/op	     186 allocs/op
+BenchmarkJITMapCompile/Struct-10          	      50	    112595 ns/op	   31692 B/op	     242 allocs/op
+BenchmarkJITMapCompile/Nested-10          	      50	    113214 ns/op	   32314 B/op	     230 allocs/op
+BenchmarkJITMapCompile/Interface-10       	      50	     54297 ns/op	   12368 B/op	     135 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10     	      50	     62468 ns/op	   17520 B/op	     149 allocs/op
+PASS
+# round=5 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITInlineCompile/Bool-10         	      50	     17158 ns/op	    6800 B/op	      76 allocs/op
+BenchmarkJITInlineCompile/IntSmall-10     	      50	     23874 ns/op	    7714 B/op	      90 allocs/op
+BenchmarkJITInlineCompile/IntLarge-10     	      50	     29701 ns/op	    8676 B/op	      91 allocs/op
+BenchmarkJITInlineCompile/Record-10       	      50	     95309 ns/op	   28385 B/op	     221 allocs/op
+BenchmarkJITInlineCompile/Pointer-10      	      50	    107512 ns/op	   33956 B/op	     255 allocs/op
+BenchmarkJITInlineCompile/Ints-10         	      50	     50518 ns/op	   16439 B/op	     146 allocs/op
+BenchmarkJITInlineCompile/Records-10      	      50	    114938 ns/op	   38507 B/op	     269 allocs/op
+BenchmarkJITMapCompile/Nil-10             	      50	     71786 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/Empty-10           	      50	     69657 ns/op	   20157 B/op	     164 allocs/op
+BenchmarkJITMapCompile/Small-10           	      50	     67566 ns/op	   21803 B/op	     165 allocs/op
+BenchmarkJITMapCompile/StringInt-10       	      50	     67040 ns/op	   18968 B/op	     164 allocs/op
+BenchmarkJITMapCompile/StringString-10    	      50	     59604 ns/op	   17520 B/op	     149 allocs/op
+BenchmarkJITMapCompile/IntUint-10         	      50	     74282 ns/op	   24025 B/op	     186 allocs/op
+BenchmarkJITMapCompile/Struct-10          	      50	    108497 ns/op	   27600 B/op	     241 allocs/op
+BenchmarkJITMapCompile/Nested-10          	      50	    162213 ns/op	   32314 B/op	     230 allocs/op
+BenchmarkJITMapCompile/Interface-10       	      50	     50128 ns/op	   12368 B/op	     135 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10     	      50	     63883 ns/op	   19772 B/op	     150 allocs/op
+PASS
+
+# codegen
+# round=1 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields4-10         	    4066	     87873 ns/op	   23467 B/op	     208 allocs/op
+BenchmarkJITCodegen/Fields32-10        	     529	    666607 ns/op	  295444 B/op	    1296 allocs/op
+PASS
+# round=2 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields4-10         	    4056	     88515 ns/op	   23590 B/op	     208 allocs/op
+BenchmarkJITCodegen/Fields32-10        	     532	    677231 ns/op	  283068 B/op	    1296 allocs/op
+PASS
+# round=3 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields4-10         	    3787	     92950 ns/op	   23630 B/op	     208 allocs/op
+BenchmarkJITCodegen/Fields32-10        	     506	    702291 ns/op	  320226 B/op	    1297 allocs/op
+PASS
+# round=4 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields4-10         	    4068	     84080 ns/op	   23772 B/op	     208 allocs/op
+BenchmarkJITCodegen/Fields32-10        	     553	    641131 ns/op	  276387 B/op	    1296 allocs/op
+PASS
+# round=5 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITCodegen/Fields4-10         	    4094	     83986 ns/op	   23524 B/op	     208 allocs/op
+BenchmarkJITCodegen/Fields32-10        	     570	    647469 ns/op	  307613 B/op	    1297 allocs/op
+PASS
+
+# compare
+# round=1 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	  545991	       566.7 ns/op	 644.07 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  227911	      1596 ns/op	 228.65 MB/s	     652 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  753098	       477.5 ns/op	 764.42 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   87066	      3984 ns/op	3268.94 MB/s	    9642 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   21400	     16946 ns/op	 768.50 MB/s	    9988 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  109798	      3380 ns/op	3852.78 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1672	    217571 ns/op	2902.57 MB/s	  263161 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     735	    482424 ns/op	1309.04 MB/s	  287073 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2517	    138111 ns/op	4572.50 MB/s	  262391 B/op	       2 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  210554	      1676 ns/op	 217.75 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   85006	      4198 ns/op	  86.95 MB/s	     900 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  255836	      1406 ns/op	 259.68 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14406	     24866 ns/op	 523.73 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7282	     50350 ns/op	 258.65 MB/s	   13276 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24367	     15400 ns/op	 845.63 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     276	   1291527 ns/op	 488.97 MB/s	  475277 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     159	   2234809 ns/op	 282.58 MB/s	  624095 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     463	    776893 ns/op	 812.87 MB/s	  475294 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  237049	      1437 ns/op	 254.06 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   89095	      4023 ns/op	  90.72 MB/s	     891 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  257797	      1414 ns/op	 258.21 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   24067	     14948 ns/op	 871.20 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8572	     42219 ns/op	 308.46 MB/s	   13341 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   24216	     14784 ns/op	 880.86 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     426	    842196 ns/op	 749.84 MB/s	  475268 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     192	   1888629 ns/op	 334.38 MB/s	  623666 B/op	    1268 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     452	    789971 ns/op	 799.41 MB/s	  475296 B/op	       1 allocs/op
+PASS
+# round=2 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	  586844	       561.2 ns/op	 650.36 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  237081	      1561 ns/op	 233.89 MB/s	     653 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  736836	       465.5 ns/op	 784.05 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   91436	      3929 ns/op	3314.21 MB/s	    9637 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   22010	     16710 ns/op	 779.37 MB/s	   10012 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  110524	      3238 ns/op	4022.47 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1659	    213504 ns/op	2957.85 MB/s	  266293 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     738	    488979 ns/op	1291.49 MB/s	  285099 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2668	    133105 ns/op	4744.48 MB/s	  262391 B/op	       2 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  220500	      1688 ns/op	 216.28 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   85032	      4251 ns/op	  85.87 MB/s	     890 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  252062	      1396 ns/op	 261.44 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14022	     25208 ns/op	 516.63 MB/s	    9478 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7405	     50820 ns/op	 256.26 MB/s	   13251 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   24236	     14755 ns/op	 882.63 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     277	   1303221 ns/op	 484.58 MB/s	  475275 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     158	   2292311 ns/op	 275.49 MB/s	  615295 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     450	    791899 ns/op	 797.47 MB/s	  475296 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  240554	      1454 ns/op	 250.98 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   90363	      4078 ns/op	  89.50 MB/s	     892 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  255088	      1412 ns/op	 258.52 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   19243	     16578 ns/op	 785.57 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8744	     44805 ns/op	 290.66 MB/s	   13375 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   10000	     38118 ns/op	 341.65 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     414	    866202 ns/op	 729.06 MB/s	  475269 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     186	   2103938 ns/op	 300.16 MB/s	  623755 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     442	    803408 ns/op	 786.04 MB/s	  475295 B/op	       1 allocs/op
+PASS
+# round=3 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	  588151	       570.5 ns/op	 639.81 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  231870	      1540 ns/op	 237.04 MB/s	     644 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  750963	       453.2 ns/op	 805.43 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   96478	      3763 ns/op	3460.71 MB/s	    9634 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   23120	     15687 ns/op	 830.20 MB/s	    9969 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  113592	      3170 ns/op	4108.56 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1714	    212054 ns/op	2978.08 MB/s	  264660 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     745	    482601 ns/op	1308.56 MB/s	  288586 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2654	    136554 ns/op	4624.63 MB/s	  262393 B/op	       2 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  210165	      1634 ns/op	 223.36 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   87525	      4147 ns/op	  88.02 MB/s	     888 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  257124	      1382 ns/op	 264.06 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14989	     23965 ns/op	 543.41 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7444	     48954 ns/op	 266.02 MB/s	   13313 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   25020	     14316 ns/op	 909.71 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     285	   1253836 ns/op	 503.67 MB/s	  475278 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     165	   2172630 ns/op	 290.67 MB/s	  610178 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     476	    752947 ns/op	 838.72 MB/s	  475296 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  250129	      1405 ns/op	 259.70 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   90525	      3960 ns/op	  92.16 MB/s	     892 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  256464	      1379 ns/op	 264.66 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   24925	     14802 ns/op	 879.82 MB/s	    9480 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8698	     41110 ns/op	 316.79 MB/s	   13389 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   25192	     14310 ns/op	 910.06 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     434	    826031 ns/op	 764.52 MB/s	  475278 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     198	   1815041 ns/op	 347.93 MB/s	  604231 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     477	    751548 ns/op	 840.28 MB/s	  475295 B/op	       1 allocs/op
+PASS
+# round=4 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	  626835	       543.2 ns/op	 671.92 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  233814	      1531 ns/op	 238.33 MB/s	     646 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  777508	       451.1 ns/op	 809.19 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   95367	      3778 ns/op	3447.37 MB/s	    9636 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   22752	     15902 ns/op	 818.93 MB/s	    9972 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  112116	      3183 ns/op	4091.65 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1719	    206420 ns/op	3059.36 MB/s	  262387 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     757	    466706 ns/op	1353.13 MB/s	  280869 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2668	    131779 ns/op	4792.22 MB/s	  262391 B/op	       2 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  218037	      1621 ns/op	 225.12 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   88040	      4139 ns/op	  88.18 MB/s	     894 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  257421	      1381 ns/op	 264.35 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   15018	     23942 ns/op	 543.94 MB/s	    9478 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7521	     48919 ns/op	 266.21 MB/s	   13339 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   25009	     14382 ns/op	 905.49 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     286	   1254099 ns/op	 503.56 MB/s	  475282 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     165	   2159579 ns/op	 292.42 MB/s	  627366 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     480	    747683 ns/op	 844.63 MB/s	  475295 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  252290	      1406 ns/op	 259.68 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   92114	      3922 ns/op	  93.07 MB/s	     892 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  257155	      1383 ns/op	 263.85 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   24794	     14363 ns/op	 906.73 MB/s	    9477 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8890	     40943 ns/op	 318.08 MB/s	   13416 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   25068	     14406 ns/op	 903.98 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     439	    818041 ns/op	 771.98 MB/s	  475267 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     198	   1809736 ns/op	 348.95 MB/s	  608525 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     476	    749766 ns/op	 842.28 MB/s	  475297 B/op	       1 allocs/op
+PASS
+# round=5 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	  597645	       546.9 ns/op	 667.38 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  234062	      1539 ns/op	 237.11 MB/s	     644 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  772759	       455.9 ns/op	 800.56 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   92186	      3834 ns/op	3397.10 MB/s	    9639 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   22905	     15652 ns/op	 832.05 MB/s	   10036 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  110619	      3269 ns/op	3984.34 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1708	    207896 ns/op	3037.65 MB/s	  263906 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     762	    466970 ns/op	1352.37 MB/s	  282782 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2649	    131687 ns/op	4795.57 MB/s	  262391 B/op	       2 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  214498	      1627 ns/op	 224.37 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   87854	      4122 ns/op	  88.54 MB/s	     898 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  261510	      1361 ns/op	 268.14 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14956	     23892 ns/op	 545.08 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7545	     48961 ns/op	 265.99 MB/s	   13406 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   25142	     14342 ns/op	 908.05 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     285	   1253571 ns/op	 503.77 MB/s	  475282 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     165	   2167941 ns/op	 291.30 MB/s	  615307 B/op	    1267 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     482	    745297 ns/op	 847.33 MB/s	  475296 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  252573	      1400 ns/op	 260.73 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   91326	      3926 ns/op	  92.97 MB/s	     894 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  259464	      1360 ns/op	 268.38 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   24814	     14497 ns/op	 898.35 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8943	     41527 ns/op	 313.60 MB/s	   13379 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   25068	     14351 ns/op	 907.45 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     433	    821747 ns/op	 768.50 MB/s	  475278 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     198	   1819638 ns/op	 347.05 MB/s	  607824 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     480	    745149 ns/op	 847.50 MB/s	  475296 B/op	       1 allocs/op
+PASS
+
+# fixture
+# round=1 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSSACompileFixture/Book-10         	      50	    577778 ns/op	      8256 code-B	      2063 instructions	  202175 B/op	     865 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	   1629263 ns/op	     26608 code-B	      6649 instructions	  820693 B/op	    2434 allocs/op
+PASS
+# round=2 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSSACompileFixture/Book-10         	      50	    536055 ns/op	      8256 code-B	      2063 instructions	  155169 B/op	     862 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	   1654783 ns/op	     26608 code-B	      6649 instructions	  809242 B/op	    2432 allocs/op
+PASS
+# round=3 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSSACompileFixture/Book-10         	      50	    516249 ns/op	      8256 code-B	      2063 instructions	  178694 B/op	     863 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	   1517548 ns/op	     26608 code-B	      6649 instructions	  701102 B/op	    2430 allocs/op
+PASS
+# round=4 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSSACompileFixture/Book-10         	      50	    532782 ns/op	      8256 code-B	      2063 instructions	  225731 B/op	     866 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	   1582982 ns/op	     26608 code-B	      6649 instructions	  985601 B/op	    2439 allocs/op
+PASS
+# round=5 stage=final
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSSACompileFixture/Book-10         	      50	    516403 ns/op	      8256 code-B	      2063 instructions	  155448 B/op	     862 allocs/op
+BenchmarkSSACompileFixture/Twitter-10      	      50	   1558752 ns/op	     26608 code-B	      6649 instructions	  922984 B/op	    2436 allocs/op
+PASS
