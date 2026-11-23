@@ -4,7 +4,8 @@ Measured 2026-11-23 on Apple M1 Pro (10 cores, 32 GiB), macOS 27.0.1,
 Go 1.25.0 darwin/arm64, AC power, `GOMAXPROCS=10`, `SONIC_NO_ASYNC_GC=1`.
 Baseline: `3896491`; implementation: `419bd25` on `codex/jit-inline-maps`.
 These are incremental changes after the primitive/slice/Base64 work in
-[JIT_INLINE_ARM64.md](JIT_INLINE_ARM64.md). They have not been merged to main.
+[JIT_INLINE_ARM64.md](JIT_INLINE_ARM64.md). Both optimization series are now
+merged to main; the measurements retain their original revision identifiers.
 
 ## Implementation and boundaries
 
