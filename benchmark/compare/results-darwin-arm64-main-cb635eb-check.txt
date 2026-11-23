@@ -1,0 +1,41 @@
+# Same cb635eb binary; recheck every first-run spread >=20%; original medians retained
+# /tmp/jjs-main-bench-cb635eb-eb0dxmv7/compare.test '-test.run=^$' '-test.bench=^BenchmarkDecoder_Binding$/^Medium$/^jsoniter$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Medium/jsoniter-10         	   45285	     26475 ns/op	 491.89 MB/s	    7676 B/op	     351 allocs/op
+BenchmarkDecoder_Binding/Medium/jsoniter-10         	   45536	     26303 ns/op	 495.12 MB/s	    7676 B/op	     351 allocs/op
+BenchmarkDecoder_Binding/Medium/jsoniter-10         	   45374	     26973 ns/op	 482.82 MB/s	    7676 B/op	     351 allocs/op
+PASS
+
+# /tmp/jjs-main-bench-cb635eb-eb0dxmv7/compare.test '-test.run=^$' '-test.bench=^BenchmarkEncoder_Generic$/^Large$/^stdlib$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Generic/Large/stdlib-10  	     411	   2891194 ns/op	 218.43 MB/s	 1488612 B/op	   27956 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib-10  	     411	   2921745 ns/op	 216.14 MB/s	 1491154 B/op	   27956 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib-10  	     411	   2887609 ns/op	 218.70 MB/s	 1488618 B/op	   27955 allocs/op
+PASS
+
+# /tmp/jjs-main-bench-cb635eb-eb0dxmv7/compare.test '-test.run=^$' '-test.bench=^BenchmarkEncoder_Generic$/^Large$/^jsoniter$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Generic/Large/jsoniter-10         	     346	   3507801 ns/op	 180.03 MB/s	 3091713 B/op	   23837 allocs/op
+BenchmarkEncoder_Generic/Large/jsoniter-10         	     340	   3488431 ns/op	 181.03 MB/s	 3059711 B/op	   23837 allocs/op
+BenchmarkEncoder_Generic/Large/jsoniter-10         	     338	   3462393 ns/op	 182.39 MB/s	 3035728 B/op	   23836 allocs/op
+PASS
+
+# /tmp/jjs-main-bench-cb635eb-eb0dxmv7/compare.test '-test.run=^$' '-test.bench=^BenchmarkDecoder_Generic$/^Large$/^stdlib$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Generic/Large/stdlib-10  	     246	   4917221 ns/op	 128.43 MB/s	 2076679 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib-10  	     242	   4912959 ns/op	 128.54 MB/s	 2076681 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib-10  	     246	   4870465 ns/op	 129.66 MB/s	 2076681 B/op	   32124 allocs/op
+PASS
+

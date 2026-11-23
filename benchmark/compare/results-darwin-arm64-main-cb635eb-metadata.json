@@ -1,0 +1,43 @@
+{
+  "prepared_utc": "2026-11-23T08:40:19.184705+00:00",
+  "revision": "cb635eb071e006a2df6c789a3bc602e47758164d",
+  "worktree": "/tmp/jjs-main-merge-e7m8lx33",
+  "environment": {
+    "GOMAXPROCS": "10",
+    "SONIC_NO_ASYNC_GC": "1"
+  },
+  "settings": {
+    "benchtime": "1s",
+    "count": 3,
+    "cpu": 10
+  },
+  "go_version": "go version go1.25.0 darwin/arm64",
+  "go_env": "darwin\narm64\nv8.0\n1",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+  "hardware": "Apple M1 Pro\n10\n34359738368",
+  "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=36175971)\t80%; AC attached; not charging present: true",
+  "power_settings": "Battery Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           0\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         60\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10",
+  "command": [
+    "/tmp/jjs-main-bench-cb635eb-eb0dxmv7/compare.test",
+    "-test.run=^$",
+    "-test.bench=^(BenchmarkEncoder_|BenchmarkDecoder_)",
+    "-test.benchmem",
+    "-test.benchtime=1s",
+    "-test.count=3",
+    "-test.cpu=10"
+  ],
+  "binary_sha256": "45fff00e632a5a2b9dfbdf92ccda7c4b1c4bdf6c2232b5fe3ac35667ebf3d552",
+  "started_utc": "2026-11-23T08:41:15.997706+00:00",
+  "completed_utc": "2026-11-23T08:47:57.507909+00:00",
+  "exit_code": 0,
+  "samples": 279,
+  "power_after": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=36175971)\t80%; AC attached; not charging present: true",
+  "rechecked_cases": [
+    "Decoder_Binding/Medium/jsoniter",
+    "Encoder_Generic/Large/stdlib",
+    "Encoder_Generic/Large/jsoniter",
+    "Decoder_Generic/Large/stdlib"
+  ],
+  "rechecks_completed_utc": "2026-11-23T08:48:47.328286+00:00",
+  "power_settings_after": "Battery Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           0\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         60\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10"
+}

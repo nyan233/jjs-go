@@ -223,16 +223,20 @@ and [`benchmark/compare/SHORT_STRING_SCAN.md`](benchmark/compare/SHORT_STRING_SC
 ### macOS ARM64 — Apple M1 Pro
 
 Measured on 2026-11-23 with macOS 27.0.1 (26A434), Go 1.25.0,
-Apple M1 Pro (10 cores, 32 GiB RAM), and `GOMAXPROCS=10`. The machine was
-on AC power with Low Power Mode disabled. This uses codec commit `96ffa5b`
-after the hot-path optimizations. Sonic uses `ConfigStd` with
-`SONIC_NO_ASYNC_GC=1`; EasyJSON is absent from Generic.
+Apple M1 Pro (10 cores, 32 GiB RAM), and `GOMAXPROCS=10`, on AC power
+with Low Power Mode disabled. The measured `main` revision is **`cb635eb`**,
+after all merged correctness, decoder, cache and ARM64 quoting/lookup4 changes.
+The SSA experiment is excluded. Sonic uses `ConfigStd` with
+`SONIC_NO_ASYNC_GC=1`, except for the explicitly unordered encoder below.
 
-These are medians of three one-second samples, shown as `ns/op (allocs/op)`.
-All benchmark loops are serial; `GOMAXPROCS=10` also permits background GC
-workers. The earlier Windows results use a different Go version, settings
-and codec revision, so the two platforms are separate measurements rather
-than a controlled architecture comparison.
+Values are medians of three one-second samples, shown as **ns/op (allocs/op)**.
+All loops are serial and codecs are warmed before timing. Encoding includes
+output allocation. Binding decode reuses a destination; FreshBinding creates
+one per iteration; Generic decode resets its destination to nil.
+Go reports integer average allocation counts, so a reported zero can coexist
+with nonzero B/op when allocation is amortized across operations.
+The Windows amd64 results use a different Go version, codec revision and
+configuration; compare libraries within each platform's table.
 
 ```sh
 cd benchmark/compare
@@ -245,66 +249,75 @@ Binding encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 919.3 (2) | 10,592 (2) | 421,077 (1,112) |
-| `goccy/go-json` | 558.3 (2) | 4,032 (2) | 217,601 (2) |
-| `json-iterator/go` | 1,020 (2) | 20,978 (2) | 658,874 (1,426) |
-| Sonic (`ConfigStd`) | 1,602 (3) | 16,964 (3) | 490,437 (107) |
-| EasyJSON | 909.4 (6) | 11,006 (67) | 416,020 (2,547) |
-| **jjs-go** | **686.2 (2)** | **6,512 (2)** | **269,039 (210)** |
+| `encoding/json` | 927.3 (2) | 11,309 (2) | 415,566 (1,112) |
+| `goccy/go-json` | 557.3 (2) | 4,103 (2) | 216,507 (2) |
+| `json-iterator/go` | 1,022 (2) | 21,055 (2) | 659,704 (1,426) |
+| Sonic (`ConfigStd`) | 1,597 (3) | 16,544 (3) | 483,994 (107) |
+| EasyJSON | 915.2 (6) | 10,742 (67) | 415,904 (2,547) |
+| **jjs-go** | **652.5 (2)** | **4,787 (2)** | **172,340 (210)** |
 
 Binding decoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 4,350 (15) | 88,690 (132) | 3,952,905 (4,903) |
-| `goccy/go-json` | 437.5 (0) | 8,380 (1) | 443,131 (444) |
-| `json-iterator/go` | 1,128 (18) | 26,572 (351) | 1,347,108 (17,681) |
-| Sonic (`ConfigStd`) | 1,348 (10) | 22,456 (110) | 910,042 (4,099) |
-| EasyJSON | 1,199 (7) | 19,700 (124) | 1,901,123 (4,338) |
-| **jjs-go** | **1,447 (7)** | **27,472 (107)** | **1,452,808 (4,236)** |
+| `encoding/json` | 4,253 (15) | 89,580 (132) | 3,965,404 (4,903) |
+| `goccy/go-json` | 446.7 (0) | 8,521 (1) | 445,444 (444) |
+| `json-iterator/go` | 1,122 (18) | 26,750 (351) | 1,353,053 (17,681) |
+| Sonic (`ConfigStd`) | 1,358 (10) | 22,352 (110) | 945,391 (4,099) |
+| EasyJSON | 1,206 (7) | 19,535 (124) | 1,916,119 (4,338) |
+| **jjs-go** | **949.4 (0)** | **17,059 (1)** | **877,257 (444)** |
 
 Generic encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 4,285 (52) | 64,228 (653) | 2,894,691 (27,955) |
-| `goccy/go-json` | 1,730 (1) | 25,285 (1) | 1,331,115 (1) |
-| `json-iterator/go` | 5,183 (66) | 86,850 (613) | 3,533,005 (23,833) |
-| Sonic (`ConfigStd`) | 4,253 (7) | 51,589 (40) | 2,250,908 (1,268) |
-| **jjs-go** | **1,978 (11)** | **21,817 (77)** | **1,067,233 (2,529)** |
+| `encoding/json` | 4,206 (52) | 63,492 (653) | 2,856,557 (27,955) |
+| `goccy/go-json` | 1,697 (1) | 25,272 (1) | 1,306,152 (1) |
+| `json-iterator/go` | 5,160 (66) | 85,042 (613) | 4,299,568 (23,832) |
+| Sonic (`ConfigStd`) | 4,327 (7) | 50,643 (40) | 2,279,421 (1,268) |
+| **jjs-go** | **1,871 (11)** | **20,740 (77)** | **975,216 (2,529)** |
 
 Generic decoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 4,735 (92) | 102,415 (794) | 4,775,992 (32,124) |
-| `goccy/go-json` | 2,099 (23) | 24,208 (134) | 1,046,423 (4,087) |
-| `json-iterator/go` | 3,956 (113) | 62,237 (1,084) | 2,835,082 (44,976) |
-| Sonic (`ConfigStd`) | 2,524 (73) | 35,820 (705) | 1,530,981 (28,731) |
-| **jjs-go** | **3,480 (72)** | **60,052 (747)** | **2,764,860 (30,873)** |
+| `encoding/json` | 5,018 (92) | 105,414 (794) | 4,968,004 (32,124) |
+| `goccy/go-json` | 2,254 (23) | 26,757 (134) | 1,144,130 (4,087) |
+| `json-iterator/go` | 4,113 (113) | 65,951 (1,084) | 2,903,149 (44,976) |
+| Sonic (`ConfigStd`) | 2,795 (73) | 38,354 (705) | 1,620,922 (28,731) |
+| **jjs-go** | **2,672 (23)** | **36,395 (134)** | **1,628,045 (4,084)** |
 
-Typed jjs-go encoding ranks second at all three sizes, behind goccy, and is
-1.34–1.63x as fast as stdlib. Typed decoding is 2.72–3.23x as fast as stdlib,
-but still trails goccy and Sonic. Generic encoding has the lowest reported
-median on Medium and Large under these codec configurations.
+Unordered Generic encoder:
 
-Binding decode reuses its destination. Generic encoding includes a map-order
-behavior difference: jjs-go does not sort map keys, while stdlib and Sonic
-`ConfigStd` do. Full methodology, a fresh-destination decode table and sample
-variability are in [the ARM64 report](benchmark/compare/RESULTS_ARM64.md);
-the [raw output](benchmark/compare/results-darwin-arm64-m1pro.txt) includes
-all 252 samples and allocation bytes.
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `goccy/go-json` | 1,452 (1) | 15,992 (1) | 850,284 (1) |
+| Sonic (unsorted, HTML escaping enabled) | 4,112 (7) | 42,331 (40) | 1,874,143 (1,267) |
+| **jjs-go** | **1,854 (11)** | **19,140 (77)** | **913,779 (2,529)** |
 
-The subsequent [decoder optimization and encoder/SIMD study](benchmark/compare/CODEC_OPTIMIZATION_ARM64.md)
-reports before/after results, encoding comparisons with map sorting disabled
-for every library, and the limits of the available hardware-counter tooling.
-The tables above retain the original `96ffa5b` measurements.
+jjs-go's Binding encoding is 1.42–2.41x as fast as stdlib in these samples.
+Its Large median is below goccy.
 
-The [ARM64 string-quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md)
-compares the fused assembly encoder with the previous Go implementation,
-including Clang `-O3` experiments, whole-document results and correctness checks.
-The [paper-guided UTF-8 follow-up](benchmark/compare/QUOTING_PAPERS_ARM64.md)
-adds fused NEON validation/copying and measures the incremental M1 Pro results.
+jjs-go's Binding decoding is 4.48–5.25x as fast as stdlib in these samples.
+goccy has a lower median at all three sizes.
+
+Default Generic encoding includes different map-order behavior: jjs-go does
+not sort keys, while stdlib and Sonic `ConfigStd` do. The UnorderedGeneric
+control disables map sorting for jjs-go, goccy and Sonic while retaining HTML
+escaping and string validation. Use that control when assessing their generic
+encoding performance with sorting removed.
+
+The [full ARM64 report](benchmark/compare/RESULTS_ARM64.md) includes the
+fresh-destination decode table, complete methodology and sample variability.
+The [raw output](benchmark/compare/results-darwin-arm64-main-cb635eb.txt) contains all 279 samples;
+all tables above come from this one run after the merged optimizations.
+The [older ARM64 report](benchmark/compare/RESULTS_ARM64_96ffa5b.md) remains
+available as a historical snapshot.
+
+The [decoder/SIMD study](benchmark/compare/CODEC_OPTIMIZATION_ARM64.md),
+[assembly quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md) and
+[paper-guided UTF-8 follow-up](benchmark/compare/QUOTING_PAPERS_ARM64.md)
+record the individual optimization stages with their own before/after baselines.
 
 ## Verification
 

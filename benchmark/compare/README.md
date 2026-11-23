@@ -78,12 +78,16 @@ The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
 raw three-sample output behind that summary is
 [`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
 
-The native Apple M1 Pro comparison is summarized in
-[`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all samples in
-[`results-darwin-arm64-m1pro.txt`](results-darwin-arm64-m1pro.txt). Reproduce it
-on this Go 1.25.0 darwin/arm64 setup with:
+The latest native Apple M1 Pro comparison uses `main` revision `cb635eb`,
+after all merged optimizations. It is summarized in
+[`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all 279 samples in
+[`results-darwin-arm64-main-cb635eb.txt`](results-darwin-arm64-main-cb635eb.txt). It includes the original four comparison families,
+fresh-destination decode and unsorted-map encoder controls. The earlier
+[`96ffa5b report`](RESULTS_ARM64_96ffa5b.md) and raw output are preserved.
+Reproduce the full suite on this Go 1.25.0 darwin/arm64 setup with:
 
 ```sh
+cd benchmark/compare
 SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10 go test -run '^$' \
   -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' \
   -benchmem -benchtime=1s -count=3 -cpu=10

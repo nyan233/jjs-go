@@ -2,7 +2,7 @@
 
 Measured on 2026-11-23, at documentation revision `029830e` (codec revision
 `96ffa5b`), with Go 1.25.0 on native darwin/arm64. Hardware, library versions,
-fixtures and codec settings match [the published ARM64 run](RESULTS_ARM64.md).
+fixtures and codec settings match [the published ARM64 run](RESULTS_ARM64_96ffa5b.md).
 This is a diagnosis: the experiments below have **not** been applied to the
 project's runtime implementation at that revision. The subsequent implementation
 and measurements are recorded in [the optimization study](CODEC_OPTIMIZATION_ARM64.md).
