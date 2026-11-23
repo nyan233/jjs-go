@@ -20,7 +20,8 @@ directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
 amd64 string scanning combines SSE4.2 for short encoder strings and AVX2 for
 longer runs. ARM64 uses hand-written NEON quoting that fuses byte classification, copying,
 escaping and UTF-8 validation in one bounded assembly call. NEON handles 8/16-byte
-ASCII blocks; scalar ARM64 instructions handle escaping and UTF-8 sequences.
+ASCII blocks and validates non-ASCII blocks with three UTF-8 lookup tables.
+Scalar ARM64 instructions handle escapes, invalid sequences and short tails.
 Decoding retains word scanning based on full-document measurements.
 Unescaped decode strings are validated once, and short values are copied into
 append-only storage chunks. Encoders use a
@@ -302,6 +303,8 @@ The tables above retain the original `96ffa5b` measurements.
 The [ARM64 string-quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md)
 compares the fused assembly encoder with the previous Go implementation,
 including Clang `-O3` experiments, whole-document results and correctness checks.
+The [paper-guided UTF-8 follow-up](benchmark/compare/QUOTING_PAPERS_ARM64.md)
+adds fused NEON validation/copying and measures the incremental M1 Pro results.
 
 ## Verification
 

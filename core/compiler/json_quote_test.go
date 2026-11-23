@@ -23,6 +23,9 @@ func quotedCases() []struct{ name, value string } {
 	for _, n := range []int{0, 4, 8, 16, 32, 64, 256, 1024} {
 		cases = append(cases, struct{ name, value string }{fmt.Sprintf("ASCII%d", n), strings.Repeat("a", n)})
 	}
+	for _, n := range []int{8, 16, 32, 64} {
+		cases = append(cases, struct{ name, value string }{fmt.Sprintf("UTF8Bytes%d", n), strings.Repeat("é", n/2)})
+	}
 	return cases
 }
 

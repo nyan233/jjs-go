@@ -8,6 +8,10 @@ improves by approximately 4–15% in the six existing Binding/Generic cases.
 No SSA change is included. The baseline is `d22c43d`, implementation `c586c7e`,
 and test-compatibility follow-up `7775c3e`.
 
+This records the first assembly implementation. The later
+[paper-guided UTF-8 study](QUOTING_PAPERS_ARM64.md) replaces scalar handling of
+valid non-ASCII blocks with NEON validation/copying and measures that increment.
+
 ## Algorithm and hardware instructions
 
 The previous implementation called a scanner, later copied the scanned bytes,

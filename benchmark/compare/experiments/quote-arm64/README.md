@@ -42,3 +42,24 @@ References consulted:
 - [simdutf](https://simdutf.github.io/simdutf/index.html): SIMD Unicode validation
   is possible; this change uses scalar UTF-8 range checks in assembly instead
   of integrating a separate SIMD Unicode-validation pass.
+
+## UTF-8 follow-up
+
+`utf8_lookup4.c` transcribes the paper-guided validator into NEON intrinsics.
+It accepts one bounded 16-byte block, rejects JSON escapes or UTF-8 errors,
+and copies 13–16 bytes ending at a complete rune. It is an assembly-inspection
+experiment, not a full encoder or a separately benchmarked competitor.
+
+```sh
+clang -O3 -mcpu=apple-m1 -S utf8_lookup4.c -o clang-utf8-o3.s.txt
+```
+
+The retained Clang output uses three UTF-8 `TBL` operations, `EXT` for prior
+bytes, vector comparisons and an XOR of required continuation positions.
+It uses immediate `MOVI` constants and conditional selects for prefix length.
+The Go kernel loads its UTF-8 tables once per call on demand and retains
+branches for prefix selection. A version using Clang-style immediate constants
+showed a regression on invalid bytes and was not retained. Its scalar
+fallback must preserve byte-wise replacement and bounded-output progress.
+See [the paper study](../../QUOTING_PAPERS_ARM64.md) for full-codec results;
+the C function is never linked into Go.

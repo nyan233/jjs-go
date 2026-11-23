@@ -25,12 +25,16 @@ layout, and machine-code emission.
 - Invalidates data and instruction caches with `DC CVAU`, `IC IVAU`, `DSB`, and
   `ISB` before returning freshly loaded machine code.
 - Uses a fused hand-written ARM64 quote routine: NEON table classification and
-  8/16-byte copying, packed escape entries, and scalar UTF-8 range validation.
+  8/16-byte ASCII copying, lookup4 UTF-8 validation and packed escape entries.
+  Valid non-ASCII blocks commit 13–16 bytes ending at a complete rune; invalid
+  blocks, escapes and short tails retain scalar UTF-8 range validation.
   All source reads and destination writes are bounded. Calls process at most
   64 KiB plus one complete rune before returning to preemptible Go code.
 - The Go quote wrapper owns allocation and output growth; the assembly has no
   calls or stack changes. amd64 retains its existing Go/SSE/AVX quote path.
   See [the quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md).
+  The [UTF-8 follow-up](benchmark/compare/QUOTING_PAPERS_ARM64.md) documents
+  the lookup tables, boundary rules and incremental measurements.
 - The direct decoder remains the primary decoder backend. The shared legacy
   decoder code generator can target the arm64 builder when a type cannot use a
   direct decode plan.

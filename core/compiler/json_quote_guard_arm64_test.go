@@ -46,5 +46,19 @@ func TestARM64QuoteGuardPages(t *testing.T) {
 				checkQuotePrefix(t, input, output, capacity)
 			}
 		}
+		// Exercise vector validation and partial-rune commits directly against
+		// the protected page, including truncated final characters.
+		for _, pattern := range []string{"中😀é", "“\u2028\u2029", "\xed\xa0\x80\xf4\x90\x80\x80"} {
+			for i := range input {
+				input[i] = pattern[i%len(pattern)]
+			}
+			for capacity := 0; capacity <= min(64, n*6+1); capacity++ {
+				output := dst[page-capacity:]
+				for i := range output {
+					output[i] = 0xcc
+				}
+				checkQuotePrefix(t, input, output, capacity)
+			}
+		}
 	}
 }

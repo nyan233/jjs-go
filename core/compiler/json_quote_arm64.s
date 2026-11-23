@@ -4,6 +4,8 @@
 // Bounded fused scan/copy/escape. No calls, stack changes or allocation.
 // R0/R1: output cursor/end; R2/R3: input cursor/end; R4/R5: original cursors.
 // R12: packed ASCII escapes; R13: scalar window end. R18 and Go's g are unused.
+// R17: UTF-8 constants initialized; V8..V10: ASCII constants;
+// V11..V19 and V31: lazily initialized UTF-8 constants.
 TEXT ·quoteJSONString(SB), NOSPLIT, $0-48
 	MOVD dst+0(FP), R0
 	MOVD capacity+8(FP), R1
@@ -19,6 +21,7 @@ TEXT ·quoteJSONString(SB), NOSPLIT, $0-48
 	CSEL LT, R3, R16, R16
 	ADD R2, R16, R16
 	ADD R2, R3, R3
+	MOVD $0, R17 // UTF-8 constants are loaded only on demand.
 	MOVD $·jsonQuoteEscapes(SB), R12
 	SUB R2, R3, R6
 	CMP $8, R6
@@ -72,6 +75,94 @@ quote_special_eight:
 	ADD $8, R2, R13
 	B quote_scalar
 quote_special_block:
+	// Bits 0..3 are JSON escapes; bit 4 marks non-ASCII. Only blocks
+	// without ASCII escapes are candidates for validation and unchanged copy.
+	VAND V10.B16, V1.B16, V1.B16
+	VUADDLV V1.B16, V3
+	VMOV V3.H[0], R6
+	CBNZ R6, quote_scalar_block
+	CBNZ R17, quote_validate_utf8
+	MOVD $·jsonQuoteUTF8(SB), R6
+	VLD1 (R6), [V11.B16, V12.B16, V13.B16]
+	VEOR V31.B16, V31.B16, V31.B16
+	MOVD $0xe0, R6
+	VMOV R6, V14.B16
+	MOVD $0xf0, R6
+	VMOV R6, V15.B16
+	MOVD $0x80, R6
+	VMOV R6, V16.B16
+	MOVD $0xe2, R6
+	VMOV R6, V17.B16
+	MOVD $0xfe, R6
+	VMOV R6, V18.B16
+	MOVD $0xa8, R6
+	VMOV R6, V19.B16
+	MOVD $1, R17
+quote_validate_utf8:
+	// lookup4 (Keiser/Lemire): three nibble lookups classify adjacent
+	// bytes. XOR their continuation-pair bit with the required third/fourth
+	// continuation positions. See json_quote_utf8_tables.h for attribution.
+	// Each block starts at a rune boundary, so its preceding bytes are zero.
+	VEXT $15, V0.B16, V31.B16, V20.B16
+	VEXT $14, V0.B16, V31.B16, V21.B16
+	VEXT $13, V0.B16, V31.B16, V22.B16
+	VUSHR $4, V20.B16, V3.B16
+	VAND V10.B16, V20.B16, V4.B16
+	VUSHR $4, V0.B16, V5.B16
+	VTBL V3.B16, [V11.B16], V3.B16
+	VTBL V4.B16, [V12.B16], V4.B16
+	VTBL V5.B16, [V13.B16], V5.B16
+	VAND V4.B16, V3.B16, V3.B16
+	VAND V5.B16, V3.B16, V3.B16
+	WORD $0x6e2e3ea4 // cmhs v4.16b, v21.16b, v14.16b (prev2 >= 0xe0)
+	WORD $0x6e2f3ec5 // cmhs v5.16b, v22.16b, v15.16b (prev3 >= 0xf0)
+	VORR V5.B16, V4.B16, V4.B16
+	VAND V16.B16, V4.B16, V4.B16
+	VEOR V4.B16, V3.B16, V3.B16
+	// E2 80 A8/A9 must be escaped even though they are valid UTF-8.
+	VCMEQ V17.B16, V21.B16, V4.B16
+	VCMEQ V16.B16, V20.B16, V5.B16
+	VAND V5.B16, V4.B16, V4.B16
+	VAND V18.B16, V0.B16, V5.B16
+	VCMEQ V19.B16, V5.B16, V5.B16
+	VAND V5.B16, V4.B16, V4.B16
+	VORR V4.B16, V3.B16, V3.B16
+	VUADDLV V3.B16, V4
+	VMOV V4.H[0], R6
+	CBNZ R6, quote_scalar_block
+	// The block's final lead may not have all its continuation bytes yet.
+	// Commit only complete runes; recheck the uncommitted tail next time.
+	VMOV V0.B[15], R6
+	CMP $0xc0, R6
+	BHS quote_utf8_commit15
+	VMOV V0.B[14], R6
+	CMP $0xe0, R6
+	BHS quote_utf8_commit14
+	VMOV V0.B[13], R6
+	CMP $0xf0, R6
+	BHS quote_utf8_commit13
+	VST1 [V0.B16], (R0)
+	ADD $16, R0
+	ADD $16, R2
+	B quote_vector
+quote_utf8_commit15:
+	MOVD $15, R7
+	B quote_utf8_commit_tail
+quote_utf8_commit14:
+	MOVD $14, R7
+	B quote_utf8_commit_tail
+quote_utf8_commit13:
+	MOVD $13, R7
+quote_utf8_commit_tail:
+	// Two overlapping 8-byte stores touch exactly the committed prefix.
+	SUB $8, R7, R6
+	MOVD (R2)(R6), R8
+	VST1 [V0.B8], (R0)
+	MOVD R8, (R0)(R6)
+	ADD R7, R0, R0
+	ADD R7, R2, R2
+	B quote_vector
+quote_scalar_block:
 	// Avoid repeating vector classification on densely escaped input.
 	ADD $16, R2, R13
 	B quote_scalar
@@ -281,3 +372,5 @@ DATA ·jsonQuoteEscapes+480(SB)/8, $0x060063333030755c
 DATA ·jsonQuoteEscapes+496(SB)/8, $0x060065333030755c
 DATA ·jsonQuoteEscapes+736(SB)/8, $0x0200000000005c5c
 GLOBL ·jsonQuoteEscapes(SB), RODATA|NOPTR, $1024
+
+#include "json_quote_utf8_tables.h"
