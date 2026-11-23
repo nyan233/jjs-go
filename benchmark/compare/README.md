@@ -6,7 +6,7 @@ Sonic's benchmark methodology.
 
 ## Libraries
 
-- Go 1.22 `encoding/json`
+- `encoding/json` from the Go toolchain named in each results report
 - `github.com/goccy/go-json` v0.11.0
 - `github.com/json-iterator/go` v1.1.12
 - `github.com/mailru/easyjson` v0.9.2
@@ -44,6 +44,10 @@ include `ns/op`, `B/op`, `allocs/op`, and MB/s based on fixture bytes.
 its results include allocating the decoded slices, maps and pointers.
 Generic decoding resets the destination to `nil` on every iteration.
 
+Map key ordering is not normalized across codecs. In particular, jjs-go
+encodes maps without sorting keys, while `encoding/json` and Sonic `ConfigStd`
+sort them. Generic encoding results include this behavior difference.
+
 ## Run
 
 ```powershell
@@ -67,12 +71,26 @@ go test ./...
 ```
 
 Compare results only on the same machine, Go toolchain, power mode, and
-`GOMAXPROCS`. Run `jjs-go` only on an AVX2-capable CPU; package initialization
-fails fast otherwise.
+`GOMAXPROCS`. On amd64, jjs-go requires AVX2 and SSE4.2; Apple Silicon uses
+the native ARM64 backend.
 
-The latest local results are summarized in [`RESULTS.md`](RESULTS.md). The raw
-three-sample output behind that summary is
+The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
+raw three-sample output behind that summary is
 [`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
+
+The native Apple M1 Pro comparison is summarized in
+[`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all samples in
+[`results-darwin-arm64-m1pro.txt`](results-darwin-arm64-m1pro.txt). Reproduce it
+on this Go 1.25.0 darwin/arm64 setup with:
+
+```sh
+SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10 go test -run '^$' \
+  -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' \
+  -benchmem -benchtime=1s -count=3 -cpu=10
+```
+
+The published run built the test binary first and then invoked it with the
+equivalent `-test.*` flags to keep compilation separate from measurement.
 
 The ARM64 before/after study for the subsequent hot-path changes is in
 [`HOTPATH_OPTIMIZATION.md`](HOTPATH_OPTIMIZATION.md).

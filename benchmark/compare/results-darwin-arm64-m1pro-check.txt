@@ -1,0 +1,27 @@
+# /tmp/jjs-m1pro-compare-96ffa5b.test -test.run '^$' -test.bench '^BenchmarkDecoder_Binding$/^Large$/^easyjson$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Large/easyjson-10         	     638	   1864339 ns/op	 338.73 MB/s	  181448 B/op	    4338 allocs/op
+BenchmarkDecoder_Binding/Large/easyjson-10         	     649	   1857471 ns/op	 339.99 MB/s	  181427 B/op	    4338 allocs/op
+BenchmarkDecoder_Binding/Large/easyjson-10         	     650	   1876339 ns/op	 336.57 MB/s	  181427 B/op	    4338 allocs/op
+PASS
+# /tmp/jjs-m1pro-compare-96ffa5b.test -test.run '^$' -test.bench '^BenchmarkDecoder_FreshBinding$/^Medium$/^jsoniter$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_FreshBinding/Medium/jsoniter-10         	   42033	     28689 ns/op	 453.93 MB/s	   14545 B/op	     379 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jsoniter-10         	   42152	     28499 ns/op	 456.97 MB/s	   14544 B/op	     379 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jsoniter-10         	   42022	     28499 ns/op	 456.96 MB/s	   14544 B/op	     379 allocs/op
+PASS
+# /tmp/jjs-m1pro-compare-96ffa5b.test -test.run '^$' -test.bench '^BenchmarkEncoder_Generic$/^Medium$/^sonic$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Generic/Medium/sonic-10   	   24007	     49884 ns/op	 261.06 MB/s	   13336 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10   	   24304	     49540 ns/op	 262.88 MB/s	   13342 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10   	   24366	     49056 ns/op	 265.47 MB/s	   13338 B/op	      40 allocs/op
+PASS

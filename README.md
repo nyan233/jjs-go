@@ -110,11 +110,10 @@ reflection.
 The code-generation split and ARM64 validation commands are documented in
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-Windows amd64 is the primary performance-verification target for this branch.
-The ARM64 backend is cross-compiled and instruction-tested, but still requires
-a real Apple Silicon runtime/CI pass before its performance is considered
-production-verified. String escaping and JSON string parsing use AVX2 and
-SSE4.2 fast paths on amd64; ARM64 uses native 64-bit word scans.
+Windows amd64 and Apple M1 Pro ARM64 measurements are reported separately
+below. Native ARM64 execution is also covered by macOS CI. String escaping
+and JSON string parsing use AVX2 and SSE4.2 fast paths on amd64; ARM64 uses
+native 64-bit word scans.
 
 The repository-owned loader and compiler JIT tests are validated against Go
 1.21 through Go 1.27.4. The broader codec differential suite still uses Go
@@ -137,6 +136,8 @@ direct instruction encoder and its own Go ABI frame/cache-flush sequence.
 against `encoding/json`, goccy/go-json, json-iterator, EasyJSON and Sonic using
 Sonic's small/medium/large fixtures. The tables below are medians of three
 one-second runs. Each cell is `ns/op (allocs/op)`; lower is better.
+
+### Windows amd64 — Intel Core i7-14700KF
 
 Measured on 2026-11-21 with Windows 11 26200, Go 1.22.0, an Intel Core
 i7-14700KF, and `GOMAXPROCS=16`. Sonic uses `ConfigStd` and
@@ -214,6 +215,81 @@ Hardware-counter profiling notes and raw results are in
 [`benchmark/compare/HARDWARE_RESULTS.md`](benchmark/compare/HARDWARE_RESULTS.md)
 and [`benchmark/compare/SHORT_STRING_SCAN.md`](benchmark/compare/SHORT_STRING_SCAN.md).
 
+### macOS ARM64 — Apple M1 Pro
+
+Measured on 2026-11-23 with macOS 27.0.1 (26A434), Go 1.25.0,
+Apple M1 Pro (10 cores, 32 GiB RAM), and `GOMAXPROCS=10`. The machine was
+on AC power with Low Power Mode disabled. This uses codec commit `96ffa5b`
+after the hot-path optimizations. Sonic uses `ConfigStd` with
+`SONIC_NO_ASYNC_GC=1`; EasyJSON is absent from Generic.
+
+These are medians of three one-second samples, shown as `ns/op (allocs/op)`.
+All benchmark loops are serial; `GOMAXPROCS=10` also permits background GC
+workers. The earlier Windows results use a different Go version, settings
+and codec revision, so the two platforms are separate measurements rather
+than a controlled architecture comparison.
+
+```sh
+cd benchmark/compare
+SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10 go test -run '^$' \
+  -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' \
+  -benchmem -benchtime=1s -count=3 -cpu=10
+```
+
+Binding encoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 919.3 (2) | 10,592 (2) | 421,077 (1,112) |
+| `goccy/go-json` | 558.3 (2) | 4,032 (2) | 217,601 (2) |
+| `json-iterator/go` | 1,020 (2) | 20,978 (2) | 658,874 (1,426) |
+| Sonic (`ConfigStd`) | 1,602 (3) | 16,964 (3) | 490,437 (107) |
+| EasyJSON | 909.4 (6) | 11,006 (67) | 416,020 (2,547) |
+| **jjs-go** | **686.2 (2)** | **6,512 (2)** | **269,039 (210)** |
+
+Binding decoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 4,350 (15) | 88,690 (132) | 3,952,905 (4,903) |
+| `goccy/go-json` | 437.5 (0) | 8,380 (1) | 443,131 (444) |
+| `json-iterator/go` | 1,128 (18) | 26,572 (351) | 1,347,108 (17,681) |
+| Sonic (`ConfigStd`) | 1,348 (10) | 22,456 (110) | 910,042 (4,099) |
+| EasyJSON | 1,199 (7) | 19,700 (124) | 1,901,123 (4,338) |
+| **jjs-go** | **1,447 (7)** | **27,472 (107)** | **1,452,808 (4,236)** |
+
+Generic encoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 4,285 (52) | 64,228 (653) | 2,894,691 (27,955) |
+| `goccy/go-json` | 1,730 (1) | 25,285 (1) | 1,331,115 (1) |
+| `json-iterator/go` | 5,183 (66) | 86,850 (613) | 3,533,005 (23,833) |
+| Sonic (`ConfigStd`) | 4,253 (7) | 51,589 (40) | 2,250,908 (1,268) |
+| **jjs-go** | **1,978 (11)** | **21,817 (77)** | **1,067,233 (2,529)** |
+
+Generic decoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 4,735 (92) | 102,415 (794) | 4,775,992 (32,124) |
+| `goccy/go-json` | 2,099 (23) | 24,208 (134) | 1,046,423 (4,087) |
+| `json-iterator/go` | 3,956 (113) | 62,237 (1,084) | 2,835,082 (44,976) |
+| Sonic (`ConfigStd`) | 2,524 (73) | 35,820 (705) | 1,530,981 (28,731) |
+| **jjs-go** | **3,480 (72)** | **60,052 (747)** | **2,764,860 (30,873)** |
+
+Typed jjs-go encoding ranks second at all three sizes, behind goccy, and is
+1.34–1.63x as fast as stdlib. Typed decoding is 2.72–3.23x as fast as stdlib,
+but still trails goccy and Sonic. Generic encoding has the lowest reported
+median on Medium and Large under these codec configurations.
+
+Binding decode reuses its destination. Generic encoding includes a map-order
+behavior difference: jjs-go does not sort map keys, while stdlib and Sonic
+`ConfigStd` do. Full methodology, a fresh-destination decode table and sample
+variability are in [the ARM64 report](benchmark/compare/RESULTS_ARM64.md);
+the [raw output](benchmark/compare/results-darwin-arm64-m1pro.txt) includes
+all 252 samples and allocation bytes.
+
 ## Verification
 
 ```sh
@@ -243,8 +319,8 @@ GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go test -c ./core/compiler
 
 - Go 1.26/1.27 loader and compiler JIT tests pass, but the full codec
   differential suite still exposes separate reflect/interface ABI behavior.
-- ARM64 is cross-compiled and instruction-tested; real Apple Silicon runtime
-  performance still needs CI/device validation.
+- ARM64 performance measurements cover Apple M1 Pro; other ARM64 hardware
+  has not been benchmarked here.
 - Hardened macOS apps need executable-memory/JIT entitlements in their code
   signature.
 
