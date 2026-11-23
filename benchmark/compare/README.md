@@ -104,6 +104,11 @@ The typed JIT inlining and NEON Base64 branch is measured separately in
 compilation costs. Its algorithm sources are in
 [`BASE64_ARM64_RESEARCH.md`](BASE64_ARM64_RESEARCH.md).
 
+The subsequent typed-map JIT and direct NEON quoting changes are measured in
+[`JIT_MAP_ARM64.md`](JIT_MAP_ARM64.md), including iterator allocations,
+Large-fixture rechecks and code-size costs. Runtime compatibility details
+are in [`MAP_ITERATOR_RESEARCH.md`](MAP_ITERATOR_RESEARCH.md).
+
 ## Code generation metrics
 
 The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from

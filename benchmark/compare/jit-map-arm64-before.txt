@@ -1,0 +1,255 @@
+# micro
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITMap/Nil-10         	100000000	         3.104 ns/op	       496.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10         	100000000	         3.103 ns/op	       496.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10         	100000000	         3.124 ns/op	       496.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10         	100000000	         3.106 ns/op	       496.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Nil-10         	100000000	         3.126 ns/op	       496.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITMap/Empty-10       	 5053821	        72.23 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Empty-10       	 4894302	        72.89 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Empty-10       	 4764795	        73.35 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Empty-10       	 4948801	        77.31 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Empty-10       	 4711912	        75.43 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Small-10       	 2209185	       162.4 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Small-10       	 2188579	       164.7 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Small-10       	 2133618	       165.9 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Small-10       	 2204962	       161.0 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Small-10       	 2210952	       162.1 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringInt-10   	   88579	      4047 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringInt-10   	   89244	      4059 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringInt-10   	   89000	      4023 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringInt-10   	   89853	      4033 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringInt-10   	   90075	      4039 ns/op	       496.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringString-10         	   77590	      4664 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringString-10         	   76917	      4719 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringString-10         	   76884	      4924 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringString-10         	   71486	      4953 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/StringString-10         	   74254	      4735 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/IntUint-10              	   84620	      4274 ns/op	       480.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/IntUint-10              	   84273	      4304 ns/op	       480.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/IntUint-10              	   84601	      4300 ns/op	       480.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/IntUint-10              	   83115	      4297 ns/op	       480.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/IntUint-10              	   83498	      4336 ns/op	       480.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Struct-10               	   62464	      5778 ns/op	      1056 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Struct-10               	   62482	      5852 ns/op	      1056 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Struct-10               	   63187	      5774 ns/op	      1056 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Struct-10               	   63012	      5939 ns/op	      1056 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Struct-10               	   60172	      5788 ns/op	      1056 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Nested-10               	   59059	      5926 ns/op	       608.0 code-B	    6338 B/op	      66 allocs/op
+BenchmarkJITMap/Nested-10               	   59839	      5943 ns/op	       608.0 code-B	    6338 B/op	      66 allocs/op
+BenchmarkJITMap/Nested-10               	   61495	      6112 ns/op	       608.0 code-B	    6338 B/op	      66 allocs/op
+BenchmarkJITMap/Nested-10               	   55833	      6367 ns/op	       608.0 code-B	    6338 B/op	      66 allocs/op
+BenchmarkJITMap/Nested-10               	   58076	      6514 ns/op	       608.0 code-B	    6338 B/op	      66 allocs/op
+BenchmarkJITMap/Interface-10            	   48926	      7520 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Interface-10            	   50175	      7282 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Interface-10            	   49954	      7300 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Interface-10            	   38504	     13142 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/Interface-10            	   49876	      7275 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/EscapedKeys-10          	  966248	       384.0 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/EscapedKeys-10          	  947014	       388.2 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/EscapedKeys-10          	  983180	       384.4 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/EscapedKeys-10          	  938925	       382.7 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+BenchmarkJITMap/EscapedKeys-10          	  996964	       380.5 ns/op	       224.0 code-B	     192 B/op	       2 allocs/op
+PASS
+
+# cold
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITMapCompile/Nil-10         	      50	     15132 ns/op	   10543 B/op	     140 allocs/op
+BenchmarkJITMapCompile/Nil-10         	      50	     15178 ns/op	   10577 B/op	     140 allocs/op
+BenchmarkJITMapCompile/Nil-10         	      50	     13458 ns/op	   10869 B/op	     142 allocs/op
+BenchmarkJITMapCompile/Nil-10         	      50	     20096 ns/op	   10329 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Nil-10         	      50	     14295 ns/op	   11513 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Empty-10       	      50	     13382 ns/op	   10329 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Empty-10       	      50	     14186 ns/op	   10324 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Empty-10       	      50	     14242 ns/op	   10324 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Empty-10       	      50	     16963 ns/op	   12703 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Empty-10       	      50	     17322 ns/op	   10356 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Small-10       	      50	     19830 ns/op	   10452 B/op	     146 allocs/op
+BenchmarkJITMapCompile/Small-10       	      50	     16020 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/Small-10       	      50	     14839 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/Small-10       	      50	     14551 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/Small-10       	      50	     14766 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/StringInt-10   	      50	     14430 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/StringInt-10   	      50	     13718 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/StringInt-10   	      50	     18725 ns/op	   15215 B/op	     146 allocs/op
+BenchmarkJITMapCompile/StringInt-10   	      50	     16464 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/StringInt-10   	      50	     14518 ns/op	   10457 B/op	     146 allocs/op
+BenchmarkJITMapCompile/StringString-10         	      50	     15805 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/StringString-10         	      50	     13172 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/StringString-10         	      50	     14613 ns/op	    7020 B/op	     114 allocs/op
+BenchmarkJITMapCompile/StringString-10         	      50	     16367 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/StringString-10         	      50	     14798 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/IntUint-10              	      50	     18003 ns/op	   10897 B/op	     144 allocs/op
+BenchmarkJITMapCompile/IntUint-10              	      50	     14867 ns/op	   10897 B/op	     144 allocs/op
+BenchmarkJITMapCompile/IntUint-10              	      50	     17818 ns/op	   10892 B/op	     144 allocs/op
+BenchmarkJITMapCompile/IntUint-10              	      50	     15679 ns/op	   10897 B/op	     144 allocs/op
+BenchmarkJITMapCompile/IntUint-10              	      50	     17521 ns/op	   10897 B/op	     144 allocs/op
+BenchmarkJITMapCompile/Struct-10               	      50	     24008 ns/op	   18649 B/op	     213 allocs/op
+BenchmarkJITMapCompile/Struct-10               	      50	     23268 ns/op	   18649 B/op	     213 allocs/op
+BenchmarkJITMapCompile/Struct-10               	      50	     20850 ns/op	   18649 B/op	     213 allocs/op
+BenchmarkJITMapCompile/Struct-10               	      50	     22943 ns/op	   18644 B/op	     213 allocs/op
+BenchmarkJITMapCompile/Struct-10               	      50	     22534 ns/op	   21768 B/op	     213 allocs/op
+BenchmarkJITMapCompile/Nested-10               	      50	     23595 ns/op	   19837 B/op	     200 allocs/op
+BenchmarkJITMapCompile/Nested-10               	      50	     22403 ns/op	   13441 B/op	     200 allocs/op
+BenchmarkJITMapCompile/Nested-10               	      50	     21466 ns/op	   13436 B/op	     200 allocs/op
+BenchmarkJITMapCompile/Nested-10               	      50	     24632 ns/op	   13441 B/op	     200 allocs/op
+BenchmarkJITMapCompile/Nested-10               	      50	     20835 ns/op	   13436 B/op	     200 allocs/op
+BenchmarkJITMapCompile/Interface-10            	      50	     14151 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/Interface-10            	      50	     14404 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/Interface-10            	      50	     14628 ns/op	    7020 B/op	     114 allocs/op
+BenchmarkJITMapCompile/Interface-10            	      50	     19058 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/Interface-10            	      50	     14948 ns/op	    7020 B/op	     114 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10          	      50	     15005 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10          	      50	     14635 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10          	      50	     15319 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10          	      50	     15668 ns/op	    7025 B/op	     114 allocs/op
+BenchmarkJITMapCompile/EscapedKeys-10          	      50	     13846 ns/op	    7025 B/op	     114 allocs/op
+PASS
+
+# compare
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	  583274	       576.3 ns/op	 633.34 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/goccy-10 	  652070	       567.6 ns/op	 643.04 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/goccy-10 	  638028	       577.5 ns/op	 632.04 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/goccy-10 	  630076	       563.5 ns/op	 647.78 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/goccy-10 	  655866	       562.9 ns/op	 648.39 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  223833	      1578 ns/op	 231.24 MB/s	     651 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  226834	      1588 ns/op	 229.85 MB/s	     650 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  227084	      1586 ns/op	 230.14 MB/s	     648 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  226836	      1574 ns/op	 231.95 MB/s	     649 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  225088	      1630 ns/op	 223.91 MB/s	     652 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  692522	       508.6 ns/op	 717.62 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  696774	       514.3 ns/op	 709.70 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  695977	       528.2 ns/op	 690.99 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  609093	       584.4 ns/op	 624.52 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  656305	       519.9 ns/op	 702.02 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   78135	      4648 ns/op	2802.00 MB/s	    9639 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   77758	      4868 ns/op	2675.18 MB/s	    9642 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   77581	      4072 ns/op	3197.91 MB/s	    9639 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   91064	      4284 ns/op	3039.82 MB/s	    9636 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	   81234	      4440 ns/op	2933.00 MB/s	    9640 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   21205	     16936 ns/op	 768.94 MB/s	   10052 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   21696	     16449 ns/op	 791.70 MB/s	    9940 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   20235	     16275 ns/op	 800.20 MB/s	   10004 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   22156	     16550 ns/op	 786.91 MB/s	    9996 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   21586	     16617 ns/op	 783.70 MB/s	   10038 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   93238	      3829 ns/op	3401.14 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   99472	      3729 ns/op	3492.01 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   93750	      3804 ns/op	3423.36 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   96378	      3764 ns/op	3460.03 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   93920	      3741 ns/op	3481.32 MB/s	    9619 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1684	    211611 ns/op	2984.31 MB/s	  262388 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1670	    211523 ns/op	2985.55 MB/s	  262387 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1714	    212460 ns/op	2972.39 MB/s	  262385 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1694	    214265 ns/op	2947.35 MB/s	  263917 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    1676	    214462 ns/op	2944.64 MB/s	  263932 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     724	    484805 ns/op	1302.61 MB/s	  284938 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     748	    480013 ns/op	1315.62 MB/s	  278901 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     727	    483723 ns/op	1305.53 MB/s	  288490 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     741	    492705 ns/op	1281.73 MB/s	  290716 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	     732	    494602 ns/op	1276.81 MB/s	  290011 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2217	    163370 ns/op	3865.55 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2157	    168047 ns/op	3757.96 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2168	    162822 ns/op	3878.56 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2205	    171389 ns/op	3684.69 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2310	    158143 ns/op	3993.32 MB/s	  282373 B/op	     210 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  218360	      1683 ns/op	 216.89 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  214014	      1678 ns/op	 217.53 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  218314	      1694 ns/op	 215.44 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  215937	      1693 ns/op	 215.55 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  212236	      1707 ns/op	 213.77 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   84316	      4252 ns/op	  85.85 MB/s	     892 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   86005	      4267 ns/op	  85.53 MB/s	     890 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   85107	      4214 ns/op	  86.61 MB/s	     897 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   86172	      4229 ns/op	  86.31 MB/s	     895 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	   83984	      4281 ns/op	  85.26 MB/s	     898 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  191677	      1891 ns/op	 193.03 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  198324	      1861 ns/op	 196.09 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  190708	      1898 ns/op	 192.33 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  191215	      1965 ns/op	 185.71 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  200239	      1816 ns/op	 201.01 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14196	     25271 ns/op	 515.34 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14376	     25161 ns/op	 517.59 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   14157	     25777 ns/op	 505.21 MB/s	    9478 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   12717	     25615 ns/op	 508.42 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   13941	     25640 ns/op	 507.93 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7248	     54369 ns/op	 239.53 MB/s	   13267 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7231	     53636 ns/op	 242.80 MB/s	   13300 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7202	     51569 ns/op	 252.54 MB/s	   13288 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7116	     51085 ns/op	 254.93 MB/s	   13352 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	    7345	     50696 ns/op	 256.88 MB/s	   13325 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   18318	     19470 ns/op	 668.87 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   18315	     19677 ns/op	 661.85 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   18416	     19475 ns/op	 668.71 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   18458	     19409 ns/op	 670.97 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   18034	     19620 ns/op	 663.77 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     274	   1305167 ns/op	 483.86 MB/s	  475277 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     274	   1301118 ns/op	 485.36 MB/s	  475280 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     277	   1321344 ns/op	 477.93 MB/s	  475281 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     268	   1325357 ns/op	 476.49 MB/s	  475280 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     268	   1342734 ns/op	 470.32 MB/s	  475281 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     124	   2526786 ns/op	 249.93 MB/s	  609872 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     140	   2337132 ns/op	 270.21 MB/s	  613459 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     153	   2324116 ns/op	 271.72 MB/s	  615782 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     150	   2427449 ns/op	 260.16 MB/s	  611605 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     156	   2474366 ns/op	 255.22 MB/s	  629168 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     380	    939231 ns/op	 672.37 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     385	    929386 ns/op	 679.50 MB/s	  718065 B/op	    2529 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     382	    927138 ns/op	 681.14 MB/s	  718066 B/op	    2529 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     387	    942278 ns/op	 670.20 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     379	   1026643 ns/op	 615.13 MB/s	  718064 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  246670	      1472 ns/op	 247.88 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  246494	      1460 ns/op	 250.01 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  249954	      1455 ns/op	 250.90 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  247100	      1476 ns/op	 247.28 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  243210	      1468 ns/op	 248.56 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   83918	      4284 ns/op	  85.21 MB/s	     895 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   84308	      4222 ns/op	  86.46 MB/s	     893 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   87864	      4148 ns/op	  87.99 MB/s	     891 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   86570	      4186 ns/op	  87.19 MB/s	     893 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	   86524	      4113 ns/op	  88.75 MB/s	     894 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  191355	      1927 ns/op	 189.42 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  190798	      1894 ns/op	 192.71 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  194050	      1871 ns/op	 195.05 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  189112	      1852 ns/op	 197.14 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  195384	      1857 ns/op	 196.55 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   22516	     16137 ns/op	 807.05 MB/s	    9477 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   22401	     16202 ns/op	 803.77 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   22473	     15942 ns/op	 816.91 MB/s	    9478 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   22670	     15673 ns/op	 830.93 MB/s	    9479 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   22641	     15914 ns/op	 818.34 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8710	     42754 ns/op	 304.60 MB/s	   13312 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8295	     42624 ns/op	 305.53 MB/s	   13365 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8208	     42737 ns/op	 304.72 MB/s	   13273 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    8385	     57921 ns/op	 224.84 MB/s	   13379 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	    7146	     42844 ns/op	 303.97 MB/s	   13316 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   17668	     20227 ns/op	 643.84 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   16184	     19906 ns/op	 654.22 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   17864	     20274 ns/op	 642.36 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   17449	     19539 ns/op	 666.52 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   18578	     20225 ns/op	 643.91 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     409	    874519 ns/op	 722.13 MB/s	  475280 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     417	    906572 ns/op	 696.60 MB/s	  475277 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     411	    864038 ns/op	 730.89 MB/s	  475271 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     415	    866396 ns/op	 728.90 MB/s	  475282 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     417	    893077 ns/op	 707.12 MB/s	  475267 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     188	   1901240 ns/op	 332.16 MB/s	  617416 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     189	   1912512 ns/op	 330.20 MB/s	  621807 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     187	   1897897 ns/op	 332.74 MB/s	  632714 B/op	    1268 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     188	   1916695 ns/op	 329.48 MB/s	  640829 B/op	    1268 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     188	   1906687 ns/op	 331.21 MB/s	  628014 B/op	    1268 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     375	    925520 ns/op	 682.33 MB/s	  718060 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     393	    923707 ns/op	 683.67 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     385	    986465 ns/op	 640.18 MB/s	  718065 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     378	    926253 ns/op	 681.79 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     392	    931033 ns/op	 678.29 MB/s	  718064 B/op	    2529 allocs/op
+PASS
