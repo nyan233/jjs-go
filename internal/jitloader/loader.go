@@ -2,8 +2,13 @@ package jitloader
 
 import (
 	"fmt"
+	"sync"
 	"unsafe"
 )
+
+// Runtime module-chain registration is not reentrant on all supported Go
+// versions. Building the module and its executable mapping can run in parallel.
+var moduleRegisterMu sync.Mutex
 
 // Function is a pointer to a loaded function value.
 type Function unsafe.Pointer
@@ -48,7 +53,9 @@ func (loader Loader) LoadOne(
 		localPtrs: localPtrs,
 		pcsp:      pcsp,
 	})
+	moduleRegisterMu.Lock()
 	registerModule(module.metadata)
+	moduleRegisterMu.Unlock()
 	address := module.metadata.text
 	return Function(&address)
 }

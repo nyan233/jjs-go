@@ -1,0 +1,10 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkMarshalTo 	 4297446	        82.84 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalTo 	 4407632	        81.87 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalTo 	 4412100	        82.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalTo 	 4432291	        81.77 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalTo 	 4428763	        81.50 ns/op	       0 B/op	       0 allocs/op
+PASS

@@ -23,8 +23,7 @@ func CompileDecoder(typ reflect.Type) (DecodeHandler, error) {
 }
 
 type Decoder struct {
-	baseCache[DecodeHandler]
-	mu sync.Mutex
+	baseCache[reflect.Type, DecodeHandler]
 }
 
 func (d *Decoder) init() *Decoder {
@@ -39,41 +38,37 @@ func (d *Decoder) Compile(typ reflect.Type) (DecodeHandler, error) {
 	if handler, ok := d.getCompileResult(typ); ok {
 		return handler, nil
 	}
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if handler, ok := d.getCompileResult(typ); ok {
-		return handler, nil
-	}
-	program, err := compileJITDecoder(typ)
-	if err != nil {
-		return nil, err
-	}
-	handler := func(data []byte, target unsafe.Pointer) error {
-		if target == nil {
-			return errors.New("json: nil decode destination")
-		}
-		if program.direct != nil {
-			return decodeDirectBytes(data, program.direct, target)
-		}
-		root, err := parseJITJSON(data)
+	return d.baseCache.compile(typ, func() (DecodeHandler, error) {
+		program, err := compileJITDecoder(typ)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		ctx := jitDecodeContextPool.Get().(*jitDecodeContext)
-		*ctx = jitDecodeContext{
-			root:    root,
-			data:    target,
-			program: program.program,
+		handler := func(data []byte, target unsafe.Pointer) error {
+			if target == nil {
+				return errors.New("json: nil decode destination")
+			}
+			if program.direct != nil {
+				return decodeDirectBytes(data, program.direct, target)
+			}
+			root, err := parseJITJSON(data)
+			if err != nil {
+				return err
+			}
+			ctx := jitDecodeContextPool.Get().(*jitDecodeContext)
+			*ctx = jitDecodeContext{
+				root:    root,
+				data:    target,
+				program: program.program,
+			}
+			defer func() {
+				*ctx = jitDecodeContext{}
+				jitDecodeContextPool.Put(ctx)
+			}()
+			program.function(ctx)
+			return ctx.err
 		}
-		defer func() {
-			*ctx = jitDecodeContext{}
-			jitDecodeContextPool.Put(ctx)
-		}()
-		program.function(ctx)
-		return ctx.err
-	}
-	d.setCompileResult(typ, handler)
-	return handler, nil
+		return handler, nil
+	})
 }
 
 type jitDecodeProgram struct {
@@ -210,8 +205,13 @@ func (c *jitDecoderCompiler) typeIndex(typ reflect.Type) int {
 }
 
 func typePointer(typ reflect.Type) uintptr {
+	return uintptr(runtimeTypePointer(typ))
+}
+
+// Preserve pointer provenance for heap-backed types created by reflect.
+func runtimeTypePointer(typ reflect.Type) unsafe.Pointer {
 	face := (*nonEmptyInterface)(unsafe.Pointer(&typ))
-	return uintptr(face.data)
+	return face.data
 }
 
 type nonEmptyInterface struct {

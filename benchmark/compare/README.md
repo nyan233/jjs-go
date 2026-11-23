@@ -39,6 +39,11 @@ Every codec is invoked once before `b.ResetTimer()`. This warms the JIT,
 Sonic `Pretouch`, jsoniter metadata, and EasyJSON initialization. Reports
 include `ns/op`, `B/op`, `allocs/op`, and MB/s based on fixture bytes.
 
+`BenchmarkDecoder_Binding` reuses a destination across iterations.
+`BenchmarkDecoder_FreshBinding` uses a zero-value destination each time, so
+its results include allocating the decoded slices, maps and pointers.
+Generic decoding resets the destination to `nil` on every iteration.
+
 ## Run
 
 ```powershell
@@ -68,6 +73,9 @@ fails fast otherwise.
 The latest local results are summarized in [`RESULTS.md`](RESULTS.md). The raw
 three-sample output behind that summary is
 [`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
+
+The ARM64 before/after study for the subsequent hot-path changes is in
+[`HOTPATH_OPTIMIZATION.md`](HOTPATH_OPTIMIZATION.md).
 
 ## Code generation metrics
 

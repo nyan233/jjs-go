@@ -13,17 +13,44 @@ import (
 
 var gEncoder = new(Encoder).init()
 
+var jitEncoderPrograms baseCache[uintptr, *jitCompiledEncoder]
+
+func loadCompiledEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
+	key := typePointer(typ)
+	if program, ok := jitEncoderPrograms.getCompileResult(key); ok {
+		return program, nil
+	}
+	return jitEncoderPrograms.compile(key, func() (*jitCompiledEncoder, error) {
+		return compileJITEncoder(typ)
+	})
+}
+
 var jitEncodeContextPool = sync.Pool{
 	New: func() any { return new(jitEncodeContext) },
 }
+
+const maxEncodeCapacityHint = 1 << 20
 
 func CompileEncoder(typ reflect.Type, opt uint64) (EncodeHandler, error) {
 	return gEncoder.Compile(typ, opt)
 }
 
+// EncodeTo encodes a value with the same data-pointer convention as
+// CompileEncoder, replacing dst's contents. Passing the slice by value avoids
+// forcing a caller's temporary slice header onto the heap.
+func EncodeTo(typ reflect.Type, dst []byte, data unsafe.Pointer) ([]byte, error) {
+	if typ == nil {
+		return nil, errors.New("json: cannot compile a nil type")
+	}
+	program, err := loadCompiledEncoder(typ)
+	if err != nil {
+		return nil, err
+	}
+	return program.encode(dst, data)
+}
+
 type Encoder struct {
-	baseCache[EncodeHandler]
-	mu sync.Mutex
+	baseCache[reflect.Type, EncodeHandler]
 }
 
 func (e *Encoder) init() *Encoder {
@@ -38,57 +65,58 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 	if handler, ok := e.getCompileResult(typ); ok {
 		return handler, nil
 	}
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if handler, ok := e.getCompileResult(typ); ok {
+	return e.baseCache.compile(typ, func() (EncodeHandler, error) {
+		program, err := loadCompiledEncoder(typ)
+		if err != nil {
+			return nil, err
+		}
+		handler := func(buf *[]byte, data unsafe.Pointer) error {
+			if buf == nil {
+				return errors.New("json: nil destination buffer")
+			}
+			dst, err := program.encode(*buf, data)
+			*buf = dst
+			return err
+		}
 		return handler, nil
-	}
+	})
+}
 
-	program, err := compileJITEncoder(typ)
-	if err != nil {
-		return nil, err
+func (program *jitCompiledEncoder) encode(dst []byte, data unsafe.Pointer) ([]byte, error) {
+	dst = dst[:0]
+	if data == nil {
+		return append(dst, "null"...), nil
 	}
-	handler := func(buf *[]byte, data unsafe.Pointer) error {
-		if buf == nil {
-			return errors.New("json: nil destination buffer")
-		}
-		if data == nil {
-			*buf = append((*buf)[:0], "null"...)
-			return nil
-		}
-		ctx := jitEncodeContextPool.Get().(*jitEncodeContext)
-		capacity := program.initialCapacity
-		if hint := int(program.capacityHint.Load()); hint > capacity {
-			capacity = hint
-		}
-		dst := (*buf)[:0]
-		if cap(dst) < capacity {
-			dst = make([]byte, 0, capacity)
-		}
-		*ctx = jitEncodeContext{
-			dst:     dst,
-			data:    data,
-			program: program.program,
-		}
-		if program.rootKind == reflect.Map {
-			ctx.mapValue = data
-			ctx.data = unsafe.Pointer(&ctx.mapValue)
-		}
-		defer func() {
-			*ctx = jitEncodeContext{}
-			jitEncodeContextPool.Put(ctx)
-		}()
-		program.function(ctx)
-		*buf = ctx.dst
-		if ctx.err == nil {
-			program.capacityHint.Store(uint64(len(ctx.dst)))
-		}
-		runtime.KeepAlive(ctx)
-		runtime.KeepAlive(program)
-		return ctx.err
+	ctx := jitEncodeContextPool.Get().(*jitEncodeContext)
+	hint := program.capacityHint.Load()
+	capacity := int(hint)
+	if capacity == 0 {
+		capacity = program.initialCapacity
 	}
-	e.setCompileResult(typ, handler)
-	return handler, nil
+	if cap(dst) == 0 {
+		// Literal tails may use a final 64-bit store. Reserve its padding
+		// as well so an exact size hint does not force a final growth.
+		dst = make([]byte, 0, capacity+7)
+	}
+	*ctx = jitEncodeContext{dst: dst, data: data, program: program.program}
+	if program.rootKind == reflect.Map {
+		ctx.mapValue = data
+		ctx.data = unsafe.Pointer(&ctx.mapValue)
+	}
+	defer func() {
+		*ctx = jitEncodeContext{}
+		jitEncodeContextPool.Put(ctx)
+	}()
+	program.function(ctx)
+	if ctx.err == nil {
+		nextHint := uint64(min(len(ctx.dst), maxEncodeCapacityHint))
+		if nextHint != hint {
+			program.capacityHint.Store(nextHint)
+		}
+	}
+	runtime.KeepAlive(ctx)
+	runtime.KeepAlive(program)
+	return ctx.dst, ctx.err
 }
 
 type jitCompiledEncoder struct {
@@ -96,7 +124,8 @@ type jitCompiledEncoder struct {
 	function        func(*jitEncodeContext) uintptr
 	initialCapacity int
 	rootKind        reflect.Kind
-	capacityHint    atomic.Uint64 // last successful output size for the next allocation
+	directInterface bool
+	capacityHint    atomic.Uint64 // bounded last output size; unchanged sizes avoid atomic writes
 	stats           CodegenStats
 }
 
@@ -149,6 +178,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 		function:        function,
 		initialCapacity: estimateInitialCapacity(rootType, len(compiler.static)),
 		rootKind:        rootType.Kind(),
+		directInterface: typ.Kind() != reflect.Pointer && typ.Kind() != reflect.Map && IsDirectInterfaceType(typ),
 		stats:           stats,
 	}, nil
 }
@@ -252,6 +282,7 @@ type jitEncoderGenerator struct {
 	code        *jitCodeBuilder
 	compiler    *jitEncoderCompiler
 	addressable bool
+	pendingRaw  []byte
 }
 
 func (g *jitEncoderGenerator) emitPrologue() error {
@@ -260,11 +291,13 @@ func (g *jitEncoderGenerator) emitPrologue() error {
 }
 
 func (g *jitEncoderGenerator) emitReturn() {
+	g.flushRaw()
 	g.code.finishFunction(jitFrameSize)
 }
 
 func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 	if callKind, customType := jitMarshalerCall(typ, g.addressable); callKind != jitCustomNone {
+		g.flushRaw()
 		typeIndex := g.compiler.customTypeIndex(customType)
 		g.code.mov(_R10, _RAX)
 		g.code.lea(_R12, offset, _RBX)
@@ -272,6 +305,9 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		g.code.movConst(int64(typeIndex), _RDI)
 		g.emitHelper(jitHelperCustomMarshal)
 		return nil
+	}
+	if typ.Kind() != reflect.Struct && typ.Kind() != reflect.Array {
+		g.flushRaw()
 	}
 	switch typ.Kind() {
 	case reflect.Bool:
@@ -384,7 +420,7 @@ func (g *jitEncoderGenerator) emitStruct(typ reflect.Type, offset int64) error {
 		return g.emitRaw([]byte("{}"))
 	}
 	for _, field := range fields {
-		if _, static := jitFieldStaticOffset(field.path); field.omitEmpty || !static || field.typ.Kind() == reflect.Pointer {
+		if _, static := jitFieldStaticOffset(field.path); field.omitEmpty || !static {
 			return g.emitStructDynamic(fields, offset)
 		}
 	}
@@ -416,7 +452,35 @@ func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField, offset 
 	if err := g.emitRaw([]byte("{")); err != nil {
 		return err
 	}
-	for _, field := range fields {
+	requiredWritten := false
+	for index, field := range fields {
+		if staticOffset, direct := jitFieldStaticOffset(field.path); direct && !field.omitEmpty {
+			prefix := appendQuoted(nil, field.name)
+			prefix = append(prefix, ':')
+			switch {
+			case requiredWritten:
+				if err := g.emitRaw(append([]byte{','}, prefix...)); err != nil {
+					return err
+				}
+			case index == 0:
+				if err := g.emitRaw(prefix); err != nil {
+					return err
+				}
+			default:
+				// Earlier optional fields may or may not have written a value.
+				g.flushRaw()
+				metaIndex := len(g.compiler.fields)
+				g.compiler.fields = append(g.compiler.fields, jitEncodeFieldMeta{prefix: prefix})
+				g.code.mov(_R10, _RAX)
+				g.code.movConst(int64(metaIndex), _RBX)
+				g.emitHelper(jitHelperFieldPrefix)
+			}
+			if err := g.emitValue(field.typ, offset+int64(staticOffset)); err != nil {
+				return err
+			}
+			requiredWritten = true
+			continue
+		}
 		customKind, customType := jitMarshalerCall(field.typ, g.addressable)
 		childType := field.typ
 		pointer := childType.Kind() == reflect.Pointer
@@ -450,6 +514,7 @@ func (g *jitEncoderGenerator) emitStructDynamic(fields []jitStructField, offset 
 			customKind: customKind,
 			customType: customMetadataIndex(g.compiler, customKind, customType),
 		})
+		g.flushRaw()
 		g.code.mov(_R10, _RAX)
 		g.code.lea(_R12, offset, _RBX)
 		g.code.movConst(int64(metaIndex), _RCX)
@@ -473,8 +538,17 @@ func customMetadataIndex(compiler *jitEncoderCompiler, kind jitCustomCallKind, t
 }
 
 func (g *jitEncoderGenerator) emitRaw(value []byte) error {
+	g.pendingRaw = append(g.pendingRaw, value...)
+	return nil
+}
+
+// Adjacent constant fragments (a field prefix and a nested opening brace,
+// closing braces, array separators, etc.) share one reserve call and copy.
+func (g *jitEncoderGenerator) flushRaw() {
+	value := g.pendingRaw
+	g.pendingRaw = nil
 	if len(value) == 0 {
-		return nil
+		return
 	}
 	offset := len(g.compiler.static)
 	g.compiler.static = append(g.compiler.static, value...)
@@ -508,7 +582,6 @@ func (g *jitEncoderGenerator) emitRaw(value []byte) error {
 		g.code.loadImm64(binary.LittleEndian.Uint64(tail[:]))
 		g.code.mov(_R11, mem(destination, int64(used)))
 	}
-	return nil
 }
 
 func (g *jitEncoderGenerator) emitHelper(index int) {

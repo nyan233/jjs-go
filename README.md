@@ -19,13 +19,15 @@ reserves output capacity once per static segment and writes compiled literals
 directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
 amd64 string scanning combines SSE4.2 for short encoder strings and AVX2 for
 longer runs. ARM64 uses native 64-bit word scanning. Unescaped decode strings
-are converted directly from the input slice, and encoders use the previous
-output size as a capacity hint to avoid repeated growth copies.
+are validated once before conversion from the input slice. Encoders use a
+bounded previous-output size hint to avoid repeated growth copies, and
+`MarshalTo` can reuse caller-owned output storage.
 
 `Unmarshal` compiles a direct recursive-descent decode plan for supported
 types. It parses fields directly into compiled offsets without constructing a
-JSON AST. Field keys and skipped strings use input-backed views, and numeric
-spans are converted without temporary strings. Types containing non-empty
+JSON AST. Field keys and skipped strings use input-backed views. Integer
+validation and conversion share one pass, and ordered fields use a direct
+match before falling back to name lookup. Types containing non-empty
 interfaces retain the earlier JIT path. There is no reflection-based encoding
 plan or `encoding/json` runtime fallback.
 
@@ -72,6 +74,18 @@ func main() {
 	fmt.Printf("%s\n", data)
 }
 ```
+
+Reuse a buffer across calls with `MarshalTo`:
+
+```go
+buf := make([]byte, 0, 1024)
+buf, err := jjs.MarshalTo(buf, &input)
+```
+
+This replaces the buffer's previous contents; always use the returned slice.
+Consume or copy the result before reusing the buffer. The buffer must not
+overlap the input's storage. Custom marshalers and growing collections may
+still allocate.
 
 ## Supported types
 
@@ -188,6 +202,12 @@ See [`benchmark/compare/README.md`](benchmark/compare/README.md) for the full
 methodology and
 [`benchmark/compare/results-windows-amd64-final.txt`](benchmark/compare/results-windows-amd64-final.txt)
 for all three raw samples.
+
+The subsequent hot-path changes are measured separately against correctness
+commit `5b211eb` on Apple M1 Pro with Go 1.25.0. See
+[`benchmark/compare/HOTPATH_OPTIMIZATION.md`](benchmark/compare/HOTPATH_OPTIMIZATION.md)
+for paired before/after measurements, allocation counts and commands. These
+ARM64 measurements do not replace the Windows amd64 results above.
 
 Hardware-counter profiling notes and raw results are in
 [`benchmark/compare/PROFILING.md`](benchmark/compare/PROFILING.md),

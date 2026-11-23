@@ -7,7 +7,6 @@ import (
 	"math"
 	"reflect"
 	"strconv"
-	"sync"
 	"unsafe"
 )
 
@@ -25,10 +24,11 @@ const (
 	jitHelperByteSlice
 	jitHelperResolvedField
 	jitHelperCustomMarshal
+	jitHelperFieldPrefix
 )
 
 type jitEncodeProgram struct {
-	helpers     [13]uintptr
+	helpers     [14]uintptr
 	static      []byte
 	functions   []func(*jitEncodeContext) uintptr
 	mapTypes    []jitMapType
@@ -77,7 +77,12 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperByteSlice] = reflect.ValueOf(jitEncodeByteSlice).Pointer()
 	program.helpers[jitHelperResolvedField] = reflect.ValueOf(jitEncodeResolvedField).Pointer()
 	program.helpers[jitHelperCustomMarshal] = reflect.ValueOf(jitEncodeCustomMarshaler).Pointer()
+	program.helpers[jitHelperFieldPrefix] = reflect.ValueOf(jitWriteFieldPrefix).Pointer()
 	return program
+}
+
+func jitWriteFieldPrefix(ctx *jitEncodeContext, metaIndex int) {
+	writeJITFieldPrefix(ctx, ctx.program.fields[metaIndex].prefix)
 }
 
 func jitEncodeResolvedField(ctx *jitEncodeContext, root unsafe.Pointer, metaIndex int) {
@@ -424,8 +429,10 @@ func runtimeMapIterInit(mapType, hmap, iterator unsafe.Pointer)
 func runtimeMapIterNext(iterator unsafe.Pointer)
 
 var (
-	jitDynamicEncoderCache sync.Map
-	jitDynamicCompileMu    sync.Mutex
+	jitStringType  = unsafe.Pointer(typePointer(reflect.TypeOf("")))
+	jitIntType     = unsafe.Pointer(typePointer(reflect.TypeOf(int(0))))
+	jitBoolType    = unsafe.Pointer(typePointer(reflect.TypeOf(false)))
+	jitFloat64Type = unsafe.Pointer(typePointer(reflect.TypeOf(float64(0))))
 )
 
 //go:noinline
@@ -438,54 +445,46 @@ func jitEncodeInterface(ctx *jitEncodeContext, interfacePtr unsafe.Pointer, nonE
 	}
 	typePtr := typeWord
 	if nonEmpty != 0 {
-		// runtime.itab: *abi.InterfaceType, *abi.Type
 		typePtr = *(*unsafe.Pointer)(unsafe.Add(typeWord, 8))
 	}
-	encoded, ok := jitDynamicEncoderCache.Load(uintptr(typePtr))
-	var child *jitCompiledEncoder
-	if ok {
-		child = encoded.(*jitCompiledEncoder)
-	} else {
+	// Exact built-in types cannot have custom methods. Named types still use
+	// the compiled path so json.Marshaler semantics remain unchanged.
+	switch typePtr {
+	case jitStringType:
+		value := *(*string)(data)
+		ctx.ensureCapacity(len(value) + 2)
+		ctx.dst = appendQuoted(ctx.dst, value)
+		return
+	case jitIntType:
+		ctx.dst = strconv.AppendInt(ctx.dst, int64(*(*int)(data)), 10)
+		return
+	case jitBoolType:
+		ctx.dst = strconv.AppendBool(ctx.dst, *(*bool)(data))
+		return
+	case jitFloat64Type:
+		jitAppendFloatPtr(ctx, data, 8)
+		return
+	}
+	child, ok := jitEncoderPrograms.getCompileResult(uintptr(typePtr))
+	if !ok {
 		var value any
 		dynamic := (*nonEmptyInterface)(unsafe.Pointer(&value))
-		dynamic.tab = typePtr
-		dynamic.data = data
-		typ := reflect.TypeOf(value)
-		if typ == nil {
-			ctx.setError(errors.New("json: invalid interface type"))
+		dynamic.tab, dynamic.data = typePtr, data
+		var err error
+		child, err = loadCompiledEncoder(reflect.TypeOf(value))
+		if err != nil {
+			ctx.setError(err)
 			return
 		}
-		jitDynamicCompileMu.Lock()
-		if encoded, ok := jitDynamicEncoderCache.Load(uintptr(typePtr)); ok {
-			child = encoded.(*jitCompiledEncoder)
-			jitDynamicCompileMu.Unlock()
-		} else {
-			compiled, err := compileJITEncoder(typ)
-			if err != nil {
-				jitDynamicCompileMu.Unlock()
-				ctx.setError(err)
-				return
-			}
-			actual, _ := jitDynamicEncoderCache.LoadOrStore(uintptr(typePtr), compiled)
-			child = actual.(*jitCompiledEncoder)
-			jitDynamicCompileMu.Unlock()
-		}
 	}
-	childContext := jitEncodeContextPool.Get().(*jitEncodeContext)
-	*childContext = jitEncodeContext{
-		dst:     ctx.dst,
-		data:    data,
-		program: child.program,
+	// Nested encoders share the output and error state. Save the typed roots
+	// across the call instead of borrowing another pooled context per value.
+	previousData, previousProgram, previousMap := ctx.data, ctx.program, ctx.mapValue
+	ctx.data, ctx.program = data, child.program
+	if child.rootKind == reflect.Map || child.directInterface {
+		ctx.mapValue = data
+		ctx.data = unsafe.Pointer(&ctx.mapValue)
 	}
-	if child.rootKind == reflect.Map {
-		childContext.mapValue = data
-		childContext.data = unsafe.Pointer(&childContext.mapValue)
-	}
-	defer func() {
-		*childContext = jitEncodeContext{}
-		jitEncodeContextPool.Put(childContext)
-	}()
-	child.function(childContext)
-	ctx.dst = childContext.dst
-	ctx.setError(childContext.err)
+	child.function(ctx)
+	ctx.data, ctx.program, ctx.mapValue = previousData, previousProgram, previousMap
 }

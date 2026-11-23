@@ -15,25 +15,29 @@ type emptyInterface struct {
 
 // Marshal returns the JSON encoding of data.
 func Marshal(data any) ([]byte, error) {
+	return MarshalTo(nil, data)
+}
+
+// MarshalTo encodes data into dst[:0], reusing its backing storage where
+// possible. The previous contents are replaced. Use the returned slice because
+// encoding may grow the buffer. On error it returns nil and dst may be modified.
+// The backing storage of dst must not overlap any storage reachable from data.
+func MarshalTo(dst []byte, data any) ([]byte, error) {
 	typ := reflect.TypeOf(data)
 	if typ == nil {
-		return []byte("null"), nil
+		return append(dst[:0], "null"...), nil
 	}
 	face := (*emptyInterface)(unsafe.Pointer(&data))
-	encoder, err := compiler.CompileEncoder(typ, 0)
-	if err != nil {
-		return nil, err
-	}
-	var buf []byte
 	dataPointer := face.data
 	if typ.Kind() != reflect.Pointer && typ.Kind() != reflect.Map && compiler.IsDirectInterfaceType(typ) {
 		boxed := face.data
 		dataPointer = unsafe.Pointer(&boxed)
 	}
-	if err := encoder(&buf, dataPointer); err != nil {
+	dst, err := compiler.EncodeTo(typ, dst, dataPointer)
+	if err != nil {
 		return nil, err
 	}
-	return buf, nil
+	return dst, nil
 }
 
 // Unmarshal parses JSON data and stores the result in the value pointed to by

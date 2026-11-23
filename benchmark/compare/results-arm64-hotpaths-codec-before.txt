@@ -1,0 +1,180 @@
+# /tmp/jjs-compare-base-extra.test -test.run '^$' -test.bench 'Benchmark(Encoder|Decoder)_(Binding|Generic|FreshBinding)/(Small|Medium|Large)/(jjs-go|stdlib)$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/stdlib  	  306452	      1131 ns/op	 322.61 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go  	  214303	      1693 ns/op	 215.61 MB/s	    2040 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/stdlib 	   27603	     12385 ns/op	1051.49 MB/s	    9616 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go 	   21423	     15384 ns/op	 846.52 MB/s	   28074 B/op	       4 allocs/op
+BenchmarkEncoder_Binding/Large/stdlib  	     736	    469462 ns/op	1345.19 MB/s	  299209 B/op	    1112 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go  	     660	    537851 ns/op	1174.14 MB/s	  798424 B/op	     212 allocs/op
+BenchmarkDecoder_Binding/Small/stdlib  	   75934	      4770 ns/op	  76.52 MB/s	     384 B/op	      15 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go  	  226987	      1684 ns/op	 216.71 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/stdlib 	    3980	     92446 ns/op	 140.87 MB/s	    4490 B/op	     132 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go 	   10000	     33494 ns/op	 388.82 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/stdlib  	      88	   4223616 ns/op	 149.52 MB/s	  211270 B/op	    4904 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go  	     222	   1636949 ns/op	 385.79 MB/s	  203369 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/stdlib         	   67915	      5395 ns/op	  67.66 MB/s	     936 B/op	      26 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go         	  169874	      2261 ns/op	 161.43 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/stdlib        	    3944	    100816 ns/op	 129.18 MB/s	   11416 B/op	     160 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go        	   10000	     41883 ns/op	 310.94 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/stdlib         	      73	   4791506 ns/op	 131.80 MB/s	  438840 B/op	    5073 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go         	     188	   1863272 ns/op	 338.93 MB/s	  436984 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/stdlib              	   62869	      5675 ns/op	  64.32 MB/s	    2080 B/op	      52 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go              	   78961	      4687 ns/op	  77.87 MB/s	    1368 B/op	      12 allocs/op
+BenchmarkEncoder_Generic/Medium/stdlib             	    3888	     90520 ns/op	 143.87 MB/s	   32881 B/op	     653 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go             	   10000	     47020 ns/op	 276.97 MB/s	   16794 B/op	      78 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib              	      91	   3813065 ns/op	 165.62 MB/s	 1488022 B/op	   27955 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go              	     168	   2146326 ns/op	 294.23 MB/s	  717932 B/op	    2530 allocs/op
+BenchmarkDecoder_Generic/Small/stdlib              	   57588	      6329 ns/op	  57.67 MB/s	    3480 B/op	      92 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go              	   73670	      4582 ns/op	  79.66 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/stdlib             	    3049	    117483 ns/op	 110.85 MB/s	   49448 B/op	     794 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go             	    4752	     75438 ns/op	 172.63 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib              	      55	   5711935 ns/op	 110.56 MB/s	 2076665 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go              	      91	   3649920 ns/op	 173.02 MB/s	 2132657 B/op	   30873 allocs/op
+PASS
+# /tmp/jjs-compare-base-extra.test -test.run '^$' -test.bench 'Benchmark(Encoder|Decoder)_(Binding|Generic|FreshBinding)/(Small|Medium|Large)/(jjs-go|stdlib)$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/stdlib  	  327340	      1014 ns/op	 359.93 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go  	  254394	      1484 ns/op	 245.98 MB/s	    2040 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/stdlib 	   29287	     12416 ns/op	1048.92 MB/s	    9616 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go 	   26583	     14355 ns/op	 907.21 MB/s	   28074 B/op	       4 allocs/op
+BenchmarkEncoder_Binding/Large/stdlib  	     735	    483856 ns/op	1305.17 MB/s	  299208 B/op	    1112 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go  	     630	    535370 ns/op	1179.58 MB/s	  798424 B/op	     212 allocs/op
+BenchmarkDecoder_Binding/Small/stdlib  	   76545	      4741 ns/op	  76.99 MB/s	     384 B/op	      15 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go  	  226801	      1685 ns/op	 216.63 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/stdlib 	    4003	     91979 ns/op	 141.59 MB/s	    4490 B/op	     132 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go 	   10000	     33488 ns/op	 388.88 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/stdlib  	      90	   4144995 ns/op	 152.36 MB/s	  211218 B/op	    4904 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go  	     212	   1678957 ns/op	 376.13 MB/s	  203419 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/stdlib         	   66253	      5442 ns/op	  67.07 MB/s	     936 B/op	      26 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go         	  171513	      2315 ns/op	 157.66 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/stdlib        	    3673	    102917 ns/op	 126.54 MB/s	   11416 B/op	     160 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go        	   10000	     38290 ns/op	 340.12 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/stdlib         	      92	   4494519 ns/op	 140.51 MB/s	  438840 B/op	    5073 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go         	     201	   1781341 ns/op	 354.52 MB/s	  436984 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/stdlib              	   62749	      5803 ns/op	  62.89 MB/s	    2080 B/op	      52 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go              	   74517	      4938 ns/op	  73.91 MB/s	    1368 B/op	      12 allocs/op
+BenchmarkEncoder_Generic/Medium/stdlib             	    3882	     87258 ns/op	 149.25 MB/s	   32880 B/op	     653 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go             	   10000	     47588 ns/op	 273.66 MB/s	   16794 B/op	      78 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib              	      92	   3827913 ns/op	 164.98 MB/s	 1488020 B/op	   27955 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go              	     158	   2248050 ns/op	 280.92 MB/s	  717937 B/op	    2530 allocs/op
+BenchmarkDecoder_Generic/Small/stdlib              	   56343	      6377 ns/op	  57.24 MB/s	    3480 B/op	      92 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go              	   72898	      4972 ns/op	  73.41 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/stdlib             	    2898	    125186 ns/op	 104.03 MB/s	   49448 B/op	     794 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go             	    4508	     81384 ns/op	 160.02 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib              	      61	   5832686 ns/op	 108.27 MB/s	 2076664 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go              	      84	   3797333 ns/op	 166.30 MB/s	 2132657 B/op	   30873 allocs/op
+PASS
+# /tmp/jjs-compare-base-extra.test -test.run '^$' -test.bench 'Benchmark(Encoder|Decoder)_(Binding|Generic|FreshBinding)/(Small|Medium|Large)/(jjs-go|stdlib)$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/stdlib  	  315022	      1120 ns/op	 325.93 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go  	  225826	      1631 ns/op	 223.77 MB/s	    2040 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/stdlib 	   27547	     12851 ns/op	1013.37 MB/s	    9616 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go 	   24536	     14509 ns/op	 897.60 MB/s	   28074 B/op	       4 allocs/op
+BenchmarkEncoder_Binding/Large/stdlib  	     736	    492009 ns/op	1283.54 MB/s	  299208 B/op	    1112 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go  	     625	    578476 ns/op	1091.69 MB/s	  798424 B/op	     212 allocs/op
+BenchmarkDecoder_Binding/Small/stdlib  	   72050	      4892 ns/op	  74.61 MB/s	     384 B/op	      15 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go  	  225711	      1838 ns/op	 198.60 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/stdlib 	    4039	     94483 ns/op	 137.83 MB/s	    4490 B/op	     132 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go 	   10000	     33384 ns/op	 390.09 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/stdlib  	      91	   4222462 ns/op	 149.56 MB/s	  211184 B/op	    4904 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go  	     219	   1689483 ns/op	 373.79 MB/s	  203383 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/stdlib         	   63920	      5498 ns/op	  66.39 MB/s	     936 B/op	      26 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go         	  159108	      2355 ns/op	 154.96 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/stdlib        	    3741	    103571 ns/op	 125.74 MB/s	   11416 B/op	     160 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go        	   10000	     38609 ns/op	 337.30 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/stdlib         	      90	   4517393 ns/op	 139.80 MB/s	  438840 B/op	    5073 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go         	     205	   1758148 ns/op	 359.19 MB/s	  436984 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/stdlib              	   61267	      5826 ns/op	  62.65 MB/s	    2080 B/op	      52 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go              	   77167	      4926 ns/op	  74.09 MB/s	    1368 B/op	      12 allocs/op
+BenchmarkEncoder_Generic/Medium/stdlib             	    3859	     87722 ns/op	 148.46 MB/s	   32880 B/op	     653 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go             	   10000	     47511 ns/op	 274.11 MB/s	   16794 B/op	      78 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib              	      93	   3920313 ns/op	 161.09 MB/s	 1488020 B/op	   27955 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go              	     157	   2200505 ns/op	 286.99 MB/s	  717934 B/op	    2530 allocs/op
+BenchmarkDecoder_Generic/Small/stdlib              	   56940	      6287 ns/op	  58.06 MB/s	    3480 B/op	      92 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go              	   72608	      4921 ns/op	  74.18 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/stdlib             	    2821	    126245 ns/op	 103.16 MB/s	   49448 B/op	     794 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go             	    4881	     80186 ns/op	 162.41 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib              	      54	   5790286 ns/op	 109.06 MB/s	 2076664 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go              	      84	   3810578 ns/op	 165.73 MB/s	 2132657 B/op	   30873 allocs/op
+PASS
+# /tmp/jjs-compare-base-extra.test -test.run '^$' -test.bench 'Benchmark(Encoder|Decoder)_(Binding|Generic|FreshBinding)/(Small|Medium|Large)/(jjs-go|stdlib)$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/stdlib  	  337972	      1016 ns/op	 359.17 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go  	  268063	      1400 ns/op	 260.78 MB/s	    2040 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/stdlib 	   30111	     11842 ns/op	1099.70 MB/s	    9616 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go 	   26900	     13432 ns/op	 969.53 MB/s	   28074 B/op	       4 allocs/op
+BenchmarkEncoder_Binding/Large/stdlib  	     752	    487925 ns/op	1294.29 MB/s	  299208 B/op	    1112 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go  	     666	    536055 ns/op	1178.08 MB/s	  798424 B/op	     212 allocs/op
+BenchmarkDecoder_Binding/Small/stdlib  	   75268	      4755 ns/op	  76.76 MB/s	     384 B/op	      15 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go  	  229706	      1686 ns/op	 216.55 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/stdlib 	    4050	     91577 ns/op	 142.21 MB/s	    4490 B/op	     132 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go 	   10000	     32573 ns/op	 399.81 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/stdlib  	      87	   4103460 ns/op	 153.90 MB/s	  211294 B/op	    4904 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go  	     224	   1606966 ns/op	 392.99 MB/s	  203359 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/stdlib         	   67027	      5360 ns/op	  68.09 MB/s	     936 B/op	      26 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go         	  165249	      2303 ns/op	 158.47 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/stdlib        	    3852	    100503 ns/op	 129.58 MB/s	   11416 B/op	     160 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go        	   10000	     36075 ns/op	 361.00 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/stdlib         	      90	   4345863 ns/op	 145.31 MB/s	  438840 B/op	    5073 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go         	     210	   1719177 ns/op	 367.34 MB/s	  436984 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/stdlib              	   66488	      5531 ns/op	  65.99 MB/s	    2080 B/op	      52 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go              	   83772	      4584 ns/op	  79.63 MB/s	    1368 B/op	      12 allocs/op
+BenchmarkEncoder_Generic/Medium/stdlib             	    4234	     82134 ns/op	 158.56 MB/s	   32880 B/op	     653 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go             	   10000	     45422 ns/op	 286.71 MB/s	   16794 B/op	      78 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib              	      96	   3741020 ns/op	 168.81 MB/s	 1488025 B/op	   27955 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go              	     164	   2074404 ns/op	 304.43 MB/s	  717949 B/op	    2530 allocs/op
+BenchmarkDecoder_Generic/Small/stdlib              	   61249	      5914 ns/op	  61.72 MB/s	    3480 B/op	      92 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go              	   78864	      4915 ns/op	  74.27 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/stdlib             	    2911	    121865 ns/op	 106.86 MB/s	   49448 B/op	     794 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go             	    4852	     75989 ns/op	 171.38 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib              	      55	   5783874 ns/op	 109.19 MB/s	 2076666 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go              	      90	   3667061 ns/op	 172.21 MB/s	 2132657 B/op	   30873 allocs/op
+PASS
+# /tmp/jjs-compare-base-extra.test -test.run '^$' -test.bench 'Benchmark(Encoder|Decoder)_(Binding|Generic|FreshBinding)/(Small|Medium|Large)/(jjs-go|stdlib)$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/stdlib  	  329402	      1064 ns/op	 343.01 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go  	  247064	      1511 ns/op	 241.61 MB/s	    2040 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/stdlib 	   28768	     12419 ns/op	1048.60 MB/s	    9616 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go 	   26420	     13282 ns/op	 980.49 MB/s	   28074 B/op	       4 allocs/op
+BenchmarkEncoder_Binding/Large/stdlib  	     777	    459958 ns/op	1372.98 MB/s	  299208 B/op	    1112 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go  	     676	    536311 ns/op	1177.52 MB/s	  798424 B/op	     212 allocs/op
+BenchmarkDecoder_Binding/Small/stdlib  	   76786	      4727 ns/op	  77.22 MB/s	     384 B/op	      15 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go  	  228588	      1686 ns/op	 216.48 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/stdlib 	    4132	     93633 ns/op	 139.09 MB/s	    4490 B/op	     132 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go 	   10000	     33854 ns/op	 384.68 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/stdlib  	      90	   4263702 ns/op	 148.11 MB/s	  211212 B/op	    4904 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go  	     222	   1658107 ns/op	 380.86 MB/s	  203369 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/stdlib         	   64587	      5430 ns/op	  67.22 MB/s	     936 B/op	      26 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go         	  171490	      2320 ns/op	 157.29 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/stdlib        	    3981	    102596 ns/op	 126.93 MB/s	   11416 B/op	     160 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go        	   10000	     36728 ns/op	 354.58 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/stdlib         	      90	   4341759 ns/op	 145.45 MB/s	  438840 B/op	    5073 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go         	     205	   1757543 ns/op	 359.32 MB/s	  436984 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/stdlib              	   63932	      5634 ns/op	  64.78 MB/s	    2080 B/op	      52 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go              	   73984	      4816 ns/op	  75.79 MB/s	    1368 B/op	      12 allocs/op
+BenchmarkEncoder_Generic/Medium/stdlib             	    3956	     86068 ns/op	 151.31 MB/s	   32880 B/op	     653 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go             	   10000	     47322 ns/op	 275.20 MB/s	   16794 B/op	      78 allocs/op
+BenchmarkEncoder_Generic/Large/stdlib              	      94	   3768385 ns/op	 167.58 MB/s	 1488023 B/op	   27955 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go              	     166	   2120851 ns/op	 297.76 MB/s	  717944 B/op	    2530 allocs/op
+BenchmarkDecoder_Generic/Small/stdlib              	   61800	      5860 ns/op	  62.29 MB/s	    3480 B/op	      92 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go              	   78831	      4633 ns/op	  78.78 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/stdlib             	    3080	    120380 ns/op	 108.18 MB/s	   49448 B/op	     794 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go             	    5260	     72681 ns/op	 179.18 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/stdlib              	      58	   5617043 ns/op	 112.43 MB/s	 2076665 B/op	   32124 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go              	      97	   3778153 ns/op	 167.15 MB/s	 2132656 B/op	   30873 allocs/op
+PASS

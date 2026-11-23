@@ -1,9 +1,6 @@
 package compiler
 
-import (
-	"reflect"
-	"unsafe"
-)
+import "reflect"
 
 type runtimeTypeHeader struct {
 	Size       uintptr
@@ -23,6 +20,6 @@ func IsDirectInterfaceType(typ reflect.Type) bool {
 	if typ == nil {
 		return false
 	}
-	header := (*runtimeTypeHeader)(unsafe.Pointer(typePointer(typ)))
+	header := (*runtimeTypeHeader)(runtimeTypePointer(typ))
 	return header.Kind&runtimeDirectIface != 0
 }

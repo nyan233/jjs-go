@@ -242,6 +242,32 @@ func BenchmarkDecoder_Binding(b *testing.B) {
 	})
 }
 
+// Fresh destinations include slice/map allocation costs that repeated decoding
+// into the same struct in BenchmarkDecoder_Binding can amortize away.
+func benchmarkFreshBindingDecode[T any](b *testing.B, codecs []bindingCodec[T], data []byte) {
+	for _, codec := range codecs {
+		codec := codec
+		b.Run(codec.name, func(b *testing.B) {
+			prepareBindingDecode(b, codec, data)
+			b.ReportAllocs()
+			b.SetBytes(int64(len(data)))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var target T
+				if err := codec.unmarshal(data, &target); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkDecoder_FreshBinding(b *testing.B) {
+	b.Run("Small", func(b *testing.B) { benchmarkFreshBindingDecode(b, bookCodecs(), SmallJSON) })
+	b.Run("Medium", func(b *testing.B) { benchmarkFreshBindingDecode(b, twitterCodecs(), MediumJSON) })
+	b.Run("Large", func(b *testing.B) { benchmarkFreshBindingDecode(b, twitterCodecs(), LargeJSON) })
+}
+
 func BenchmarkEncoder_Generic(b *testing.B) {
 	b.Run("Small", func(b *testing.B) {
 		benchmarkGenericEncode(b, SmallGeneric, len(SmallJSON))

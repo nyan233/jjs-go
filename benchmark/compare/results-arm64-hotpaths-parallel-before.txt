@@ -1,0 +1,35 @@
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpathParallelCache$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=8
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathParallelCache-8   	 3308066	       112.5 ns/op	       0 B/op	       0 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpathParallelCache$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=8
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathParallelCache-8   	 2611945	       130.1 ns/op	       0 B/op	       0 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpathParallelCache$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=8
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathParallelCache-8   	 2823309	       122.6 ns/op	       0 B/op	       0 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpathParallelCache$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=8
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathParallelCache-8   	 2937530	       123.5 ns/op	       0 B/op	       0 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpathParallelCache$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=8
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathParallelCache-8   	 2832372	       131.6 ns/op	       0 B/op	       0 allocs/op
+PASS

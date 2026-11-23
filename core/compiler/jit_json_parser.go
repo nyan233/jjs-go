@@ -177,11 +177,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 	}
 	p.index++
 	start := p.index
-	scalarEnd := start + jitDecodeStringVectorBytes
-	if scalarEnd > len(p.data) {
-		scalarEnd = len(p.data)
-	}
-	hasNonASCII := false
+	scalarEnd := min(start+jitDecodeStringVectorBytes, len(p.data))
 
 	for p.index < scalarEnd {
 		c := p.data[p.index]
@@ -189,7 +185,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 		case c == '"':
 			end := p.index
 			p.index++
-			return p.rawString(start, end, hasNonASCII, copyValue)
+			return p.rawString(start, end, copyValue), nil
 		case c == '\\':
 			return p.parseStringSlow(start)
 		case c < 0x20:
@@ -197,7 +193,6 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 		case c < utf8.RuneSelf:
 			p.index++
 		default:
-			hasNonASCII = true
 			r, size := utf8.DecodeRune(p.data[p.index:])
 			if r == utf8.RuneError && size == 1 {
 				return p.parseStringSlow(start)
@@ -206,9 +201,8 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 		}
 	}
 
-	useVector := true
 	for p.index < len(p.data) {
-		if remaining := len(p.data) - p.index; useVector && remaining >= jitDecodeStringVectorBytes {
+		if remaining := len(p.data) - p.index; p.data[p.index] < utf8.RuneSelf && remaining >= jitDecodeStringVectorBytes {
 			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(p.data)), p.index))
 			special := scanJSONStringEnd(ptr, remaining)
 			if special < 0 {
@@ -223,7 +217,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 		if c == '"' {
 			end := p.index
 			p.index++
-			return p.rawString(start, end, hasNonASCII, copyValue)
+			return p.rawString(start, end, copyValue), nil
 		}
 		if c == '\\' {
 			return p.parseStringSlow(start)
@@ -232,8 +226,6 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 			return "", p.errorf("invalid control character in string")
 		}
 		if c >= utf8.RuneSelf {
-			hasNonASCII = true
-			useVector = false
 			r, size := utf8.DecodeRune(p.data[p.index:])
 			if r == utf8.RuneError && size == 1 {
 				return p.parseStringSlow(start)
@@ -246,44 +238,20 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
 	return "", p.errorf("unexpected end of string")
 }
 
-func (p *jitJSONParser) rawString(start, end int, hasNonASCII, copyValue bool) (string, error) {
+func (p *jitJSONParser) rawString(start, end int, copyValue bool) string {
 	raw := p.data[start:end]
-	if !hasNonASCII {
-		if !copyValue {
-			if len(raw) == 0 {
-				return "", nil
-			}
-			return unsafe.String((*byte)(unsafe.SliceData(raw)), len(raw)), nil
-		}
-		return string(raw), nil
+	// The scanner validated every non-ASCII rune before reaching this path.
+	if !copyValue {
+		return unsafe.String(unsafe.SliceData(raw), len(raw))
 	}
-	if utf8.Valid(raw) {
-		if !copyValue {
-			if len(raw) == 0 {
-				return "", nil
-			}
-			return unsafe.String((*byte)(unsafe.SliceData(raw)), len(raw)), nil
-		}
-		return string(raw), nil
-	}
-	out := make([]byte, 0, len(raw))
-	for len(raw) > 0 {
-		r, size := utf8.DecodeRune(raw)
-		if r == utf8.RuneError && size == 1 {
-			out = utf8.AppendRune(out, utf8.RuneError)
-			raw = raw[1:]
-			continue
-		}
-		out = append(out, raw[:size]...)
-		raw = raw[size:]
-	}
-	return string(out), nil
+	return string(raw)
 }
 
 func (p *jitJSONParser) parseStringSlow(start int) (string, error) {
-	p.index = start
 	var scratch [jitDecodeStringScratchBytes]byte
-	out := scratch[:0]
+	// Keep the already-validated prefix; resume at the first escape or invalid
+	// UTF-8 byte instead of scanning the same prefix a second time.
+	out := append(scratch[:0], p.data[start:p.index]...)
 	for p.index < len(p.data) {
 		c := p.data[p.index]
 		if c == '"' {
@@ -428,7 +396,7 @@ func (p *jitJSONParser) consumeNumber() error {
 }
 
 func (p *jitJSONParser) skipSpace() {
-	for p.index < len(p.data) {
+	for p.index < len(p.data) && p.data[p.index] <= ' ' {
 		switch p.data[p.index] {
 		case ' ', '\t', '\r', '\n':
 			p.index++

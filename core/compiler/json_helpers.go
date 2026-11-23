@@ -37,24 +37,26 @@ func isValidJSONTagName(name string) bool {
 func appendQuoted(dst []byte, value string) []byte {
 	const hex = "0123456789abcdef"
 	dst = append(dst, '"')
-	useVector := true
+	start, scanAt := 0, 0
 	for i := 0; i < len(value); {
-		if remaining := len(value) - i; useVector && remaining >= jitEncodeShortScanBytes {
+		if remaining := len(value) - i; i >= scanAt && value[i] < utf8.RuneSelf && remaining >= jitEncodeShortScanBytes {
 			ptr := (*byte)(unsafe.Add(unsafe.Pointer(unsafe.StringData(value)), i))
 			special := scanJSONEscape(ptr, remaining)
 			if special < 0 {
-				dst = append(dst, value[i:]...)
-				i = len(value)
 				break
 			}
-			if special > 0 {
-				dst = append(dst, value[i:i+special]...)
-				i += special
-				continue
-			}
+			i += special
+			// Dense escapes are cheaper to handle scalarly. Resume bulk scans
+			// after a short interval instead of retrying at every special byte.
+			scanAt = i + 16
 		}
 		c := value[i]
 		if c < utf8.RuneSelf {
+			if c >= 0x20 && c != '\\' && c != '"' && c != '<' && c != '>' && c != '&' {
+				i++
+				continue
+			}
+			dst = append(dst, value[start:i]...)
 			switch c {
 			case '\\', '"':
 				dst = append(dst, '\\', c)
@@ -75,29 +77,28 @@ func appendQuoted(dst []byte, value string) []byte {
 			case '&':
 				dst = append(dst, '\\', 'u', '0', '0', '2', '6')
 			default:
-				if c < 0x20 {
-					dst = append(dst, '\\', 'u', '0', '0', hex[c>>4], hex[c&0x0f])
-				} else {
-					dst = append(dst, c)
-				}
+				dst = append(dst, '\\', 'u', '0', '0', hex[c>>4], hex[c&0x0f])
 			}
 			i++
+			start = i
 			continue
 		}
 
 		r, size := utf8.DecodeRuneInString(value[i:])
-		useVector = false
 		if r == utf8.RuneError && size == 1 {
+			dst = append(dst, value[start:i]...)
 			dst = append(dst, '\\', 'u', 'f', 'f', 'f', 'd')
 			i++
+			start = i
 			continue
 		}
 		if r == '\u2028' || r == '\u2029' {
+			dst = append(dst, value[start:i]...)
 			dst = append(dst, '\\', 'u', '2', '0', '2', byte('8'+r-'\u2028'))
-		} else {
-			dst = append(dst, value[i:i+size]...)
+			start = i + size
 		}
 		i += size
 	}
+	dst = append(dst, value[start:]...)
 	return append(dst, '"')
 }

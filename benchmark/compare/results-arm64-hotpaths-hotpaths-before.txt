@@ -1,0 +1,115 @@
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpath' -test.benchmem -test.benchtime=200ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathStrings/ASCII/Encode         	  445897	       498.9 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/ASCII/Decode         	  700294	       333.9 ns/op	    1024 B/op	       1 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Encode         	   73573	      3244 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Decode         	  192483	      1231 ns/op	    1152 B/op	       1 allocs/op
+BenchmarkHotpathStrings/Unicode/Encode                  	  132326	      1802 ns/op	     936 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Unicode/Decode                  	  120896	      2000 ns/op	     768 B/op	       1 allocs/op
+BenchmarkHotpathStrings/LateEscape/Encode               	  481597	       518.5 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/LateEscape/Decode               	  115837	      2060 ns/op	    3456 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Encode                  	  233478	      1007 ns/op	     488 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Decode                  	  292706	       828.4 ns/op	     320 B/op	       1 allocs/op
+BenchmarkHotpathDynamicFields                           	 1000000	       304.7 ns/op	     280 B/op	       2 allocs/op
+BenchmarkHotpathInterfaces                              	  279198	       914.9 ns/op	     496 B/op	       5 allocs/op
+BenchmarkHotpathWideDecode                              	   67525	      3560 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathIntegers                                	  432270	       563.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathBufferReuse                             	 1985355	       121.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathParallelCache                           	16928529	        14.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathMixedSizes                              	    9328	     25306 ns/op	  251330 B/op	       2 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpath' -test.benchmem -test.benchtime=200ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathStrings/ASCII/Encode         	  434434	       521.4 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/ASCII/Decode         	  669541	       333.8 ns/op	    1024 B/op	       1 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Encode         	   74184	      3236 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Decode         	  199084	      1194 ns/op	    1152 B/op	       1 allocs/op
+BenchmarkHotpathStrings/Unicode/Encode                  	   33163	      7767 ns/op	     936 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Unicode/Decode                  	  105723	      2004 ns/op	     768 B/op	       1 allocs/op
+BenchmarkHotpathStrings/LateEscape/Encode               	  463450	       500.2 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/LateEscape/Decode               	  124412	      1988 ns/op	    3456 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Encode                  	  246868	       976.8 ns/op	     488 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Decode                  	  305493	       798.4 ns/op	     320 B/op	       1 allocs/op
+BenchmarkHotpathDynamicFields                           	 1000000	       297.4 ns/op	     280 B/op	       2 allocs/op
+BenchmarkHotpathInterfaces                              	  294679	       887.0 ns/op	     496 B/op	       5 allocs/op
+BenchmarkHotpathWideDecode                              	   67118	      3551 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathIntegers                                	  424003	       566.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathBufferReuse                             	 1941055	       123.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathParallelCache                           	17207334	        14.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathMixedSizes                              	    9144	     25644 ns/op	  251119 B/op	       2 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpath' -test.benchmem -test.benchtime=200ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathStrings/ASCII/Encode         	  461323	       502.5 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/ASCII/Decode         	  740997	       321.5 ns/op	    1024 B/op	       1 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Encode         	   75618	      3193 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Decode         	  203373	      1204 ns/op	    1152 B/op	       1 allocs/op
+BenchmarkHotpathStrings/Unicode/Encode                  	  136885	      1816 ns/op	     936 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Unicode/Decode                  	  116474	      2085 ns/op	     768 B/op	       1 allocs/op
+BenchmarkHotpathStrings/LateEscape/Encode               	  450513	       577.0 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/LateEscape/Decode               	  114466	      2107 ns/op	    3456 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Encode                  	  231681	      1030 ns/op	     488 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Decode                  	  297650	       837.8 ns/op	     320 B/op	       1 allocs/op
+BenchmarkHotpathDynamicFields                           	 1000000	       313.5 ns/op	     280 B/op	       2 allocs/op
+BenchmarkHotpathInterfaces                              	  277183	       914.9 ns/op	     496 B/op	       5 allocs/op
+BenchmarkHotpathWideDecode                              	   66800	      3594 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathIntegers                                	  421465	       571.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathBufferReuse                             	 1927425	       124.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathParallelCache                           	16976226	        14.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathMixedSizes                              	    8656	     27781 ns/op	  251363 B/op	       2 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpath' -test.benchmem -test.benchtime=200ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathStrings/ASCII/Encode         	  400027	       582.4 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/ASCII/Decode         	  651193	       361.8 ns/op	    1024 B/op	       1 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Encode         	   72127	      3282 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Decode         	  189925	      1275 ns/op	    1152 B/op	       1 allocs/op
+BenchmarkHotpathStrings/Unicode/Encode                  	  132532	      1866 ns/op	     936 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Unicode/Decode                  	  117595	      2059 ns/op	     768 B/op	       1 allocs/op
+BenchmarkHotpathStrings/LateEscape/Encode               	  466539	       532.2 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/LateEscape/Decode               	  117876	      2058 ns/op	    3456 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Encode                  	  236576	       995.8 ns/op	     488 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Decode                  	  308696	       814.4 ns/op	     320 B/op	       1 allocs/op
+BenchmarkHotpathDynamicFields                           	 1000000	       312.4 ns/op	     280 B/op	       2 allocs/op
+BenchmarkHotpathInterfaces                              	  293803	       901.5 ns/op	     496 B/op	       5 allocs/op
+BenchmarkHotpathWideDecode                              	   67519	      3566 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathIntegers                                	  422054	       560.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathBufferReuse                             	 1811397	       132.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathParallelCache                           	16829508	        14.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathMixedSizes                              	    9090	     26631 ns/op	  251727 B/op	       2 allocs/op
+PASS
+# /tmp/jjs-hotpaths-base-extra.test -test.run '^$' -test.bench '^BenchmarkHotpath' -test.benchmem -test.benchtime=200ms -test.count=1 -test.cpu=1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go
+cpu: Apple M1 Pro
+BenchmarkHotpathStrings/ASCII/Encode         	  429638	       531.3 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/ASCII/Decode         	  652084	       342.2 ns/op	    1024 B/op	       1 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Encode         	   73111	      3277 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/UnicodeThenASCII/Decode         	  185038	      1256 ns/op	    1152 B/op	       1 allocs/op
+BenchmarkHotpathStrings/Unicode/Encode                  	  136963	      1815 ns/op	     936 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Unicode/Decode                  	  121006	      2023 ns/op	     768 B/op	       1 allocs/op
+BenchmarkHotpathStrings/LateEscape/Encode               	  483696	       520.9 ns/op	    1192 B/op	       3 allocs/op
+BenchmarkHotpathStrings/LateEscape/Decode               	  115335	      2017 ns/op	    3456 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Encode                  	  239743	      1029 ns/op	     488 B/op	       3 allocs/op
+BenchmarkHotpathStrings/Escapes/Decode                  	  305772	       809.2 ns/op	     320 B/op	       1 allocs/op
+BenchmarkHotpathDynamicFields                           	  930427	       305.3 ns/op	     280 B/op	       2 allocs/op
+BenchmarkHotpathInterfaces                              	  294842	       902.1 ns/op	     496 B/op	       5 allocs/op
+BenchmarkHotpathWideDecode                              	   67525	      3571 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathIntegers                                	  435416	       562.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathBufferReuse                             	 1976094	       120.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathParallelCache                           	16885404	        14.32 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHotpathMixedSizes                              	    8508	     26960 ns/op	  251018 B/op	       2 allocs/op
+PASS

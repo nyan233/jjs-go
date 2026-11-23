@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"unsafe"
 )
 
@@ -16,6 +15,8 @@ type directDecodePlan struct {
 	elem       *directDecodePlan
 	fields     []directDecodeField
 	byLength   [][]int
+	byName     map[string]int
+	bits       int
 	elemType   unsafe.Pointer
 	elemSize   uintptr
 	typePtr    unsafe.Pointer
@@ -34,13 +35,15 @@ type directDecodeField struct {
 	plan     *directDecodePlan
 }
 
-var (
-	directDynamicPlans sync.Map
-	directDynamicMu    sync.Mutex
-)
+var directPlans baseCache[reflect.Type, *directDecodePlan]
 
 func compileDirectDecodePlan(typ reflect.Type) (*directDecodePlan, error) {
-	return buildDirectDecodePlan(typ, make(map[reflect.Type]*directDecodePlan))
+	if plan, ok := directPlans.getCompileResult(typ); ok {
+		return plan, nil
+	}
+	return directPlans.compile(typ, func() (*directDecodePlan, error) {
+		return buildDirectDecodePlan(typ, make(map[reflect.Type]*directDecodePlan))
+	})
 }
 
 func directDecodePlanStats(root *directDecodePlan) (nodes, fields int) {
@@ -72,7 +75,7 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 	plan := &directDecodePlan{
 		typ:     typ,
 		kind:    typ.Kind(),
-		typePtr: unsafe.Pointer(typePointer(typ)),
+		typePtr: runtimeTypePointer(typ),
 		size:    typ.Size(),
 	}
 	cache[typ] = plan
@@ -98,6 +101,9 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 			}
 		}
 		plan.byLength = make([][]int, maxLength+1)
+		if len(fields) > 12 {
+			plan.byName = make(map[string]int, len(fields))
+		}
 		for _, field := range fields {
 			child, err := buildDirectDecodePlan(field.typ, cache)
 			if err != nil {
@@ -113,6 +119,9 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 				plan:     child,
 			})
 			plan.byLength[len(field.name)] = append(plan.byLength[len(field.name)], index)
+			if plan.byName != nil {
+				plan.byName[field.name] = index
+			}
 		}
 	case reflect.Pointer:
 		child, err := buildDirectDecodePlan(typ.Elem(), cache)
@@ -126,7 +135,7 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 			return nil, err
 		}
 		plan.elem = child
-		plan.elemType = unsafe.Pointer(typePointer(typ.Elem()))
+		plan.elemType = runtimeTypePointer(typ.Elem())
 		plan.elemSize = typ.Elem().Size()
 	case reflect.Array:
 		child, err := buildDirectDecodePlan(typ.Elem(), cache)
@@ -161,6 +170,7 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 		reflect.Uintptr,
 		reflect.Float32,
 		reflect.Float64:
+		plan.bits = int(typ.Size() * 8)
 	default:
 		return nil, fmt.Errorf("json: direct decoder does not support %s", typ)
 	}
@@ -214,14 +224,11 @@ func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer)
 		}
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		text, err := p.parseNumberView()
+		raw, err := p.parseInteger(plan.bits, true)
 		if err != nil {
 			return err
 		}
-		value, err := strconv.ParseInt(text, 10, plan.typ.Bits())
-		if err != nil {
-			return p.errorf("%v", err)
-		}
+		value := int64(raw)
 		switch plan.kind {
 		case reflect.Int8:
 			*(*int8)(dst) = int8(value)
@@ -236,13 +243,9 @@ func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer)
 		}
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		text, err := p.parseNumberView()
+		value, err := p.parseInteger(plan.bits, false)
 		if err != nil {
 			return err
-		}
-		value, err := strconv.ParseUint(text, 10, plan.typ.Bits())
-		if err != nil {
-			return p.errorf("%v", err)
 		}
 		switch plan.kind {
 		case reflect.Uint8:
@@ -262,7 +265,7 @@ func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer)
 		if err != nil {
 			return err
 		}
-		value, err := strconv.ParseFloat(text, plan.typ.Bits())
+		value, err := strconv.ParseFloat(text, plan.bits)
 		if err != nil {
 			return p.errorf("%v", err)
 		}
@@ -311,6 +314,7 @@ func (p *jitJSONParser) decodeDirectStruct(plan *directDecodePlan, dst unsafe.Po
 	if p.consumeByte('}') {
 		return nil
 	}
+	nextField := 0
 	for {
 		p.skipSpace()
 		if p.index >= len(p.data) || p.data[p.index] != '"' {
@@ -324,7 +328,12 @@ func (p *jitJSONParser) decodeDirectStruct(plan *directDecodePlan, dst unsafe.Po
 		if !p.consumeByte(':') {
 			return p.errorf("expected ':'")
 		}
-		if index, ok := plan.lookupField(name); ok {
+		index, ok := nextField, nextField < len(plan.fields) && plan.fields[nextField].name == name
+		if !ok {
+			index, ok = plan.lookupField(name)
+		}
+		if ok {
+			nextField = index + 1
 			field := plan.fields[index]
 			fieldPtr := unsafe.Add(dst, field.offset)
 			if field.indirect {
@@ -347,7 +356,11 @@ func (p *jitJSONParser) decodeDirectStruct(plan *directDecodePlan, dst unsafe.Po
 }
 
 func (plan *directDecodePlan) lookupField(name string) (int, bool) {
-	if len(name) < len(plan.byLength) {
+	if plan.byName != nil {
+		if index, ok := plan.byName[name]; ok {
+			return index, true
+		}
+	} else if len(name) < len(plan.byLength) {
 		for _, index := range plan.byLength[len(name)] {
 			if plan.fields[index].name == name {
 				return index, true
@@ -517,7 +530,7 @@ func (p *jitJSONParser) decodeDirectInterface(plan *directDecodePlan, dst unsafe
 		// Only a non-nil pointer supplies an addressable decode target. Other
 		// dynamic values in an empty interface are replaced with generic JSON.
 		if typ.Kind() == reflect.Pointer && dynamic.data != nil && !(dynamic.data == dst && typ.Elem() == plan.typ) {
-			child, err := loadDirectDecodePlan(typ)
+			child, err := compileDirectDecodePlan(typ)
 			if err != nil {
 				return err
 			}
@@ -536,24 +549,6 @@ func (p *jitJSONParser) decodeDirectInterface(plan *directDecodePlan, dst unsafe
 	*(*unsafe.Pointer)(dst) = face.tab
 	*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = face.data
 	return nil
-}
-
-func loadDirectDecodePlan(typ reflect.Type) (*directDecodePlan, error) {
-	typePtr := typePointer(typ)
-	if cached, ok := directDynamicPlans.Load(typePtr); ok {
-		return cached.(*directDecodePlan), nil
-	}
-	directDynamicMu.Lock()
-	defer directDynamicMu.Unlock()
-	if cached, ok := directDynamicPlans.Load(typePtr); ok {
-		return cached.(*directDecodePlan), nil
-	}
-	plan, err := compileDirectDecodePlan(typ)
-	if err != nil {
-		return nil, err
-	}
-	actual, _ := directDynamicPlans.LoadOrStore(typePtr, plan)
-	return actual.(*directDecodePlan), nil
 }
 
 func (p *jitJSONParser) decodeDirectAny() (any, error) {
