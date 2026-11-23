@@ -9,7 +9,12 @@ import (
 )
 
 func main() {
-	typ := reflect.TypeOf(compare.TwitterResponse{})
+	for _, typ := range []reflect.Type{reflect.TypeOf(compare.SmallBook), reflect.TypeOf(compare.TwitterResponse{})} {
+		report(typ)
+	}
+}
+
+func report(typ reflect.Type) {
 	encoder, err := compiler.EncoderCodegenStats(typ)
 	if err != nil {
 		panic(err)
@@ -18,6 +23,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("encoder: %+v instruction-reduction=%.2f%%\n", encoder, encoder.InstructionReduction())
-	fmt.Printf("decoder: %+v instruction-reduction=%.2f%%\n", decoder, decoder.InstructionReduction())
+	fmt.Printf("%s encoder: %+v instruction-reduction=%.2f%%\n", typ, encoder, encoder.InstructionReduction())
+	fmt.Printf("%s decoder: %+v instruction-reduction=%.2f%%\n", typ, decoder, decoder.InstructionReduction())
 }

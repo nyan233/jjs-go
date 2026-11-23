@@ -158,6 +158,10 @@ func optimizeJITSSA(input []jitSSAValue) ([]jitSSAValue, []bool, int) {
 	values := slices.Clone(input)
 	numbers := make([]int, len(values))
 	available := make(map[int16]int)
+	// Intrusive lists index definitions by value number. Looking up an equal
+	// value visits only its copies, rather than scanning every live register.
+	heads := make([]int, len(values))
+	next := make([]int, len(values))
 	type expression struct {
 		op           jitSSAOp
 		a, b, memory int
@@ -166,8 +170,9 @@ func optimizeJITSSA(input []jitSSAValue) ([]jitSSAValue, []bool, int) {
 	expressions := make(map[expression]int)
 	find := func(number int) (int, bool) {
 		best := len(values)
-		for _, id := range available {
-			if numbers[id] == number && id < best {
+		for link := heads[number]; link != 0; link = next[link-1] {
+			id := link - 1
+			if current, ok := available[values[id].reg]; ok && current == id && id < best {
 				best = id
 			}
 		}
@@ -234,10 +239,13 @@ func optimizeJITSSA(input []jitSSAValue) ([]jitSSAValue, []bool, int) {
 		}
 		if !v.effect() {
 			available[v.reg] = id
+			next[id] = heads[numbers[id]]
+			heads[numbers[id]] = id + 1
 		}
 		switch v.op {
 		case ssaCall, ssaFrameEnter:
 			clear(available)
+			clear(expressions)
 		case ssaCopyMemory:
 			delete(available, jitCopyScratch())
 		}
