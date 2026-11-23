@@ -1,11 +1,11 @@
 package compiler
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
 	"reflect"
+	"runtime"
 	"strconv"
 	"unsafe"
 )
@@ -25,15 +25,20 @@ const (
 	jitHelperResolvedField
 	jitHelperCustomMarshal
 	jitHelperFieldPrefix
+	jitHelperFloatFormat
+	jitHelperYield
+	jitHelperCount
 )
 
 type jitEncodeProgram struct {
-	helpers     [14]uintptr
+	helpers     [jitHelperCount]uintptr
 	static      []byte
 	functions   []func(*jitEncodeContext) uintptr
 	mapTypes    []jitMapType
 	fields      []jitEncodeFieldMeta
 	customTypes []jitCustomTypeInfo
+	digits      string
+	base64      string
 }
 
 type jitMapType struct {
@@ -63,7 +68,7 @@ type jitEncodeContext struct {
 }
 
 func newJITEncodeProgram(static []byte) *jitEncodeProgram {
-	program := &jitEncodeProgram{static: static}
+	program := &jitEncodeProgram{static: static, digits: jitDigitPairs, base64: base64Alphabet}
 	program.helpers[jitHelperString] = reflect.ValueOf(jitAppendString).Pointer()
 	program.helpers[jitHelperInt] = reflect.ValueOf(jitAppendIntPtr).Pointer()
 	program.helpers[jitHelperFloat] = reflect.ValueOf(jitAppendFloatPtr).Pointer()
@@ -78,6 +83,8 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperResolvedField] = reflect.ValueOf(jitEncodeResolvedField).Pointer()
 	program.helpers[jitHelperCustomMarshal] = reflect.ValueOf(jitEncodeCustomMarshaler).Pointer()
 	program.helpers[jitHelperFieldPrefix] = reflect.ValueOf(jitWriteFieldPrefix).Pointer()
+	program.helpers[jitHelperFloatFormat] = reflect.ValueOf(strconv.AppendFloat).Pointer()
+	program.helpers[jitHelperYield] = reflect.ValueOf(runtime.Gosched).Pointer()
 	return program
 }
 
@@ -269,7 +276,11 @@ func jitAppendFloatPtr(ctx *jitEncodeContext, ptr unsafe.Pointer, width int) {
 	}
 	format := byte('f')
 	abs := math.Abs(value)
-	if abs != 0 && (abs < 1e-6 || abs >= 1e21) {
+	lower, upper := 1e-6, 1e21
+	if width == 4 {
+		lower, upper = float64(float32(lower)), float64(float32(upper))
+	}
+	if abs != 0 && (abs < lower || abs >= upper) {
 		format = 'e'
 	}
 	ctx.dst = strconv.AppendFloat(ctx.dst, value, format, -1, width*8)
@@ -349,12 +360,21 @@ func jitEncodeByteSlice(ctx *jitEncodeContext, headerPtr unsafe.Pointer) {
 		jitAppendNull(ctx)
 		return
 	}
-	ctx.dst = append(ctx.dst, '"')
-	dstLen := len(ctx.dst)
-	ctx.dst = append(ctx.dst, make([]byte, base64.StdEncoding.EncodedLen(length))...)
-	base64.StdEncoding.Encode(ctx.dst[dstLen:], unsafe.Slice((*byte)(ptr), length))
-	ctx.dst = append(ctx.dst, '"')
+	if length > (int(^uint(0)>>1)-2)/4*3 {
+		ctx.setError(errors.New("json: byte slice too large"))
+		return
+	}
+	n := (length+2)/3*4 + 2
+	ctx.ensureCapacity(n)
+	start := len(ctx.dst)
+	ctx.dst = ctx.dst[:start+n]
+	ctx.dst[start] = '"'
+	encodeBase64(ctx.dst[start+1:start+n-1], unsafe.Slice((*byte)(ptr), length))
+	ctx.dst[start+n-1] = '"'
 }
+
+const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+const base64ChunkBytes = 49152 // Multiple of 48; each chunk writes 64 KiB.
 
 type jitMapIterator struct {
 	key         unsafe.Pointer

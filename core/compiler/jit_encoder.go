@@ -169,7 +169,7 @@ func compileJITEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 			return nil, err
 		}
 		stats = stats.add(unit.code.stats)
-		libFunc := loadJITFunction(code, fmt.Sprintf("jjs_encoder_%d", index), unit.code.pcsp)
+		libFunc := loadJITFunctionFrame(code, fmt.Sprintf("jjs_encoder_%d", index), unit.code.pcsp, int(unit.code.frameSize), unit.code.localPointers())
 		program.functions[index] = *(*func(*jitEncodeContext) uintptr)(unsafe.Pointer(&libFunc))
 	}
 	function := program.functions[0]
@@ -283,19 +283,30 @@ type jitEncoderGenerator struct {
 	compiler    *jitEncoderCompiler
 	addressable bool
 	pendingRaw  []byte
+	depth       int
+	active      map[reflect.Type]int
+	returnLabel *jitLabel
 }
 
 func (g *jitEncoderGenerator) emitPrologue() error {
-	g.code.functionPrologue(jitFrameSize, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
+	g.code.encoderFrame = true
+	g.returnLabel = g.code.newLabel()
+	g.code.functionPrologue(jitFrameSize+jitEncoderFrameExtra, int64(unsafe.Offsetof(jitEncodeContext{}.data)))
 	return nil
 }
 
 func (g *jitEncoderGenerator) emitReturn() {
 	g.flushRaw()
-	g.code.finishFunction(jitFrameSize)
+	g.code.bind(g.returnLabel)
+	g.code.finishFunction(g.code.frameSize)
 }
 
 func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
+	if g.active == nil {
+		g.active = make(map[reflect.Type]int)
+	}
+	g.active[typ]++
+	defer func() { g.active[typ]-- }()
 	if callKind, customType := jitMarshalerCall(typ, g.addressable); callKind != jitCustomNone {
 		g.flushRaw()
 		typeIndex := g.compiler.customTypeIndex(customType)
@@ -311,32 +322,22 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 	}
 	switch typ.Kind() {
 	case reflect.Bool:
-		g.code.lea(_R12, offset, _RBX)
-		g.code.mov(_R10, _RAX)
-		g.emitHelper(jitHelperBool)
+		g.emitBool(offset)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		g.code.lea(_R12, offset, _RBX)
-		g.code.mov(_R10, _RAX)
-		g.code.movConst(int64(typ.Bits()/8), _RCX)
-		g.code.movConst(1, _RDI)
-		g.emitHelper(jitHelperInt)
+		g.emitInteger(offset, typ.Bits()/8, true)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		g.code.lea(_R12, offset, _RBX)
-		g.code.mov(_R10, _RAX)
-		g.code.movConst(int64(typ.Bits()/8), _RCX)
-		g.code.xor(_RDI, _RDI)
-		g.emitHelper(jitHelperInt)
+		g.emitInteger(offset, typ.Bits()/8, false)
 	case reflect.Float32, reflect.Float64:
-		g.code.lea(_R12, offset, _RBX)
-		g.code.mov(_R10, _RAX)
-		g.code.movConst(int64(typ.Bits()/8), _RCX)
-		g.emitHelper(jitHelperFloat)
+		g.emitFloat(offset, typ.Bits()/8)
 	case reflect.String:
 		g.code.loadMem(_R12, offset, _RBX)
 		g.code.loadMem(_R12, offset+8, _RCX)
 		g.code.mov(_R10, _RAX)
 		g.emitHelper(jitHelperString)
 	case reflect.Pointer:
+		if g.canInline(typ.Elem()) {
+			return g.emitPointer(typ.Elem(), offset)
+		}
 		childUnit, err := g.compiler.unitIndex(typ.Elem(), true)
 		if err != nil {
 			return err
@@ -348,6 +349,9 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 	case reflect.Struct:
 		return g.emitStruct(typ, offset)
 	case reflect.Array:
+		if typ.Len() > 16 && g.canInline(typ.Elem()) {
+			return g.emitSequence(typ.Elem(), offset, typ.Len())
+		}
 		if err := g.emitRaw([]byte("[")); err != nil {
 			return err
 		}
@@ -365,10 +369,11 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 		return g.emitRaw([]byte("]"))
 	case reflect.Slice:
 		if typ.Elem().Kind() == reflect.Uint8 {
-			g.code.mov(_R10, _RAX)
-			g.code.lea(_R12, offset, _RBX)
-			g.emitHelper(jitHelperByteSlice)
+			g.emitByteSlice(offset)
 			break
+		}
+		if g.canInline(typ.Elem()) {
+			return g.emitSequence(typ.Elem(), offset, -1)
 		}
 		childUnit, err := g.compiler.unitIndex(typ.Elem(), true)
 		if err != nil {
@@ -552,9 +557,7 @@ func (g *jitEncoderGenerator) flushRaw() {
 	}
 	offset := len(g.compiler.static)
 	g.compiler.static = append(g.compiler.static, value...)
-	g.code.mov(_R10, _RAX)
-	g.code.movConst(int64(len(value)), _RBX)
-	g.emitHelper(jitHelperReserve)
+	g.emitReserve(len(value))
 	destination := g.code.newVirtualRegister()
 	g.code.mov(_RAX, destination)
 

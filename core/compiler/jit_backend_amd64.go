@@ -79,16 +79,18 @@ func (c *jitCodeBuilder) store8(from, to obj.Addr) {
 
 func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
 	c.dataOffset = dataOffset
+	c.frameSize = frameSize
 	c.subConst(frameSize, _RSP)
-	c.mov(_RBP, mem(_RSP, jitFramePointer))
-	c.lea(_RSP, jitFramePointer, _RBP)
-	c.mov(_RAX, mem(_RSP, jitFrameContext))
+	c.mov(_RBP, mem(_RSP, frameSize-8))
+	c.lea(_RSP, frameSize-8, _RBP)
+	c.mov(_RAX, mem(_RSP, c.contextSlot()))
 	c.mov(_RAX, _R10)
 	c.loadMem(_R10, dataOffset, _R12)
+	c.initEncoderLocals()
 }
 
 func (c *jitCodeBuilder) finishFunction(frameSize int64) {
-	c.loadMem(_RSP, jitFramePointer, _RBP)
+	c.loadMem(_RSP, frameSize-8, _RBP)
 	c.addConst(frameSize, _RSP)
 	c.xor(_RAX, _RAX)
 	c.ret()
@@ -99,12 +101,16 @@ func jitLocalPointers() []bool {
 }
 
 func (c *jitCodeBuilder) restoreJITRegs() {
-	c.loadMem(_RSP, jitFrameContext, _R10)
-	c.loadMem(_R10, c.dataOffset, _R12)
+	c.loadMem(_RSP, c.contextSlot(), _R10)
+	if c.encoderFrame {
+		c.loadMem(_RSP, c.dataSlot(), _R12)
+	} else {
+		c.loadMem(_R10, c.dataOffset, _R12)
+	}
 }
 
 func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
-	c.loadMem(_RSP, jitFrameContext, to)
+	c.loadMem(_RSP, c.contextSlot(), to)
 }
 
 func (c *jitCodeBuilder) call(reg obj.Addr) {
@@ -148,6 +154,9 @@ func (c *jitCodeBuilder) assemble() ([]byte, error) {
 }
 
 var (
+	_RT0 = registerAddr(x86.REG_R9)
+	_RT1 = registerAddr(x86.REG_R13)
+	_RT2 = registerAddr(x86.REG_R15)
 	_RAX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_AX}
 	_RBX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_BX}
 	_RCX = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_CX}

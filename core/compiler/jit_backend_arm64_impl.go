@@ -120,17 +120,19 @@ func (c *jitCodeBuilder) store8(from, to obj.Addr) {
 
 func (c *jitCodeBuilder) functionPrologue(frameSize, dataOffset int64) {
 	c.dataOffset = dataOffset
-	if frameSize != jitFrameSize {
+	c.frameSize = frameSize
+	if frameSize > 256 || frameSize%16 != 0 {
 		panic("arm64 JIT: invalid frame size")
 	}
-	// STR X30, [SP, #-80]! allocates the frame and preserves the link register.
-	c.word(0xf81b0ffe)
+	// STR X30, [SP, #-frameSize]! allocates the frame and saves LR.
+	c.word(0xf8000ffe | uint32((-frameSize)&0x1ff)<<12)
 	c.pcsp = jitloader.Pcdata{{PC: uint32(len(c.codeWords) * 4), Val: 0}}
 	c.storeMemory(_R29, mem(_RSP, jitFramePointer), 64)
-	c.storeMemory(_RAX, mem(_RSP, jitFrameContext), 64)
+	c.storeMemory(_RAX, mem(_RSP, c.contextSlot()), 64)
 	c.addImmediate(arm64StackPointer, jitFramePointer, arm64FrameRegister)
 	c.mov(_RAX, _R10)
 	c.loadMemory(mem(_R10, dataOffset), _R12, false)
+	c.initEncoderLocals()
 }
 
 func (c *jitCodeBuilder) finishFunction(frameSize int64) {
@@ -148,12 +150,16 @@ func jitLocalPointers() []bool {
 }
 
 func (c *jitCodeBuilder) restoreJITRegs() {
-	c.loadMemory(mem(_RSP, jitFrameContext), _R10, false)
-	c.loadMemory(mem(_R10, c.dataOffset), _R12, false)
+	c.loadMemory(mem(_RSP, c.contextSlot()), _R10, false)
+	if c.encoderFrame {
+		c.loadMem(_RSP, c.dataSlot(), _R12)
+	} else {
+		c.loadMemory(mem(_R10, c.dataOffset), _R12, false)
+	}
 }
 
 func (c *jitCodeBuilder) loadJITContext(to obj.Addr) {
-	c.loadMemory(mem(_RSP, jitFrameContext), to, false)
+	c.loadMemory(mem(_RSP, c.contextSlot()), to, false)
 }
 
 func (c *jitCodeBuilder) call(reg obj.Addr) {
@@ -169,6 +175,22 @@ func (c *jitCodeBuilder) newVirtualRegister() obj.Addr {
 }
 
 func (c *jitCodeBuilder) assemble() ([]byte, error) {
+	for _, label := range c.labels {
+		if label.position < 0 {
+			panic("arm64 JIT: unbound label")
+		}
+		for _, pc := range label.branches {
+			delta := int64(label.position - pc)
+			if c.codeWords[pc]&0xff000000 == 0x54000000 {
+				if delta < -(1<<18) || delta >= 1<<18 {
+					panic("arm64 JIT: branch out of range")
+				}
+				c.codeWords[pc] |= uint32(delta&0x7ffff) << 5
+			} else {
+				c.codeWords[pc] |= uint32(delta & 0x3ffffff)
+			}
+		}
+	}
 	code := make([]byte, len(c.codeWords)*4)
 	for index, word := range c.codeWords {
 		binary.LittleEndian.PutUint32(code[index*4:], word)
@@ -219,11 +241,11 @@ func (c *jitCodeBuilder) storeMemory(from, to obj.Addr, width int) {
 		baseOp := uint32(0xf8000000)
 		switch width {
 		case 32:
-			baseOp = 0xb9000000
+			baseOp = 0xb8000000
 		case 16:
-			baseOp = 0x79000000
+			baseOp = 0x78000000
 		case 8:
-			baseOp = 0x39000000
+			baseOp = 0x38000000
 		}
 		c.word(baseOp | uint32(offset&0x1ff)<<12 | base<<5 | arm64Register(from))
 		return
@@ -276,6 +298,9 @@ var (
 	_RCX = registerAddr(arm64.REG_R2)
 	_RDI = registerAddr(arm64.REG_R3)
 	_RSI = registerAddr(arm64.REG_R4)
+	_RT0 = registerAddr(arm64.REG_R10)
+	_RT1 = registerAddr(arm64.REG_R11)
+	_RT2 = registerAddr(arm64.REG_R12)
 	_R7  = registerAddr(arm64.REG_R7)
 	_R11 = registerAddr(arm64.REG_R5)
 	_R8  = registerAddr(arm64.REG_R6)
