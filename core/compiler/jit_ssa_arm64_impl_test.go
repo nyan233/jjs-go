@@ -249,6 +249,17 @@ func TestARM64SSAUnknownBranch(t *testing.T) {
 	}
 }
 
+func TestARM64SSAUnknownZeroWord(t *testing.T) {
+	c := newJITCodeBuilder("ssa_unknown_zero")
+	c.word(0) // Undefined/trapping instruction, not an optimizer-created nop.
+	c.ret()
+	before, _ := ssaTestCompile(t, c, false)
+	after, _ := ssaTestCompile(t, c, true)
+	if !slices.Equal(before, after) {
+		t.Fatal("SSA removed an opaque instruction")
+	}
+}
+
 func TestARM64SSAHelperArguments(t *testing.T) {
 	functions := [jitHelperCount]any{
 		jitHelperString: jitAppendString, jitHelperInt: jitAppendIntPtr,

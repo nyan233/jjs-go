@@ -715,7 +715,7 @@ func (c *jitCodeBuilder) optimizeARM64SSA() {
 		for pc := n.pc; pc < n.end; pc++ {
 			s.remap[pc] = len(out) + int(pc-n.pc)
 		}
-		if s.live[id] && n.word != 0 {
+		if s.live[id] && (n.word != 0 || n.op == armOpaque) {
 			if n.op == armOpaque || n.op == armCall {
 				out = append(out, c.codeWords[n.pc:n.end]...)
 			} else {
