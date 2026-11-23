@@ -172,3 +172,6 @@ var (
 	_X0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_X0}
 	_Y0  = obj.Addr{Type: obj.TYPE_REG, Reg: x86.REG_Y0}
 )
+
+func (c *jitCodeBuilder) callEncoderHelper(_ int) { c.call(_R11) }
+func (c *jitCodeBuilder) callFloatFormatter()     { c.call(_RT0) }

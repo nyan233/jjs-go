@@ -15,6 +15,9 @@ type CodegenStats struct {
 	RegisterReuse       int
 	SpilledRegisters    int
 	CodeBytes           int
+	SSABlocks           int
+	SSAValues           int
+	SSAPhis             int
 	DirectDecoder       bool
 	DirectPlanNodes     int
 	DirectFields        int
@@ -30,6 +33,9 @@ func (s CodegenStats) add(other jitCodegenStats) CodegenStats {
 	s.RegisterReuse += other.RegisterReuse
 	s.SpilledRegisters += other.SpilledRegisters
 	s.CodeBytes += other.CodeBytes
+	s.SSABlocks += other.SSABlocks
+	s.SSAValues += other.SSAValues
+	s.SSAPhis += other.SSAPhis
 	return s
 }
 

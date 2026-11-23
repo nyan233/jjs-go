@@ -168,8 +168,12 @@ func (g *jitEncoderGenerator) emitByteSlice(offset int64) {
 	c.loadMem(_R12, offset+8, _RCX)
 	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _RDI)
 	c.loadMem(_RDI, int64(unsafe.Offsetof(jitEncodeProgram{}.base64)), _RDI)
+	start := len(c.codeWords)
 	for _, word := range base64Kernel {
 		c.word(word)
+	}
+	if jitSSAEnabled {
+		c.opaqueRanges = append(c.opaqueRanges, jitCodeRange{start, len(c.codeWords)})
 	}
 	c.movConst('"', _RBX)
 	c.store8(_RBX, mem(_RAX, 0))

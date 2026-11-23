@@ -191,6 +191,10 @@ func (c *jitCodeBuilder) assemble() ([]byte, error) {
 			}
 		}
 	}
+	c.stats = jitCodegenStats{InstructionsBefore: len(c.codeWords)}
+	if jitSSAEnabled && c.encoderFrame {
+		c.optimizeARM64SSA()
+	}
 	code := make([]byte, len(c.codeWords)*4)
 	for index, word := range c.codeWords {
 		binary.LittleEndian.PutUint32(code[index*4:], word)
@@ -201,11 +205,8 @@ func (c *jitCodeBuilder) assemble() ([]byte, error) {
 	if len(c.pcsp) != 0 {
 		c.pcsp = append(c.pcsp, jitloader.Pcvalue{PC: uint32(len(code)), Val: 0})
 	}
-	c.stats = jitCodegenStats{
-		InstructionsBefore: len(c.codeWords),
-		InstructionsAfter:  len(c.codeWords),
-		CodeBytes:          len(code),
-	}
+	c.stats.InstructionsAfter = len(c.codeWords)
+	c.stats.CodeBytes = len(code)
 	return code, nil
 }
 

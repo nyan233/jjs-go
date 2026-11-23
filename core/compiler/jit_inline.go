@@ -181,7 +181,7 @@ func (g *jitEncoderGenerator) emitFloat(offset int64, width int) {
 	c.floatBitsArgument(int64(width * 8))
 	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.program)), _RT0)
 	c.loadMem(_RT0, jitHelperFloatFormat*8, _RT0)
-	c.call(_RT0)
+	c.callFloatFormatter()
 	c.restoreJITRegs()
 	// The 32-byte reservation guarantees AppendFloat cannot grow the slice;
 	// its data pointer is unchanged, so only the scalar length is written.

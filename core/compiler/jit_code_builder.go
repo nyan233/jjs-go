@@ -15,6 +15,9 @@ type jitCodegenStats struct {
 	RegisterReuse       int
 	SpilledRegisters    int
 	CodeBytes           int
+	SSABlocks           int
+	SSAValues           int
+	SSAPhis             int
 }
 
 type jitCodeBuilder struct {
@@ -28,6 +31,15 @@ type jitCodeBuilder struct {
 	encoderFrame bool
 	frameSize    int64
 	labels       []*jitLabel
+	opaqueRanges []jitCodeRange
+	knownCalls   []jitKnownCall
+}
+
+// Opaque kernels keep their internal control flow and instruction scheduling.
+type jitCodeRange struct{ start, end int }
+type jitKnownCall struct {
+	pc    int
+	reads uint64
 }
 
 type jitLabel struct {

@@ -76,3 +76,9 @@ func TestARM64JITQuoteBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestARM64SSAQuoteHelperArguments(t *testing.T) {
+	if reflect.TypeOf(quoteJSONString).NumIn() != armEncoderArgs[jitHelperQuote] || reflect.TypeOf(jitQuoteTail).NumIn() != armEncoderArgs[jitHelperQuoteTail] {
+		t.Fatal("quote helper SSA ABI metadata is stale")
+	}
+}
