@@ -9,22 +9,23 @@ layout, and machine-code emission.
 
 - Uses `golang-asm/obj/x86` and the repository-owned `internal/jitloader`.
 - Uses a fixed 64-byte Go ABI frame for helper calls and GC metadata.
-- Runs the x86 IR simplifier and linear-scan register allocator before
-  assembling.
+- Lowers shared SSA into x86 assembler instructions, then applies the
+  linear-scan allocator to surviving virtual scratch registers.
 - Requires AVX2 and SSE4.2. Initialization fails fast on unsupported CPUs.
 - Uses AVX2 for long string runs and SSE4.2 for short encoder strings.
 
 ## arm64 backend
 
 - Targets `darwin/arm64`, including Apple M-series CPUs.
-- Emits ARM64 instructions directly instead of reusing the x86 object model.
+- Lowers shared SSA directly into ARM64 instructions.
 - Uses register arguments from the Go internal ABI and an 80-byte ARM64 frame.
 - Saves LR and FP, spills the encode context into a GC-visible frame slot, and
   calls the same architecture-neutral encoder intrinsics used by amd64.
 - Encodes MOVZ/MOVK, MOV, LDR/STR, ADD/SUB, EOR, BLR, and RET directly.
 - Invalidates data and instruction caches with `DC CVAU`, `IC IVAU`, `DSB`, and
   `ISB` before returning freshly loaded machine code.
-- Uses a WORD-at-a-time scanner for arm64 JSON string escaping.
+- Uses word scanning for short strings and NEON after a short-prefix check
+  for long encoder strings; the direct decoder retains word scanning.
 - The direct decoder remains the primary decoder backend. The shared legacy
   decoder code generator can target the arm64 builder when a type cannot use a
   direct decode plan.
@@ -63,10 +64,45 @@ The source-level comparison and runtime layout matrix are recorded in
 The field-by-field organization and lookup flow are documented in
 [`internal/jitloader/MODULEDATA.md`](internal/jitloader/MODULEDATA.md).
 
-The x86 IR optimizer and linear-scan allocator are currently compiled only on
-amd64. The arm64 frontend reserves fixed scalar registers for context, data,
-scratch values, and emitted literal-copy temporaries while helper calls cross
-the Go ABI boundary.
+## Shared SSA optimizer
+
+`core/compiler/jit_ssa.go` is the optimization boundary between the type
+frontend and both backends. Every register definition receives a distinct
+value ID. Stores, literal copies, calls and frame operations define memory
+versions; loads refer to the memory version they read. All six helper argument
+registers remain conservative implicit call operands, and calls kill available
+register values. The pinned frame operations preserve the context root and
+runtime PC-to-SP metadata.
+
+The pass folds 64-bit constants (including wrapping arithmetic), propagates
+copies, reuses available equal expressions/loads, and removes unused values
+with a reverse liveness walk. Equal values are indexed by value number;
+propagation checks that their physical homes still contain them. It cannot
+reuse a register whose value has been overwritten. Memory versions invalidate
+load reuse after every write or call, without attempting alias analysis.
+
+The current generated functions are straight-line helper-call sequences, so
+this is deliberately a single-basic-block SSA without phi nodes, branch/loop
+optimization, scheduling, or register spilling. Helper control flow remains in
+Go. Before moving branches into generated code, extend the representation with
+basic blocks, dominance/phi construction and call-aware liveness. ABI homes
+remain fixed; amd64 still allocates surviving virtual scratch intervals, while
+ARM64 uses its existing fixed scratch registers. This is not a general-purpose
+SSA register allocator.
+
+`CodegenStats` includes input/effect nodes in its SSA counts. Instruction counts
+refer to lowered backend operations (ARM64 instruction words; x86 assembler
+instructions), and `CodeBytes` includes backend padding. Before/after counts
+are within this pipeline; compare actual baseline binaries when evaluating a
+previous compiler revision. The diagnostic before count performs a second
+lowering without assembly or executable allocation. Cold code-generation
+benchmarks include that cost. The primary direct decoder is Go code and does
+not pass through SSA.
+
+See [the M1 Pro evaluation](benchmark/compare/SSA_CODEGEN_ARM64.md) for the
+measured tradeoff. Regression tests cover memory barriers, overwritten register
+homes, implicit call operands, wrapping constants, random straight-line
+programs, and stack growth/GC while a generated frame is active.
 
 ## Tests and build checks
 
@@ -107,7 +143,6 @@ development binary may allocate writable memory and change it to executable
 memory. Hardened or sandboxed macOS applications must grant the appropriate
 executable-memory entitlement in their code signature.
 
-The arm64 backend has been cross-compiled and its generated instruction
-sequences have been validated on the current Windows host. A real Apple
-Silicon CI/device run remains required before calling its runtime performance
-production-verified.
+Native runtime tests and performance measurements run on an Apple M1 Pro.
+CI additionally covers macOS, Windows/Linux amd64, ARM64 assembly/cross-builds
+and Linux ARM64 under QEMU.

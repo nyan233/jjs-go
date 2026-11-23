@@ -8,11 +8,11 @@ encoder plan or an `encoding/json` runtime fallback.
 a generated function that loads each field by offset and calls fixed JIT intrinsics
 for strings, booleans, integers, floats and JSON punctuation.
 
-On amd64, the compiler includes a machine-instruction IR and a linear-scan
-register allocator for non-reserved physical registers. ABI registers used by
-runtime bridges remain fixed and are not considered allocatable. The ARM64
-backend emits its own ABI-compatible prologue, helper calls, scalar operations
-and epilogue directly.
+Both backends share a single-basic-block SSA optimizer for constant folding,
+copy propagation, common-expression/load elimination and dead-code removal.
+ABI register homes and stack-frame effects remain explicit. amd64 additionally
+uses a linear-scan allocator for surviving virtual scratch registers; ARM64
+lowerings use fixed registers and emit native instructions directly.
 
 Encode and decode contexts are reused through `sync.Pool`. The generated code
 reserves output capacity once per static segment and writes compiled literals
@@ -33,11 +33,11 @@ match before falling back to name lookup. Types containing non-empty
 interfaces retain the earlier JIT path. There is no reflection-based encoding
 plan or `encoding/json` runtime fallback.
 
-Generated encoder programs pass through a small machine-instruction IR before
-assembly. Redundant moves and foldable immediate operations are removed, and
-scratch values use virtual registers with live intervals rather than permanent
-global scratch slots. `CodegenStats` reports instruction reduction, register
-reuse, spills and generated code size.
+Generated encoder programs pass through SSA before architecture-specific
+lowering. Memory versions prevent load reuse across writes and helper calls.
+`CodegenStats` reports SSA values before/after optimization, backend instruction
+counts, register reuse, spills and generated code size. The direct Go decoder
+is unaffected by this JIT optimization stage.
 
 The runtime loader is implemented in [`internal/jitloader`](internal/jitloader/README.md).
 It generates Go `moduledata`, `functab`, `_func`, pcdata/funcdata and GC stack
@@ -128,9 +128,11 @@ reflection/interface ABI differences outside the loader itself.
 - [internal/jitloader/MODULEDATA.md](internal/jitloader/MODULEDATA.md): runtime metadata and GC layout.
 - [docs/go-runtime-loader-versions.md](docs/go-runtime-loader-versions.md): Go 1.21–1.27 source-level compatibility matrix.
 
-The type frontend is shared between architectures. amd64 uses the x86
-instruction builder, IR optimizer and linear-scan allocator. ARM64 uses a
-direct instruction encoder and its own Go ABI frame/cache-flush sequence.
+The type frontend and SSA optimizer are shared between architectures. amd64
+lowers into x86 instructions and applies linear-scan scratch allocation. ARM64
+lowers into a direct instruction encoder with its own Go ABI frame/cache-flush
+sequence. See the [M1 Pro SSA evaluation](benchmark/compare/SSA_CODEGEN_ARM64.md)
+for generated-code size, runtime throughput and compilation costs.
 
 ## Benchmarks
 
