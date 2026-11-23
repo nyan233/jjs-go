@@ -1,0 +1,1883 @@
+# M1 Pro codec optimization record
+# 2026-11-23; macOS 27.0.1; Go 1.25.0 darwin/arm64
+# Baseline codec 96ffa5b (docs 029830e); optimized codec 0781cbec31c371099f03bffc88608eb4d007db7b
+# Main benchmark environment: SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10 -test.cpu=10
+# Five 500ms before/after rounds with order alternating; library cases three 500ms samples.
+# Microbenchmarks use GOMAXPROCS=1 -test.cpu=1, three 100ms samples. No samples omitted.
+# Measurement script:
+from pathlib import Path
+import os, subprocess
+p = Path('/tmp/jjs-codec-perf-029830e')
+env = {**os.environ,'SONIC_NO_ASYNC_GC':'1','GOMAXPROCS':'10'}
+binaries = {'before':'/tmp/jjs-m1pro-compare-96ffa5b.test', 'after':str(p/'optimized.test')}
+files = {v: (p/('final-'+v+'.txt')).open('w') for v in binaries}
+try:
+    for sample in range(5):
+        for variant in (['before','after'] if sample%2==0 else ['after','before']):
+            print(f'before/after round {sample+1}/5: {variant}',flush=True)
+            subprocess.run([binaries[variant],'-test.run','^$',
+              '-test.bench','^Benchmark(Decoder_(Binding|Generic|FreshBinding)|Encoder_(Binding|Generic))$/(Small|Medium|Large)/^jjs-go$',
+              '-test.benchmem','-test.benchtime=500ms','-test.count=1','-test.cpu=10'],
+              stdout=files[variant],stderr=subprocess.STDOUT,check=True,env=env)
+finally:
+    for f in files.values(): f.close()
+print('library comparison',flush=True)
+with (p/'libraries-final.txt').open('w') as out:
+    subprocess.run([binaries['after'],'-test.run','^$',
+      '-test.bench','^Benchmark(Decoder_(Binding|Generic|FreshBinding)|Encoder_(Binding|Generic|UnorderedGeneric))$/(Small|Medium|Large)/(goccy|sonic|jjs-go)$',
+      '-test.benchmem','-test.benchtime=500ms','-test.count=3','-test.cpu=10'],stdout=out,stderr=subprocess.STDOUT,check=True,env=env)
+print('final scanner microbenchmarks',flush=True)
+with (p/'scanners-dispatch.txt').open('w') as out:
+    subprocess.run([str(p/'scanners-final.test'),'-test.run','^$',
+      '-test.bench','^BenchmarkARM64Scanners$/(Encode|Decode)/(ASCII|EarlyEscape|Unicode)/(16|24|64|1024)/(Word|NEON|Dispatch)$',
+      '-test.benchmem','-test.benchtime=100ms','-test.count=3','-test.cpu=1'],stdout=out,stderr=subprocess.STDOUT,check=True,env={**env,'GOMAXPROCS':'1'})
+for direction,mode in [('Encoder','Binding'),('Encoder','Generic'),('Decoder','Binding'),('Decoder','Generic')]:
+    name=f'after-{direction}-{mode}-Large'
+    print(name,flush=True)
+    with (p/(name+'.txt')).open('w') as out:
+        subprocess.run([binaries['after'],'-test.run','^$',
+          '-test.bench',f'^Benchmark{direction}_{mode}$/^Large$/^jjs-go$',
+          '-test.benchmem','-test.benchtime=6s','-test.count=1','-test.cpu=10',
+          '-test.cpuprofile='+str(p/(name+'.cpu.pprof')),
+          '-test.memprofile='+str(p/(name+'.mem.pprof'))],stdout=out,stderr=subprocess.STDOUT,check=True,env=env)
+print('GOMAXPROCS=1 profiling diagnostic',flush=True)
+with (p/'encoder-large-cpu1.txt').open('w') as out:
+    subprocess.run([binaries['after'],'-test.run','^$',
+      '-test.bench','^BenchmarkEncoder_Binding$/^Large$/^jjs-go$',
+      '-test.benchmem','-test.benchtime=6s','-test.count=1','-test.cpu=1',
+      '-test.cpuprofile='+str(p/'encoder-large-cpu1.cpu.pprof')],stdout=out,stderr=subprocess.STDOUT,check=True,env={**env,'GOMAXPROCS':'1'})
+print('All final measurements complete.',flush=True)
+
+# FILE: final-before.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  813480	       693.9 ns/op	 525.98 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   98748	      6280 ns/op	2073.79 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2168	    274658 ns/op	2299.27 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  423566	      1434 ns/op	 254.47 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   21805	     27848 ns/op	 467.65 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     410	   1461005 ns/op	 432.25 MB/s	  202886 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  368780	      1635 ns/op	 223.18 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   18105	     29459 ns/op	 442.07 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     386	   1542834 ns/op	 409.32 MB/s	  436989 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  293901	      1996 ns/op	 182.87 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   28586	     20939 ns/op	 621.96 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     542	   1093283 ns/op	 577.63 MB/s	  718064 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  167869	      3626 ns/op	 100.67 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   10000	     62079 ns/op	 209.78 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     213	   2851349 ns/op	 221.48 MB/s	 2132676 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  872044	       670.6 ns/op	 544.33 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   95371	      5629 ns/op	2313.69 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2344	    256598 ns/op	2461.10 MB/s	  282376 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  423009	      1425 ns/op	 256.05 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   21813	     27429 ns/op	 474.78 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     415	   1453819 ns/op	 434.38 MB/s	  202879 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  366334	      1641 ns/op	 222.39 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   20391	     30289 ns/op	 429.97 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     385	   1532032 ns/op	 412.21 MB/s	  436989 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  301968	      1970 ns/op	 185.32 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   28874	     20776 ns/op	 626.82 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     546	   1092060 ns/op	 578.28 MB/s	  718065 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  165931	      3562 ns/op	 102.48 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   10000	     62103 ns/op	 209.70 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     213	   2830500 ns/op	 223.11 MB/s	 2132670 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  816196	       712.9 ns/op	 511.98 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   98574	      6144 ns/op	2119.61 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2257	    269591 ns/op	2342.49 MB/s	  282373 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  425325	      1428 ns/op	 255.67 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   21834	     27413 ns/op	 475.07 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     410	   1458261 ns/op	 433.06 MB/s	  202885 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  355320	      1708 ns/op	 213.72 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   20415	     29455 ns/op	 442.13 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     390	   1550198 ns/op	 407.38 MB/s	  436990 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  302304	      1965 ns/op	 185.80 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   28710	     21022 ns/op	 619.51 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     543	   1093135 ns/op	 577.71 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  160922	      3568 ns/op	 102.29 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   10000	     61758 ns/op	 210.87 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     214	   2841591 ns/op	 222.24 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  794144	       715.1 ns/op	 510.41 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   97845	      6128 ns/op	2125.23 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2230	    266460 ns/op	2370.02 MB/s	  282376 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  414357	      1427 ns/op	 255.84 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   21759	     27391 ns/op	 475.45 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     411	   1460331 ns/op	 432.45 MB/s	  202886 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  368454	      1641 ns/op	 222.43 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   20352	     29377 ns/op	 443.31 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     385	   1547858 ns/op	 407.99 MB/s	  436992 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  297436	      1964 ns/op	 185.87 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   28738	     21037 ns/op	 619.04 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     544	   1097695 ns/op	 575.31 MB/s	  718062 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  164490	      3586 ns/op	 101.78 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	    9964	     62252 ns/op	 209.20 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     218	   2860684 ns/op	 220.76 MB/s	 2132671 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  882238	       668.5 ns/op	 545.97 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  107084	      5625 ns/op	2315.18 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2388	    251786 ns/op	2508.14 MB/s	  282373 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  422934	      1424 ns/op	 256.24 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   21891	     27458 ns/op	 474.29 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     408	   1446382 ns/op	 436.62 MB/s	  202889 B/op	    4236 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  374902	      1636 ns/op	 223.04 MB/s	     544 B/op	      13 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   20362	     30372 ns/op	 428.78 MB/s	    8664 B/op	     125 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     386	   1553958 ns/op	 406.39 MB/s	  436989 B/op	    4379 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  311016	      1943 ns/op	 187.83 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   28754	     20813 ns/op	 625.72 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     542	   1110967 ns/op	 568.44 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  168702	      3610 ns/op	 101.11 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   10000	     61178 ns/op	 212.87 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     218	   2779063 ns/op	 227.24 MB/s	 2132669 B/op	   30873 allocs/op
+PASS
+
+# FILE: final-after.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  820797	       715.1 ns/op	 510.44 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  102088	      5881 ns/op	2214.46 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2276	    256848 ns/op	2458.71 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  668089	       901.8 ns/op	 404.76 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35533	     16798 ns/op	 775.27 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     705	    851624 ns/op	 741.54 MB/s	  160618 B/op	     444 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  537409	      1096 ns/op	 333.08 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   32330	     18424 ns/op	 706.87 MB/s	    8757 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     656	    912865 ns/op	 691.79 MB/s	  395081 B/op	     587 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  299193	      1956 ns/op	 186.63 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29530	     20503 ns/op	 635.18 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     555	   1069830 ns/op	 590.29 MB/s	  718064 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  229435	      2628 ns/op	 138.91 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16831	     35590 ns/op	 365.91 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     379	   1536587 ns/op	 410.98 MB/s	 1417098 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  823454	       686.1 ns/op	 532.02 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  100154	      5878 ns/op	2215.60 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2013	    259327 ns/op	2435.20 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  660567	       900.4 ns/op	 405.37 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35504	     16877 ns/op	 771.66 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     703	    849380 ns/op	 743.50 MB/s	  160608 B/op	     444 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  559148	      1099 ns/op	 332.26 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   32409	     18537 ns/op	 702.55 MB/s	    8759 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     656	    915227 ns/op	 690.01 MB/s	  395085 B/op	     587 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  287252	      1948 ns/op	 187.34 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29302	     20525 ns/op	 634.49 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     549	   1082859 ns/op	 583.19 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  220729	      2645 ns/op	 138.00 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16826	     35587 ns/op	 365.95 MB/s	   34941 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     380	   1573566 ns/op	 401.33 MB/s	 1417125 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  864874	       665.2 ns/op	 548.68 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  101708	      5885 ns/op	2212.86 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2301	    256436 ns/op	2462.66 MB/s	  282375 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  676598	       906.4 ns/op	 402.68 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35619	     16818 ns/op	 774.34 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     702	    851223 ns/op	 741.89 MB/s	  160626 B/op	     444 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  552688	      1086 ns/op	 336.13 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   32686	     18420 ns/op	 707.02 MB/s	    8757 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     656	    918228 ns/op	 687.75 MB/s	  395096 B/op	     587 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  307514	      1936 ns/op	 188.52 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29548	     20379 ns/op	 639.04 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     560	   1068816 ns/op	 590.85 MB/s	  718065 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  231454	      2583 ns/op	 141.33 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16923	     35119 ns/op	 370.83 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     379	   1573272 ns/op	 401.40 MB/s	 1417099 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  850294	       677.2 ns/op	 538.97 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  115155	      5293 ns/op	2460.21 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2377	    248935 ns/op	2536.86 MB/s	  282377 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  659684	       900.1 ns/op	 405.53 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35644	     16862 ns/op	 772.32 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     700	    845431 ns/op	 746.97 MB/s	  160615 B/op	     444 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  549026	      1090 ns/op	 334.79 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   32354	     18516 ns/op	 703.33 MB/s	    8759 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     650	    918794 ns/op	 687.33 MB/s	  395075 B/op	     587 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  300914	      1940 ns/op	 188.17 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29476	     20405 ns/op	 638.22 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     554	   1074688 ns/op	 587.63 MB/s	  718064 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  227881	      2653 ns/op	 137.60 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16888	     35589 ns/op	 365.93 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     378	   1564348 ns/op	 403.69 MB/s	 1417118 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  858424	       716.4 ns/op	 509.46 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  102364	      5851 ns/op	2225.89 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2336	    258071 ns/op	2447.06 MB/s	  282377 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  653398	       905.6 ns/op	 403.04 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35433	     16873 ns/op	 771.82 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     706	    847705 ns/op	 744.97 MB/s	  160623 B/op	     444 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  537997	      1094 ns/op	 333.79 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   32250	     18501 ns/op	 703.92 MB/s	    8759 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     658	    919757 ns/op	 686.61 MB/s	  395072 B/op	     587 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  310982	      1947 ns/op	 187.49 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29289	     20513 ns/op	 634.87 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     556	   1070830 ns/op	 589.74 MB/s	  718062 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  222116	      2638 ns/op	 138.37 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16893	     35534 ns/op	 366.49 MB/s	   34942 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     381	   1563316 ns/op	 403.96 MB/s	 1417113 B/op	    4084 allocs/op
+PASS
+
+# FILE: libraries-final.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/goccy-10 	 1073841	       566.2 ns/op	 644.70 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/goccy-10 	 1000000	       564.5 ns/op	 646.58 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/goccy-10 	 1000000	       566.4 ns/op	 644.43 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  353287	      1603 ns/op	 227.74 MB/s	     645 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  379975	      1575 ns/op	 231.79 MB/s	     649 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/sonic-10 	  374214	      1573 ns/op	 232.07 MB/s	     651 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  845337	       688.1 ns/op	 530.44 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  851259	       685.7 ns/op	 532.27 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-10         	  840404	       696.7 ns/op	 523.88 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	  152403	      4020 ns/op	3239.20 MB/s	    9638 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	  145074	      4023 ns/op	3237.18 MB/s	    9639 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/goccy-10         	  150477	      4002 ns/op	3253.86 MB/s	    9637 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   36943	     16460 ns/op	 791.18 MB/s	   10037 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   37024	     16310 ns/op	 798.48 MB/s	    9998 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/sonic-10         	   36282	     16398 ns/op	 794.20 MB/s	   10009 B/op	       3 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  102746	      5992 ns/op	2173.30 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	   99058	      5877 ns/op	2215.88 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10        	  101774	      5863 ns/op	2221.09 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    2776	    215821 ns/op	2926.10 MB/s	  264254 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    2804	    215070 ns/op	2936.32 MB/s	  263310 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/goccy-10          	    2751	    214129 ns/op	2949.23 MB/s	  262856 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	    1238	    481123 ns/op	1312.58 MB/s	  283477 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	    1255	    576070 ns/op	1096.25 MB/s	  287487 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/sonic-10          	    1114	    486723 ns/op	1297.48 MB/s	  288901 B/op	     107 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2401	    257464 ns/op	2452.83 MB/s	  282370 B/op	     210 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2331	    257730 ns/op	2450.29 MB/s	  282370 B/op	     210 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10         	    2290	    257670 ns/op	2450.87 MB/s	  282371 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/goccy-10          	 1389634	       431.3 ns/op	 846.27 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/goccy-10          	 1352745	       448.6 ns/op	 813.55 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/goccy-10          	 1379922	       432.1 ns/op	 844.75 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/sonic-10          	  440248	      1361 ns/op	 268.22 MB/s	     644 B/op	      10 allocs/op
+BenchmarkDecoder_Binding/Small/sonic-10          	  415110	      1365 ns/op	 267.49 MB/s	     655 B/op	      10 allocs/op
+BenchmarkDecoder_Binding/Small/sonic-10          	  446496	      1365 ns/op	 267.40 MB/s	     661 B/op	      10 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  667952	       907.8 ns/op	 402.07 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  671565	       902.1 ns/op	 404.62 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10         	  674558	       900.7 ns/op	 405.25 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/goccy-10         	   70917	      8422 ns/op	1546.31 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/goccy-10         	   71982	      8425 ns/op	1545.69 MB/s	    3362 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/goccy-10         	   71005	      8394 ns/op	1551.43 MB/s	    3362 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/sonic-10         	   26914	     22369 ns/op	 582.20 MB/s	   18110 B/op	     110 allocs/op
+BenchmarkDecoder_Binding/Medium/sonic-10         	   26792	     22427 ns/op	 580.69 MB/s	   18585 B/op	     110 allocs/op
+BenchmarkDecoder_Binding/Medium/sonic-10         	   26954	     22304 ns/op	 583.88 MB/s	   17875 B/op	     110 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35509	     17348 ns/op	 750.70 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35586	     16820 ns/op	 774.27 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10        	   35482	     16843 ns/op	 773.20 MB/s	    3362 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/goccy-10          	    1375	    438461 ns/op	1440.30 MB/s	  160387 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/goccy-10          	    1371	    434489 ns/op	1453.46 MB/s	  160387 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/goccy-10          	    1354	    439435 ns/op	1437.10 MB/s	  160388 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/sonic-10          	     660	    901722 ns/op	 700.34 MB/s	  825188 B/op	    4099 allocs/op
+BenchmarkDecoder_Binding/Large/sonic-10          	     670	    903636 ns/op	 698.86 MB/s	  828081 B/op	    4099 allocs/op
+BenchmarkDecoder_Binding/Large/sonic-10          	     652	    918171 ns/op	 687.80 MB/s	  828602 B/op	    4099 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     698	    850999 ns/op	 742.09 MB/s	  160624 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     708	    848500 ns/op	 744.27 MB/s	  160605 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10         	     709	    849795 ns/op	 743.14 MB/s	  160610 B/op	     444 allocs/op
+BenchmarkDecoder_FreshBinding/Small/goccy-10     	  809720	       725.7 ns/op	 502.95 MB/s	     545 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Small/goccy-10     	  876380	       725.1 ns/op	 503.39 MB/s	     545 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Small/goccy-10     	  844034	       721.0 ns/op	 506.25 MB/s	     545 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Small/sonic-10     	  356384	      1648 ns/op	 221.53 MB/s	    1254 B/op	      21 allocs/op
+BenchmarkDecoder_FreshBinding/Small/sonic-10     	  338300	      1646 ns/op	 221.76 MB/s	    1228 B/op	      21 allocs/op
+BenchmarkDecoder_FreshBinding/Small/sonic-10     	  343378	      1667 ns/op	 218.94 MB/s	    1237 B/op	      21 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  548084	      1106 ns/op	 329.93 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  555984	      1108 ns/op	 329.53 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Small/jjs-go-10    	  535402	      1099 ns/op	 331.98 MB/s	     541 B/op	       6 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/goccy-10    	   57584	     10420 ns/op	1249.84 MB/s	    8763 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/goccy-10    	   57397	     10416 ns/op	1250.27 MB/s	    8761 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/goccy-10    	   58173	     10424 ns/op	1249.34 MB/s	    8761 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/sonic-10    	   24889	     24213 ns/op	 537.86 MB/s	   23717 B/op	     145 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/sonic-10    	   25034	     24130 ns/op	 539.69 MB/s	   23370 B/op	     145 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/sonic-10    	   25114	     23643 ns/op	 550.81 MB/s	   23029 B/op	     145 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   31462	     18755 ns/op	 694.36 MB/s	    8758 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   32325	     19192 ns/op	 678.55 MB/s	    8759 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Medium/jjs-go-10   	   31177	     18655 ns/op	 698.12 MB/s	    8761 B/op	      19 allocs/op
+BenchmarkDecoder_FreshBinding/Large/goccy-10     	    1262	    482002 ns/op	1310.19 MB/s	  329052 B/op	     583 allocs/op
+BenchmarkDecoder_FreshBinding/Large/goccy-10     	    1242	    485490 ns/op	1300.78 MB/s	  325918 B/op	     583 allocs/op
+BenchmarkDecoder_FreshBinding/Large/goccy-10     	    1263	    488149 ns/op	1293.69 MB/s	  326960 B/op	     583 allocs/op
+BenchmarkDecoder_FreshBinding/Large/sonic-10     	     632	    921061 ns/op	 685.64 MB/s	  915707 B/op	    4374 allocs/op
+BenchmarkDecoder_FreshBinding/Large/sonic-10     	     652	    915742 ns/op	 689.62 MB/s	  912188 B/op	    4374 allocs/op
+BenchmarkDecoder_FreshBinding/Large/sonic-10     	     643	    917159 ns/op	 688.55 MB/s	  918798 B/op	    4374 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     646	    915655 ns/op	 689.69 MB/s	  395061 B/op	     587 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     660	    920855 ns/op	 685.79 MB/s	  395084 B/op	     587 allocs/op
+BenchmarkDecoder_FreshBinding/Large/jjs-go-10    	     651	    922023 ns/op	 684.92 MB/s	  395068 B/op	     587 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  356284	      1689 ns/op	 216.14 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  343620	      1695 ns/op	 215.32 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/goccy-10          	  349485	      1690 ns/op	 216.00 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	  141074	      4235 ns/op	  86.19 MB/s	     892 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	  140943	      4253 ns/op	  85.83 MB/s	     887 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/sonic-10          	  142258	      4261 ns/op	  85.65 MB/s	     894 B/op	       7 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  297936	      1955 ns/op	 186.71 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  311073	      1964 ns/op	 185.83 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10         	  313586	      1955 ns/op	 186.71 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   23508	     25066 ns/op	 519.56 MB/s	    9475 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   23918	     25226 ns/op	 516.26 MB/s	    9475 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/goccy-10         	   23894	     25138 ns/op	 518.06 MB/s	    9476 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	   10000	     51759 ns/op	 251.61 MB/s	   13449 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	   10000	     50862 ns/op	 256.05 MB/s	   13321 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/sonic-10         	   10000	     50732 ns/op	 256.70 MB/s	   13330 B/op	      40 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29456	     20365 ns/op	 639.48 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29169	     20450 ns/op	 636.82 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10        	   29214	     20544 ns/op	 633.91 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     459	   1304310 ns/op	 484.17 MB/s	  475266 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     448	   1325568 ns/op	 476.41 MB/s	  475268 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/goccy-10          	     456	   1309062 ns/op	 482.42 MB/s	  475266 B/op	       1 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     264	   2263328 ns/op	 279.02 MB/s	  624138 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     265	   2277564 ns/op	 277.28 MB/s	  645467 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/sonic-10          	     264	   2271003 ns/op	 278.08 MB/s	  640248 B/op	    1268 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     459	   1089892 ns/op	 579.43 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     552	   1085383 ns/op	 581.84 MB/s	  718071 B/op	    2529 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10         	     548	   1093025 ns/op	 577.77 MB/s	  718066 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/goccy-10          	  269299	      2153 ns/op	 169.55 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/goccy-10          	  285278	      2126 ns/op	 171.68 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/goccy-10          	  278432	      2128 ns/op	 171.56 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/sonic-10          	  230022	      2626 ns/op	 138.97 MB/s	    3528 B/op	      73 allocs/op
+BenchmarkDecoder_Generic/Small/sonic-10          	  224564	      2666 ns/op	 136.89 MB/s	    3461 B/op	      73 allocs/op
+BenchmarkDecoder_Generic/Small/sonic-10          	  220167	      2623 ns/op	 139.18 MB/s	    3418 B/op	      73 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  218472	      2649 ns/op	 137.77 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  224696	      2667 ns/op	 136.88 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10         	  228117	      2629 ns/op	 138.84 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/goccy-10         	   24028	     25118 ns/op	 518.47 MB/s	   34942 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/goccy-10         	   24180	     24908 ns/op	 522.85 MB/s	   34939 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/goccy-10         	   24150	     25012 ns/op	 520.68 MB/s	   34940 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/sonic-10         	   15880	     37387 ns/op	 348.33 MB/s	   51615 B/op	     705 allocs/op
+BenchmarkDecoder_Generic/Medium/sonic-10         	   15864	     37447 ns/op	 347.77 MB/s	   52675 B/op	     705 allocs/op
+BenchmarkDecoder_Generic/Medium/sonic-10         	   15987	     37558 ns/op	 346.75 MB/s	   52128 B/op	     705 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16976	     36338 ns/op	 358.39 MB/s	   34941 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   16970	     35233 ns/op	 369.62 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10        	   17044	     35473 ns/op	 367.13 MB/s	   34941 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/goccy-10          	     544	   1111212 ns/op	 568.31 MB/s	 1419120 B/op	    4087 allocs/op
+BenchmarkDecoder_Generic/Large/goccy-10          	     540	   1101339 ns/op	 573.41 MB/s	 1419120 B/op	    4087 allocs/op
+BenchmarkDecoder_Generic/Large/goccy-10          	     543	   1098328 ns/op	 574.98 MB/s	 1419102 B/op	    4087 allocs/op
+BenchmarkDecoder_Generic/Large/sonic-10          	     387	   1583496 ns/op	 398.81 MB/s	 2168150 B/op	   28731 allocs/op
+BenchmarkDecoder_Generic/Large/sonic-10          	     374	   1571584 ns/op	 401.83 MB/s	 2147221 B/op	   28731 allocs/op
+BenchmarkDecoder_Generic/Large/sonic-10          	     379	   1571793 ns/op	 401.78 MB/s	 2169064 B/op	   28731 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     382	   1566459 ns/op	 403.15 MB/s	 1417150 B/op	    4084 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     385	   1582208 ns/op	 399.13 MB/s	 1417085 B/op	    4084 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10         	     379	   1529197 ns/op	 412.97 MB/s	 1417121 B/op	    4084 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  413498	      1435 ns/op	 254.33 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  420568	      1433 ns/op	 254.64 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/goccy-10 	  412932	      1439 ns/op	 253.71 MB/s	     384 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	  146418	      4029 ns/op	  90.59 MB/s	     889 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	  146269	      4038 ns/op	  90.39 MB/s	     889 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/sonic-10 	  145621	      4040 ns/op	  90.34 MB/s	     885 B/op	       7 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  310674	      1908 ns/op	 191.26 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  307483	      1916 ns/op	 190.49 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Small/jjs-go-10         	  307927	      1904 ns/op	 191.68 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   39482	     15213 ns/op	 856.02 MB/s	    9474 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   39252	     15235 ns/op	 854.82 MB/s	    9475 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/goccy-10         	   39692	     15376 ns/op	 846.97 MB/s	    9475 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	   10000	     51356 ns/op	 253.58 MB/s	   13327 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	   13105	     42651 ns/op	 305.34 MB/s	   13297 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/sonic-10         	   14119	     43365 ns/op	 300.31 MB/s	   13303 B/op	      40 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   30625	     19939 ns/op	 653.15 MB/s	   16773 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   30238	     19835 ns/op	 656.56 MB/s	   16773 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Medium/jjs-go-10        	   30285	     19798 ns/op	 657.79 MB/s	   16773 B/op	      77 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     703	    851831 ns/op	 741.36 MB/s	  475237 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     709	    846151 ns/op	 746.34 MB/s	  475246 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/goccy-10          	     715	    843495 ns/op	 748.69 MB/s	  475247 B/op	       1 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     318	   1888611 ns/op	 334.38 MB/s	  641527 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     315	   1888497 ns/op	 334.40 MB/s	  615383 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/sonic-10          	     316	   1883082 ns/op	 335.36 MB/s	  626098 B/op	    1267 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     564	   1064021 ns/op	 593.52 MB/s	  718003 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     564	   1067495 ns/op	 591.58 MB/s	  718005 B/op	    2529 allocs/op
+BenchmarkEncoder_UnorderedGeneric/Large/jjs-go-10         	     567	   1068500 ns/op	 591.03 MB/s	  718005 B/op	    2529 allocs/op
+PASS
+
+# FILE: scanners-dispatch.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkARM64Scanners/Encode/ASCII/16/Word         	22758513	         5.100 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Word         	23770612	         5.115 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Word         	23265020	         5.083 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/NEON         	36752972	         3.292 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/NEON         	35021157	         3.294 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/NEON         	36340234	         3.289 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Dispatch     	22189861	         5.436 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Dispatch     	22175850	         5.600 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Dispatch     	22067443	         5.445 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Word         	25585447	         4.754 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Word         	25028896	         4.735 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Word         	25019978	         4.756 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/NEON         	44891278	         2.781 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/NEON         	40496554	         2.712 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/NEON         	44156868	         2.700 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Dispatch     	22567878	         5.387 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Dispatch     	21789952	         5.391 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Dispatch     	22208682	         5.403 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Word   	44038717	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Word   	43493356	         2.736 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Word   	44360241	         2.745 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/NEON   	37307144	         3.291 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/NEON   	36087967	         3.290 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/NEON   	36575607	         3.283 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Dispatch         	35980659	         3.199 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Dispatch         	37914188	         3.195 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Dispatch         	36753918	         3.179 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Word             	52911988	         2.213 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Word             	54779936	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Word             	54574402	         2.215 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/NEON             	43342156	         2.781 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/NEON             	43585518	         2.781 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/NEON             	43227664	         2.780 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Dispatch         	47812746	         2.535 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Dispatch         	46828500	         2.523 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Dispatch         	46699420	         2.534 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Word                 	42949821	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Word                 	44279756	         2.739 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Word                 	44573078	         2.743 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/NEON                 	36036933	         3.294 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/NEON                 	36474163	         3.291 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/NEON                 	36243274	         3.298 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Dispatch             	36912184	         3.267 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Dispatch             	36856927	         3.204 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Dispatch             	37122498	         3.196 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Word                 	55051123	         2.213 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Word                 	54766386	         2.215 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Word                 	53192479	         2.220 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/NEON                 	43847629	         2.773 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/NEON                 	43641648	         2.783 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/NEON                 	43567052	         2.784 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Dispatch             	46998168	         2.538 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Dispatch             	44867511	         2.537 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Dispatch             	47231709	         2.542 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/Word                   	16571628	         7.322 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/Word                   	16511866	         7.201 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/Word                   	16808781	         7.175 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/NEON                   	26106819	         4.633 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/NEON                   	25520604	         4.622 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/NEON                   	25141419	         4.683 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/Dispatch               	21676135	         5.416 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/Dispatch               	22328352	         5.395 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/24/Dispatch               	22525341	         5.389 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/Word                   	17168302	         6.912 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/Word                   	17587465	         6.867 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/Word                   	17805805	         6.874 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/NEON                   	31963416	         3.797 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/NEON                   	31332271	         3.812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/NEON                   	31576520	         3.806 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/Dispatch               	15980024	         7.499 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/Dispatch               	16298257	         7.557 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/24/Dispatch               	15973642	         7.510 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/Word             	44374594	         2.747 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/Word             	42935730	         2.822 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/Word             	41623915	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/NEON             	36577470	         3.291 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/NEON             	36988518	         3.283 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/NEON             	36678088	         3.287 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/Dispatch         	38022307	         3.006 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/Dispatch         	39914064	         3.011 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/24/Dispatch         	40342344	         2.996 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/Word             	53601339	         2.228 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/Word             	52961636	         2.210 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/Word             	55095355	         2.212 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/NEON             	42935100	         2.793 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/NEON             	43785632	         2.795 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/NEON             	43691302	         2.798 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/Dispatch         	47560842	         2.532 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/Dispatch         	46598176	         2.533 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/24/Dispatch         	47689218	         2.534 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/Word                 	44659471	         2.760 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/Word                 	43383946	         2.746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/Word                 	44533791	         2.746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/NEON                 	36594190	         3.300 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/NEON                 	36999442	         3.288 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/NEON                 	36232342	         3.303 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/Dispatch             	40097462	         3.011 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/Dispatch             	39301842	         3.003 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/24/Dispatch             	38964201	         2.995 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/Word                 	52845975	         2.220 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/Word                 	54131276	         2.225 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/Word                 	53886157	         2.213 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/NEON                 	43728447	         2.783 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/NEON                 	43637679	         2.787 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/NEON                 	43334988	         2.785 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/Dispatch             	45949124	         2.541 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/Dispatch             	48003187	         2.533 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/24/Dispatch             	46899420	         2.536 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Word                   	 6715430	        17.70 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Word                   	 6857517	        17.72 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Word                   	 6834523	        17.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/NEON                   	16928230	         7.175 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/NEON                   	16927932	         7.171 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/NEON                   	16797800	         7.175 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Dispatch               	13184881	         9.104 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Dispatch               	13153027	         9.133 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Dispatch               	13050096	         9.267 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Word                   	 9905178	        11.76 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Word                   	10215808	        11.69 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Word                   	10187116	        11.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/NEON                   	24047092	         5.090 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/NEON                   	24161480	         5.080 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/NEON                   	24101427	         5.067 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Dispatch               	 9832237	        12.40 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Dispatch               	 9578606	        12.36 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Dispatch               	 9716107	        12.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Word             	42505455	         2.764 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Word             	43197849	         2.751 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Word             	44243040	         2.744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/NEON             	37061812	         3.279 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/NEON             	36710820	         3.285 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/NEON             	36425725	         3.291 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Dispatch         	40215595	         3.009 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Dispatch         	40474441	         3.006 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Dispatch         	40448860	         3.005 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Word             	54447472	         2.221 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Word             	55194618	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Word             	54626151	         2.216 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/NEON             	42617419	         2.789 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/NEON             	43308931	         2.796 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/NEON             	42930614	         2.802 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Dispatch         	47773077	         2.529 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Dispatch         	46805668	         2.535 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Dispatch         	48096192	         2.533 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Word                 	44167041	         2.746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Word                 	44106830	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Word                 	42664770	         2.745 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/NEON                 	37114358	         3.284 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/NEON                 	36112848	         3.299 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/NEON                 	35767074	         3.295 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Dispatch             	40700950	         3.019 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Dispatch             	38949441	         3.008 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Dispatch             	40452268	         3.008 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Word                 	52518318	         2.237 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Word                 	54357057	         2.260 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Word                 	52840158	         2.271 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/NEON                 	42658460	         3.031 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/NEON                 	40668770	         2.793 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/NEON                 	43622482	         2.791 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Dispatch             	47829402	         2.541 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Dispatch             	47078060	         2.542 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Dispatch             	47789725	         2.547 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Word                 	  438096	       279.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Word                 	  431784	       278.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Word                 	  425676	       280.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/NEON                 	 1437986	        83.47 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/NEON                 	 1438683	        83.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/NEON                 	 1448446	        83.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Dispatch             	 1402803	        85.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Dispatch             	 1408578	        85.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Dispatch             	 1404424	        85.30 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Word                 	  788587	       155.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Word                 	  789970	       155.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Word                 	  783438	       155.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/NEON                 	 2293707	        52.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/NEON                 	 2280301	        52.40 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/NEON                 	 2278948	        52.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Dispatch             	  781928	       155.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Dispatch             	  723562	       155.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Dispatch             	  766874	       156.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Word           	43565739	         2.750 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Word           	44334297	         2.745 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Word           	43981546	         2.739 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/NEON           	37046091	         3.287 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/NEON           	35990556	         3.306 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/NEON           	37034647	         3.281 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Dispatch       	39981128	         3.013 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Dispatch       	40792045	         3.023 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Dispatch       	39901906	         3.006 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Word           	53248513	         2.219 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Word           	54482502	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Word           	55241217	         2.211 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/NEON           	42670459	         2.795 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/NEON           	41944592	         2.779 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/NEON           	43749044	         2.790 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Dispatch       	48153280	         2.541 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Dispatch       	46785904	         2.529 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Dispatch       	46685031	         2.535 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Word               	43628430	         2.751 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Word               	43918512	         2.731 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Word               	43649584	         2.761 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/NEON               	36268382	         3.291 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/NEON               	37000401	         3.313 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/NEON               	36958147	         3.285 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Dispatch           	39142134	         3.011 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Dispatch           	40698660	         3.004 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Dispatch           	39886986	         3.032 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Word               	55001718	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Word               	55078488	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Word               	54427939	         2.207 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/NEON               	43620501	         2.783 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/NEON               	43063478	         2.779 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/NEON               	43436287	         2.791 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Dispatch           	48065695	         2.533 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Dispatch           	48124314	         2.557 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Dispatch           	47972808	         2.533 ns/op	       0 B/op	       0 allocs/op
+PASS
+
+# FILE: word-ab.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  534484	       678.3 ns/op	 538.12 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	   58102	      6211 ns/op	2096.72 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    1321	    267207 ns/op	2363.39 MB/s	  282373 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  394837	       903.6 ns/op	 403.94 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21348	     16895 ns/op	 770.81 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     363	    962305 ns/op	 656.25 MB/s	  160953 B/op	     444 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10  	  182532	      1981 ns/op	 184.25 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10 	   17186	     20925 ns/op	 622.37 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10  	     331	   1085875 ns/op	 581.57 MB/s	  718065 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  134438	      2669 ns/op	 136.75 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9621	     36198 ns/op	 359.77 MB/s	   34946 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     225	   1569929 ns/op	 402.26 MB/s	 1417235 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  520659	       678.2 ns/op	 538.21 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	   62574	      5666 ns/op	2298.52 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    1399	    252404 ns/op	2502.00 MB/s	  282375 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  405507	       900.3 ns/op	 405.42 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21210	     16889 ns/op	 771.08 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     370	    968141 ns/op	 652.30 MB/s	  160925 B/op	     444 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10  	  184623	      1996 ns/op	 182.86 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10 	   16824	     21472 ns/op	 606.50 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10  	     318	   1895780 ns/op	 333.12 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  134119	      2738 ns/op	 133.29 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9136	     36135 ns/op	 360.40 MB/s	   34942 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     228	   1564068 ns/op	 403.76 MB/s	 1417195 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  510583	       713.8 ns/op	 511.35 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	   59360	      6084 ns/op	2140.60 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    1345	    266457 ns/op	2370.04 MB/s	  282374 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  397897	       898.2 ns/op	 406.37 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21242	     16973 ns/op	 767.27 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     373	    967067 ns/op	 653.02 MB/s	  160905 B/op	     444 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10  	  178186	      1954 ns/op	 186.82 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10 	   17263	     20868 ns/op	 624.07 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10  	     326	   1095096 ns/op	 576.67 MB/s	  718065 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  134460	      2627 ns/op	 138.96 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	   10000	     35634 ns/op	 365.46 MB/s	   34945 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     230	   1558673 ns/op	 405.16 MB/s	 1417129 B/op	    4084 allocs/op
+PASS
+
+# FILE: neon-ab.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  445147	       695.5 ns/op	 524.84 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	   62078	      5825 ns/op	2235.71 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    1370	    258577 ns/op	2442.27 MB/s	  282375 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  402464	       909.1 ns/op	 401.48 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20098	     17881 ns/op	 728.31 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     357	   1005632 ns/op	 627.98 MB/s	  160946 B/op	     444 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10  	  181561	      1974 ns/op	 184.90 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10 	   17642	     20256 ns/op	 642.93 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10  	     338	   1059595 ns/op	 596.00 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  135280	      2647 ns/op	 137.89 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    8900	     36668 ns/op	 355.16 MB/s	   34941 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     220	   1619088 ns/op	 390.04 MB/s	 1417208 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  503616	       688.9 ns/op	 529.82 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	   62292	      5772 ns/op	2256.13 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    1330	    258208 ns/op	2445.76 MB/s	  282373 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  403264	       914.3 ns/op	 399.19 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   19870	     17853 ns/op	 729.47 MB/s	    3364 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     358	   1003069 ns/op	 629.58 MB/s	  160951 B/op	     444 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10  	  187154	      1949 ns/op	 187.24 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10 	   17625	     20475 ns/op	 636.03 MB/s	   16776 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10  	     338	   1059930 ns/op	 595.81 MB/s	  718066 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  131307	      2641 ns/op	 138.22 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9548	     36903 ns/op	 352.90 MB/s	   34942 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     218	   1629020 ns/op	 387.66 MB/s	 1417133 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Small/jjs-go-10  	  508285	       691.2 ns/op	 528.08 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-10 	   61844	      5900 ns/op	2207.29 MB/s	    9620 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-10  	    1377	    264152 ns/op	2390.73 MB/s	  282375 B/op	     210 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  399216	       913.5 ns/op	 399.56 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20053	     17978 ns/op	 724.39 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     361	    994711 ns/op	 634.87 MB/s	  160931 B/op	     444 allocs/op
+BenchmarkEncoder_Generic/Small/jjs-go-10  	  181072	      1970 ns/op	 185.31 MB/s	    1344 B/op	      11 allocs/op
+BenchmarkEncoder_Generic/Medium/jjs-go-10 	   17664	     20238 ns/op	 643.50 MB/s	   16775 B/op	      77 allocs/op
+BenchmarkEncoder_Generic/Large/jjs-go-10  	     339	   1065238 ns/op	 592.84 MB/s	  718063 B/op	    2529 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  135866	      2673 ns/op	 136.53 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9024	     37763 ns/op	 344.86 MB/s	   34941 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     216	   1627617 ns/op	 388.00 MB/s	 1417118 B/op	    4084 allocs/op
+PASS
+
+# FILE: word-hybrid-ab.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  405754	       906.5 ns/op	 402.63 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21092	     17112 ns/op	 761.04 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     368	    981314 ns/op	 643.54 MB/s	  160914 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  132885	      2774 ns/op	 131.60 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	   10000	     36665 ns/op	 355.19 MB/s	   34946 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     226	   1594693 ns/op	 396.01 MB/s	 1417173 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  394705	       904.4 ns/op	 403.57 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21225	     16970 ns/op	 767.39 MB/s	    3364 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     373	    959764 ns/op	 657.99 MB/s	  160927 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  135759	      2707 ns/op	 134.86 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9631	     36836 ns/op	 353.54 MB/s	   34949 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     226	   1609417 ns/op	 392.39 MB/s	 1417177 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  391158	       902.1 ns/op	 404.63 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21157	     17810 ns/op	 731.20 MB/s	    3362 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     369	    966519 ns/op	 653.39 MB/s	  160938 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  130087	      2726 ns/op	 133.90 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9807	     36824 ns/op	 353.65 MB/s	   34946 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     228	   1593122 ns/op	 396.40 MB/s	 1417162 B/op	    4084 allocs/op
+PASS
+
+# FILE: hybrid-hybrid-ab.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  334854	       907.9 ns/op	 402.01 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20577	     17330 ns/op	 751.45 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     367	    981318 ns/op	 643.54 MB/s	  160947 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  133197	      2795 ns/op	 130.61 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9766	     37785 ns/op	 344.66 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     229	   1607928 ns/op	 392.75 MB/s	 1417133 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  395227	       901.6 ns/op	 404.85 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20670	     17446 ns/op	 746.48 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     366	    984396 ns/op	 641.52 MB/s	  160941 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  130190	      2715 ns/op	 134.45 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9361	     37033 ns/op	 351.66 MB/s	   34945 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     225	   1599541 ns/op	 394.81 MB/s	 1417130 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  400377	       901.5 ns/op	 404.87 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20581	     17381 ns/op	 749.28 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     364	    992679 ns/op	 636.17 MB/s	  160920 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  128664	      2703 ns/op	 135.04 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	   10000	     36909 ns/op	 352.84 MB/s	   34947 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     224	   1604049 ns/op	 393.70 MB/s	 1417170 B/op	    4084 allocs/op
+PASS
+
+# FILE: final-hybrid-ab.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  402364	       904.0 ns/op	 403.78 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20830	     17336 ns/op	 751.20 MB/s	    3364 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     414	    862610 ns/op	 732.10 MB/s	  160877 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  132711	      2728 ns/op	 133.82 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9174	     37112 ns/op	 350.91 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     224	   1626120 ns/op	 388.36 MB/s	 1417189 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  382944	       904.1 ns/op	 403.71 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20666	     17363 ns/op	 750.04 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     416	    859762 ns/op	 734.52 MB/s	  160854 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  133869	      2713 ns/op	 134.55 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9574	     36961 ns/op	 352.34 MB/s	   34945 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     226	   1622631 ns/op	 389.19 MB/s	 1417178 B/op	    4084 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  396567	       904.7 ns/op	 403.44 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20815	     17307 ns/op	 752.45 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     414	    861633 ns/op	 732.93 MB/s	  160877 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  133153	      2707 ns/op	 134.85 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9364	     36959 ns/op	 352.37 MB/s	   34946 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     223	   1599265 ns/op	 394.88 MB/s	 1417132 B/op	    4084 allocs/op
+PASS
+
+# FILE: decoder-stage1.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  358468	       933.0 ns/op	 391.20 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  387471	       935.8 ns/op	 390.03 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  389766	       933.8 ns/op	 390.86 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   19927	     17976 ns/op	 724.45 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20198	     17824 ns/op	 730.63 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   20026	     17811 ns/op	 731.17 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     338	   1057377 ns/op	 597.25 MB/s	  180561 B/op	    4096 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     339	   1056325 ns/op	 597.84 MB/s	  180558 B/op	    4096 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     339	   1057217 ns/op	 597.34 MB/s	  180558 B/op	    4096 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  121257	      3083 ns/op	 118.41 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  111384	      3070 ns/op	 118.90 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  121117	      3024 ns/op	 120.69 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6801	     51308 ns/op	 253.82 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6997	     51692 ns/op	 251.93 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6577	     52293 ns/op	 249.04 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     147	   2341075 ns/op	 269.75 MB/s	 2132674 B/op	   30873 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     151	   2368705 ns/op	 266.61 MB/s	 2132678 B/op	   30873 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     148	   2377514 ns/op	 265.62 MB/s	 2132673 B/op	   30873 allocs/op
+PASS
+
+# FILE: decoder-stage2.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  339882	       901.8 ns/op	 404.73 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  397634	       909.8 ns/op	 401.20 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  393313	       899.5 ns/op	 405.76 MB/s	      57 B/op	       0 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21379	     16875 ns/op	 771.74 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21357	     16895 ns/op	 770.80 MB/s	    3364 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   21385	     16848 ns/op	 772.95 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     358	    989027 ns/op	 638.52 MB/s	  160960 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     357	    998343 ns/op	 632.56 MB/s	  160952 B/op	     444 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     358	    995084 ns/op	 634.63 MB/s	  160959 B/op	     444 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  137580	      2713 ns/op	 134.54 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  129742	      2714 ns/op	 134.51 MB/s	    3069 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  136237	      2658 ns/op	 137.30 MB/s	    3068 B/op	      23 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9886	     36580 ns/op	 356.02 MB/s	   34948 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9709	     35937 ns/op	 362.39 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    9223	     36539 ns/op	 356.42 MB/s	   34944 B/op	     134 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     230	   1573437 ns/op	 401.36 MB/s	 1417166 B/op	    4084 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     229	   1545567 ns/op	 408.60 MB/s	 1417205 B/op	    4084 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     226	   1579994 ns/op	 399.69 MB/s	 1417181 B/op	    4084 allocs/op
+PASS
+
+# FILE: scanners.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkARM64Scanners/Encode/ASCII/8/Byte         	12432494	         9.678 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/Byte         	12368794	         9.696 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/Byte         	12615698	         9.628 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/Word         	37839968	         3.197 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/Word         	38247511	         3.198 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/Word         	37336651	         3.176 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/NEON         	 9297880	        13.48 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/NEON         	 8979543	        13.12 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/8/NEON         	 9234558	        12.98 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/Byte         	20189413	         5.890 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/Byte         	20220600	         5.893 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/Byte         	20585838	         5.876 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/Word         	41074198	         2.853 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/Word         	41591440	         2.852 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/Word         	41419186	         2.903 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/NEON         	13149843	         9.307 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/NEON         	12480499	         9.190 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/8/NEON         	12937016	         9.206 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/Byte    	13566924	         8.683 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/Byte    	13788019	         8.706 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/Byte    	13510977	         8.752 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/Word    	42445316	         2.754 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/Word    	41640756	         2.744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/Word    	44162295	         2.753 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/NEON    	10316479	        11.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/NEON    	10044817	        11.73 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/8/NEON    	10241710	        11.73 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/Byte    	22245735	         5.369 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/Byte    	22142602	         5.399 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/Byte    	22067272	         5.407 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/Word    	52719259	         2.267 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/Word    	53323473	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/Word    	53330370	         2.225 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/NEON    	14599130	         8.248 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/NEON    	14764082	         8.245 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/8/NEON    	14675682	         8.221 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/Byte   	56248900	         2.076 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/Byte   	56948499	         2.072 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/Byte   	59016402	         2.059 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/Word   	43077669	         2.742 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/Word   	43028102	         2.753 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/Word   	44669860	         2.744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/NEON   	51948051	         2.305 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/NEON   	50499736	         2.312 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/8/NEON   	52351269	         2.332 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/Byte   	56447344	         2.070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/Byte   	56535982	         2.084 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/Byte   	57126997	         2.089 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/Word   	55450737	         2.231 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/Word   	55065876	         2.274 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/Word   	54006396	         2.217 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/NEON   	52660449	         2.298 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/NEON   	52656613	         2.308 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/8/NEON   	52199444	         2.305 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/Byte       	57094162	         2.069 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/Byte       	58186528	         2.068 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/Byte       	58281907	         2.065 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/Word       	43828267	         2.749 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/Word       	44072407	         2.748 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/Word       	43692639	         2.737 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/NEON       	48052857	         2.368 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/NEON       	51873183	         2.360 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/8/NEON       	51364365	         2.371 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/Byte       	58881255	         2.059 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/Byte       	56987958	         2.068 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/Byte       	58348021	         2.065 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/Word       	52507794	         2.230 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/Word       	54443372	         2.232 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/Word       	53422370	         2.220 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/NEON       	50838474	         2.389 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/NEON       	49607275	         2.383 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/8/NEON       	50462572	         2.377 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Byte        	 6517443	        18.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Byte        	 6517045	        18.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Byte        	 6527222	        18.51 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Word        	23878419	         5.108 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Word        	23966844	         5.112 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/Word        	23800669	         5.100 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/NEON        	34664968	         3.505 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/NEON        	35022865	         3.481 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/16/NEON        	33512924	         3.482 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Byte        	11022741	        10.89 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Byte        	10973226	        10.94 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Byte        	11017048	        11.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Word        	28624820	         4.121 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Word        	29666562	         4.113 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/Word        	28858578	         4.094 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/NEON        	45513453	         2.691 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/NEON        	45092286	         2.692 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/16/NEON        	44685796	         2.691 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/Byte   	 6815776	        17.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/Byte   	 6862207	        17.61 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/Byte   	 6859608	        17.53 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/Word   	25068326	         4.871 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/Word   	24399750	         4.847 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/Word   	24233650	         4.852 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/NEON   	35739994	         3.369 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/NEON   	36257424	         3.381 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/16/NEON   	35846308	         3.354 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/Byte   	11505088	        10.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/Byte   	11483619	        10.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/Byte   	11528253	        10.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/Word   	34122006	         3.516 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/Word   	33903495	         3.494 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/Word   	34968438	         3.512 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/NEON   	42011907	         2.842 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/NEON   	40964368	         2.826 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/16/NEON   	43021669	         2.890 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Byte  	59510289	         2.058 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Byte  	59666850	         2.105 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Byte  	59232435	         2.104 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Word  	39432072	         2.759 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Word  	44430735	         2.745 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/Word  	44349306	         2.755 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/NEON  	34664547	         3.284 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/NEON  	36907927	         3.296 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/16/NEON  	36986613	         3.286 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Byte  	57583894	         2.063 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Byte  	58299603	         2.051 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Byte  	58556808	         2.303 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Word  	48134752	         2.334 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Word  	51179996	         2.278 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/Word  	53975036	         2.249 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/NEON  	39917396	         2.821 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/NEON  	43211445	         2.799 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/16/NEON  	43529517	         2.786 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Byte      	57420828	         2.063 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Byte      	58178292	         2.066 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Byte      	55353744	         2.067 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Word      	44485634	         2.771 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Word      	44617958	         2.768 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/Word      	41571038	         2.769 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/NEON      	34418884	         3.315 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/NEON      	35971222	         3.353 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/16/NEON      	36802297	         3.315 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Byte      	57004878	         2.122 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Byte      	55524502	         2.079 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Byte      	58854774	         2.075 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Word      	54419695	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Word      	52128583	         2.231 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/Word      	53581402	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/NEON      	40822116	         2.814 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/NEON      	43494019	         2.829 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/16/NEON      	43342814	         2.812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/Byte        	 3281553	        36.21 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/Byte        	 3285435	        36.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/Byte        	 3327370	        37.05 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/Word        	13151946	         9.269 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/Word        	12900798	         9.260 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/Word        	13164631	         9.275 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/NEON        	26269460	         4.589 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/NEON        	25740256	         4.595 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/32/NEON        	26619832	         4.595 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/Byte        	 5708134	        21.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/Byte        	 5595285	        21.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/Byte        	 5572959	        21.16 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/Word        	18310126	         6.669 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/Word        	18057898	         6.680 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/Word        	18224388	         6.698 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/NEON        	31179294	         3.809 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/NEON        	32231352	         3.799 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/32/NEON        	31392040	         3.820 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/Byte   	 3388183	        35.80 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/Byte   	 3361582	        36.17 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/Byte   	 3367050	        35.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/Word   	13184578	         9.072 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/Word   	13224717	         9.115 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/Word   	13242718	         9.144 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/NEON   	26128846	         4.651 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/NEON   	24925141	         4.627 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/32/NEON   	26401669	         4.645 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/Byte   	 5904882	        20.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/Byte   	 5837048	        20.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/Byte   	 5847762	        20.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/Word   	23271788	         5.161 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/Word   	23289099	         5.132 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/Word   	23140706	         5.167 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/NEON   	34521198	         3.485 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/NEON   	33973083	         3.490 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/32/NEON   	35159250	         3.491 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/Byte  	57793028	         2.063 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/Byte  	59265375	         2.058 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/Byte  	58951170	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/Word  	42508587	         2.734 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/Word  	44586873	         2.754 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/Word  	44380076	         2.739 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/NEON  	35976614	         3.307 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/NEON  	36591868	         3.291 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/32/NEON  	36943912	         3.301 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/Byte  	59072066	         2.058 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/Byte  	59045440	         2.053 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/Byte  	57232575	         2.051 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/Word  	55282572	         2.237 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/Word  	54982816	         2.223 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/Word  	54338596	         2.237 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/NEON  	43157704	         2.831 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/NEON  	42974800	         2.843 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/32/NEON  	43168060	         3.444 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/Byte      	53541549	         2.164 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/Byte      	57222340	         2.073 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/Byte      	54715419	         2.209 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/Word      	42897358	         2.766 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/Word      	43707216	         2.756 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/Word      	43940624	         2.746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/NEON      	36199552	         3.286 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/NEON      	36915022	         3.289 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/32/NEON      	35972570	         3.286 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/Byte      	57951193	         2.048 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/Byte      	58812717	         2.058 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/Byte      	59573040	         2.056 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/Word      	55189338	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/Word      	52005279	         2.203 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/Word      	54652075	         2.211 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/NEON      	43351958	         2.818 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/NEON      	43258831	         2.812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/32/NEON      	42399710	         2.807 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Byte        	 1670799	        71.84 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Byte        	 1670416	        71.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Byte        	 1670012	        71.87 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Word        	 6764755	        17.65 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Word        	 6833826	        17.71 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/Word        	 6749962	        17.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/NEON        	16526648	         7.315 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/NEON        	16333290	         7.381 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/64/NEON        	16223432	         7.325 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Byte        	 2871385	        41.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Byte        	 2864638	        41.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Byte        	 2893291	        41.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Word        	11973507	         9.911 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Word        	12219025	         9.928 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/Word        	12300804	         9.963 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/NEON        	23620107	         5.099 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/NEON        	23875051	         5.075 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/64/NEON        	23980014	         5.070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/Byte   	 1692589	        70.75 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/Byte   	 1697580	        70.67 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/Byte   	 1686292	        70.99 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/Word   	 6936933	        17.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/Word   	 6813036	        17.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/Word   	 6825339	        17.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/NEON   	16483891	         7.258 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/NEON   	16738640	         7.241 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/64/NEON   	16819185	         7.239 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/Byte   	 2940004	        40.92 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/Byte   	 2912149	        40.80 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/Byte   	 2927983	        40.82 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/Word   	12191920	         9.801 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/Word   	12036057	         9.807 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/Word   	12119274	         9.816 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/NEON   	20256442	         6.006 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/NEON   	20156914	         6.125 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/64/NEON   	19883320	         6.060 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Byte  	59497984	         2.070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Byte  	58272454	         2.068 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Byte  	57673813	         2.070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Word  	43659526	         2.761 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Word  	42850118	         2.772 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/Word  	44294744	         2.752 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/NEON  	36695373	         3.312 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/NEON  	35693485	         3.328 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/64/NEON  	35379966	         3.405 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Byte  	59349616	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Byte  	58446320	         2.056 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Byte  	59633521	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Word  	52329375	         2.636 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Word  	54697737	         2.209 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/Word  	52658508	         2.220 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/NEON  	42030301	         2.812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/NEON  	43450048	         2.833 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/64/NEON  	41920782	         2.806 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Byte      	56628267	         2.070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Byte      	58153622	         2.050 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Byte      	57476989	         2.049 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Word      	44687194	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Word      	43997010	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/Word      	43171290	         2.753 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/NEON      	36321898	         3.317 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/NEON      	37187197	         3.302 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/64/NEON      	37090450	         3.295 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Byte      	59339844	         2.066 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Byte      	57532102	         2.056 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Byte      	59520118	         2.053 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Word      	55190378	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Word      	53310634	         2.225 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/Word      	52928535	         2.240 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/NEON      	43201722	         2.813 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/NEON      	42944688	         2.819 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/64/NEON      	42264681	         2.822 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/Byte       	  409771	       292.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/Byte       	  418269	       291.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/Byte       	  398174	       291.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/Word       	 1720135	        68.79 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/Word       	 1745236	        68.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/Word       	 1741257	        68.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/NEON       	 5315074	        22.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/NEON       	 5358298	        22.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/256/NEON       	 5310409	        22.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/Byte       	  713418	       168.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/Byte       	  699028	       169.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/Byte       	  702404	       168.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/Word       	 3203131	        37.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/Word       	 3191096	        37.66 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/Word       	 3197533	        37.66 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/NEON       	 8270799	        14.48 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/NEON       	 8299711	        14.41 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/256/NEON       	 8325069	        14.48 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/Byte  	  422839	       288.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/Byte  	  392942	       290.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/Byte  	  418695	       289.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/Word  	 1754413	        68.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/Word  	 1742305	        69.14 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/Word  	 1739866	        68.54 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/NEON  	 5310037	        22.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/NEON  	 5341117	        22.63 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/256/NEON  	 5309361	        22.62 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/Byte  	  722166	       170.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/Byte  	  723636	       169.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/Byte  	  723708	       169.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/Word  	 3111535	        38.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/Word  	 3129818	        38.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/Word  	 3159813	        38.72 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/NEON  	 8270870	        14.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/NEON  	 8279715	        14.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/256/NEON  	 8129760	        14.67 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/Byte 	57404814	         2.068 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/Byte 	57665748	         2.083 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/Byte 	54471175	         2.077 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/Word 	44509015	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/Word 	43900436	         2.747 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/Word 	44719802	         2.750 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/NEON 	35543264	         3.319 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/NEON 	36258793	         3.293 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/256/NEON 	36416970	         3.308 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/Byte 	58338574	         2.064 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/Byte 	58105526	         2.065 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/Byte 	58273642	         2.072 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/Word 	54741403	         2.234 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/Word 	53514687	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/Word 	52990846	         2.238 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/NEON 	42609853	         2.813 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/NEON 	42465354	         2.827 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/256/NEON 	41270796	         2.818 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/Byte     	57166676	         2.171 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/Byte     	57606921	         2.084 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/Byte     	59304417	         2.066 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/Word     	41781522	         2.753 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/Word     	42489772	         2.760 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/Word     	43163526	         2.758 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/NEON     	37281078	         3.308 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/NEON     	35785740	         3.302 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/256/NEON     	36595585	         3.307 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/Byte     	59538576	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/Byte     	58661778	         2.064 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/Byte     	58235917	         2.057 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/Word     	53980110	         2.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/Word     	54950312	         2.217 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/Word     	54512424	         2.221 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/NEON     	43133784	         2.815 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/NEON     	43321299	         2.818 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/256/NEON     	43642314	         2.821 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Byte      	  104078	      1143 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Byte      	  102843	      1149 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Byte      	  103572	      1145 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Word      	  435610	       278.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Word      	  430158	       283.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/Word      	  416545	       281.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/NEON      	 1423165	        84.49 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/NEON      	 1429318	        84.44 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/1024/NEON      	 1436712	        83.76 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Byte      	  182810	       660.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Byte      	  185582	       660.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Byte      	  180501	       661.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Word      	  756321	       156.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Word      	  781567	       156.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/Word      	  770650	       157.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/NEON      	 2271296	        55.14 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/NEON      	 2250240	        53.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/1024/NEON      	 2222248	        52.93 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/Byte 	  103640	      1148 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/Byte 	  104902	      1146 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/Byte 	  103909	      1137 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/Word 	  421483	       283.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/Word 	  430222	       282.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/Word 	  415326	       280.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/NEON 	 1440651	        83.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/NEON 	 1437966	        83.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/1024/NEON 	 1430656	        83.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/Byte 	  185342	       656.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/Byte 	  182244	       660.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/Byte 	  178204	       668.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/Word 	  737138	       159.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/Word 	  746965	       158.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/Word 	  718132	       158.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/NEON 	 2262480	        52.37 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/NEON 	 2277012	        52.63 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/1024/NEON 	 2283032	        52.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Byte         	58597326	         2.071 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Byte         	56377730	         2.086 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Byte         	57319126	         2.079 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Word         	42608582	         2.744 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Word         	44475330	         2.770 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/Word         	43599374	         2.763 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/NEON         	36407302	         3.326 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/NEON         	35489392	         3.311 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/1024/NEON         	36086155	         3.313 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Byte         	57427725	         2.084 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Byte         	58000209	         2.098 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Byte         	56942878	         2.055 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Word         	54835208	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Word         	54882231	         2.229 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/Word         	53343219	         2.215 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/NEON         	43654873	         2.802 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/NEON         	43567716	         2.797 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/1024/NEON         	42811273	         2.786 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Byte             	56450664	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Byte             	58904146	         2.055 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Byte             	57122455	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Word             	41867163	         2.742 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Word             	44294056	         2.741 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/Word             	43569028	         2.736 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/NEON             	35622409	         3.339 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/NEON             	36805581	         3.301 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/1024/NEON             	36555642	         3.303 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Byte             	56584849	         2.050 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Byte             	59166724	         2.078 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Byte             	58831950	         2.057 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Word             	54427939	         2.213 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Word             	53225887	         2.213 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/Word             	54676976	         2.218 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/NEON             	42694507	         2.800 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/NEON             	40713614	         2.816 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/1024/NEON             	41768186	         2.812 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/Byte               	   26239	      4542 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/Byte               	   26258	      4593 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/Byte               	   26305	      4594 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/Word               	  109053	      1105 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/Word               	  107722	      1095 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/Word               	  107535	      1104 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/NEON               	  358609	       330.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/NEON               	  363640	       333.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/ASCII/4096/NEON               	  349700	       332.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/Byte               	   46404	      2601 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/Byte               	   46399	      2608 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/Byte               	   46206	      2604 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/Word               	  201094	       601.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/Word               	  196545	       603.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/Word               	  198186	       600.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/NEON               	  553408	       210.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/NEON               	  575942	       209.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/ASCII/4096/NEON               	  553813	       209.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/Byte          	   26408	      4542 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/Byte          	   26376	      4525 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/Byte          	   26187	      4563 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/Word          	  110065	      1110 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/Word          	  109606	      1102 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/Word          	  109770	      1105 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/NEON          	  355269	       342.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/NEON          	  350190	       343.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/LateEscape/4096/NEON          	  353834	       343.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/Byte          	   46221	      2610 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/Byte          	   46191	      2622 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/Byte          	   46030	      2624 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/Word          	  196368	       606.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/Word          	  196321	       611.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/Word          	  199011	       612.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/NEON          	  547694	       220.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/NEON          	  550111	       221.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/LateEscape/4096/NEON          	  534878	       219.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/Byte         	59096299	         2.053 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/Byte         	57638049	         2.056 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/Byte         	55233766	         2.056 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/Word         	44531709	         2.738 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/Word         	44290657	         2.742 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/Word         	44493188	         2.746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/NEON         	36284371	         3.287 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/NEON         	36577002	         3.319 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/EarlyEscape/4096/NEON         	36465385	         3.299 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/Byte         	58737151	         2.057 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/Byte         	57403688	         2.059 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/Byte         	58768304	         2.065 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/Word         	54075367	         2.209 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/Word         	51592554	         2.256 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/Word         	52917844	         2.212 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/NEON         	41521887	         2.814 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/NEON         	43523596	         2.809 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/EarlyEscape/4096/NEON         	43834286	         2.855 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/Byte             	57868527	         2.060 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/Byte             	59178892	         2.053 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/Byte             	57997855	         2.057 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/Word             	43862983	         2.752 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/Word             	44357503	         2.738 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/Word             	43966108	         2.746 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/NEON             	36899415	         3.321 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/NEON             	36349867	         3.336 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Encode/Unicode/4096/NEON             	35610949	         3.304 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/Byte             	57344244	         2.062 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/Byte             	58028257	         2.066 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/Byte             	58024749	         2.068 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/Word             	53437238	         2.215 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/Word             	53398597	         2.225 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/Word             	52422715	         2.210 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/NEON             	43315435	         2.823 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/NEON             	42806828	         2.815 ns/op	       0 B/op	       0 allocs/op
+BenchmarkARM64Scanners/Decode/Unicode/4096/NEON             	43549264	         2.816 ns/op	       0 B/op	       0 allocs/op
+PASS
+
+# FILE: Binding-Large-goccy.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:57:41 CST
+Duration: 9.46s, Total samples = 3.33s (35.19%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 2.81s, 84.38% of 3.33s total
+Dropped 37 nodes (cum <= 0.02s)
+Showing top 18 nodes out of 63
+      flat  flat%   sum%        cum   cum%
+     0.87s 26.13% 26.13%      1.45s 43.54%  github.com/goccy/go-json/internal/encoder.appendNormalizedHTMLString
+     0.49s 14.71% 40.84%      0.52s 15.62%  github.com/goccy/go-json/internal/encoder.decodeRuneInString
+     0.21s  6.31% 47.15%      3.12s 93.69%  github.com/goccy/go-json/internal/encoder/vm.Run
+     0.20s  6.01% 53.15%      0.20s  6.01%  runtime.memmove
+     0.17s  5.11% 58.26%      0.17s  5.11%  github.com/goccy/go-json/internal/encoder.scanStringNEON
+     0.13s  3.90% 62.16%      1.84s 55.26%  github.com/goccy/go-json/internal/encoder.AppendString
+     0.13s  3.90% 66.07%      0.13s  3.90%  runtime.asyncPreempt
+     0.12s  3.60% 69.67%      0.12s  3.60%  github.com/goccy/go-json/internal/encoder/vm.appendStructKey (inline)
+     0.10s  3.00% 72.67%      0.13s  3.90%  github.com/goccy/go-json/internal/encoder.AppendInt
+     0.07s  2.10% 74.77%      0.14s  4.20%  github.com/goccy/go-json/internal/encoder.(*RuntimeContext).EnterInterface
+     0.06s  1.80% 76.58%      0.06s  1.80%  github.com/goccy/go-json/internal/encoder/vm.appendStructEndSkipLast (inline)
+     0.05s  1.50% 78.08%      0.10s  3.00%  internal/runtime/maps.(*Iter).Next
+     0.05s  1.50% 79.58%      0.06s  1.80%  strconv.ryuDigits32
+     0.04s  1.20% 80.78%      0.04s  1.20%  github.com/goccy/go-json/internal/encoder/vm.load (inline)
+     0.03s   0.9% 81.68%      0.03s   0.9%  github.com/goccy/go-json/internal/encoder.(*MapContext).SortKeys.func1 (inline)
+     0.03s   0.9% 82.58%      0.06s  1.80%  github.com/goccy/go-json/internal/encoder.(*RuntimeContext).RecentCodeSet (inline)
+     0.03s   0.9% 83.48%      0.04s  1.20%  github.com/goccy/go-json/internal/encoder.(*stringEscape).hasLooseEscape
+     0.03s   0.9% 84.38%      0.03s   0.9%  github.com/goccy/go-json/internal/encoder.(*stringEscape).looseCharsMask (inline)
+
+# FILE: Binding-Large-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:57:31 CST
+Duration: 9.87s, Total samples = 4160ms (42.17%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 3440ms, 82.69% of 4160ms total
+Dropped 53 nodes (cum <= 20.80ms)
+Showing top 18 nodes out of 76
+      flat  flat%   sum%        cum   cum%
+    1180ms 28.37% 28.37%     2460ms 59.13%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     790ms 18.99% 47.36%      800ms 19.23%  unicode/utf8.DecodeRuneInString
+     210ms  5.05% 52.40%     3940ms 94.71%  jjs.jit.2.jjs_encoder_1_2
+     200ms  4.81% 57.21%      200ms  4.81%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+     120ms  2.88% 60.10%      150ms  3.61%  github.com/nyan233/jjs-go/core/compiler.jitReserveRaw
+     110ms  2.64% 62.74%      110ms  2.64%  runtime.memmove
+     100ms  2.40% 65.14%      960ms 23.08%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+      80ms  1.92% 67.07%       90ms  2.16%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscapeBytes (inline)
+      80ms  1.92% 68.99%       90ms  2.16%  internal/runtime/maps.(*Iter).Next
+      80ms  1.92% 70.91%       80ms  1.92%  runtime.memclrNoHeapPointers
+      80ms  1.92% 72.84%       90ms  2.16%  strconv.formatBits
+      70ms  1.68% 74.52%     2320ms 55.77%  github.com/nyan233/jjs-go/core/compiler.jitAppendString
+      70ms  1.68% 76.20%       70ms  1.68%  runtime.asyncPreempt
+      60ms  1.44% 77.64%      150ms  3.61%  runtime.mallocgcSmallScanNoHeader
+      60ms  1.44% 79.09%      180ms  4.33%  strconv.ryuDigits
+      50ms  1.20% 80.29%       50ms  1.20%  github.com/nyan233/jjs-go/core/compiler.(*jitEncodeContext).ensureCapacity (inline)
+      50ms  1.20% 81.49%     1050ms 25.24%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+      50ms  1.20% 82.69%     3950ms 94.95%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+
+# FILE: Binding-Large-sonic.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:57:50 CST
+Duration: 12.20s, Total samples = 8.13s (66.64%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 7.60s, 93.48% of 8.13s total
+Dropped 72 nodes (cum <= 0.04s)
+Showing top 18 nodes out of 44
+      flat  flat%   sum%        cum   cum%
+     2.55s 31.37% 31.37%      5.83s 71.71%  github.com/bytedance/sonic/internal/encoder/vm.Execute
+     1.57s 19.31% 50.68%      1.57s 19.31%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.81s  9.96% 60.64%      0.81s  9.96%  github.com/bytedance/sonic/internal/native/neon.__quote_entry__
+     0.79s  9.72% 70.36%      1.95s 23.99%  github.com/bytedance/sonic/internal/encoder/alg.Quote
+     0.52s  6.40% 76.75%      0.52s  6.40%  github.com/bytedance/sonic/internal/native/neon.__html_escape_entry__
+     0.35s  4.31% 81.06%      1.16s 14.27%  github.com/bytedance/sonic/internal/native/neon.__quote
+     0.25s  3.08% 84.13%      0.25s  3.08%  runtime.memmove
+     0.19s  2.34% 86.47%      5.83s 71.71%  github.com/bytedance/sonic/internal/encoder/vm.EncodeTypedPointer
+     0.09s  1.11% 87.58%      0.09s  1.11%  strconv.formatBits
+     0.08s  0.98% 88.56%      0.09s  1.11%  internal/runtime/maps.(*Iter).Next
+     0.07s  0.86% 89.42%      0.16s  1.97%  github.com/bytedance/sonic/internal/encoder/alg.F64toa
+     0.07s  0.86% 90.28%      0.07s  0.86%  github.com/bytedance/sonic/internal/rt.Add (inline)
+     0.05s  0.62% 90.90%      0.05s  0.62%  github.com/bytedance/sonic/internal/caching.(*_ProgramMap).get (inline)
+     0.05s  0.62% 91.51%      0.34s  4.18%  github.com/bytedance/sonic/internal/encoder/alg.IteratorStart
+     0.05s  0.62% 92.13%      0.05s  0.62%  github.com/bytedance/sonic/internal/native/neon.__f64toa_entry__
+     0.05s  0.62% 92.74%      0.09s  1.11%  runtime.mallocgcSmallScanNoHeader
+     0.04s  0.49% 93.23%      0.09s  1.11%  github.com/bytedance/sonic/internal/native/neon.__f64toa
+     0.02s  0.25% 93.48%      0.07s  0.86%  github.com/bytedance/sonic/internal/caching.(*ProgramCache).Get (inline)
+
+# FILE: Binding-Medium-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:57:17 CST
+Duration: 13.27s, Total samples = 3130ms (23.59%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 2510ms, 80.19% of 3130ms total
+Dropped 43 nodes (cum <= 15.65ms)
+Showing top 18 nodes out of 67
+      flat  flat%   sum%        cum   cum%
+     550ms 17.57% 17.57%     1120ms 35.78%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     320ms 10.22% 27.80%     2580ms 82.43%  jjs.jit.2.jjs_encoder_1_2
+     260ms  8.31% 36.10%      310ms  9.90%  github.com/nyan233/jjs-go/core/compiler.jitReserveRaw
+     250ms  7.99% 44.09%      260ms  8.31%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+     150ms  4.79% 48.88%      150ms  4.79%  runtime.asyncPreempt
+     130ms  4.15% 53.04%      170ms  5.43%  strconv.formatBits
+     120ms  3.83% 56.87%     1330ms 42.49%  github.com/nyan233/jjs-go/core/compiler.jitAppendString
+     120ms  3.83% 60.70%      120ms  3.83%  runtime.memmove
+      80ms  2.56% 63.26%       80ms  2.56%  runtime.memclrNoHeapPointers
+      70ms  2.24% 65.50%      160ms  5.11%  runtime.findObject
+      60ms  1.92% 67.41%      330ms 10.54%  gcWriteBarrier
+      60ms  1.92% 69.33%      380ms 12.14%  github.com/nyan233/jjs-go/core/compiler.jitAppendIntPtr
+      60ms  1.92% 71.25%     2590ms 82.75%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+      60ms  1.92% 73.16%       70ms  2.24%  github.com/nyan233/jjs-go/core/compiler.jsonByteLessThan32 (inline)
+      60ms  1.92% 75.08%      450ms 14.38%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscape
+      60ms  1.92% 77.00%      270ms  8.63%  runtime.wbBufFlush1
+      50ms  1.60% 78.59%       50ms  1.60%  github.com/nyan233/jjs-go/core/compiler.(*jitEncodeContext).ensureCapacity (inline)
+      50ms  1.60% 80.19%      170ms  5.43%  github.com/nyan233/jjs-go/core/compiler.jitAppendBoolPtr
+
+# FILE: Binding-Small-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:57:09 CST
+Duration: 8.06s, Total samples = 3650ms (45.30%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 2530ms, 69.32% of 3650ms total
+Dropped 35 nodes (cum <= 18.25ms)
+Showing top 18 nodes out of 78
+      flat  flat%   sum%        cum   cum%
+     500ms 13.70% 13.70%      690ms 18.90%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     310ms  8.49% 22.19%      320ms  8.77%  strconv.ryuDigits32
+     270ms  7.40% 29.59%     1840ms 50.41%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+     140ms  3.84% 33.42%      140ms  3.84%  runtime.memmove
+     130ms  3.56% 36.99%      160ms  4.38%  github.com/nyan233/jjs-go/core/compiler.jitReserveRaw
+     130ms  3.56% 40.55%      190ms  5.21%  strconv.mult128bitPow10
+     130ms  3.56% 44.11%      130ms  3.56%  unicode/utf8.DecodeRuneInString
+     120ms  3.29% 47.40%      140ms  3.84%  strconv.formatBits
+     110ms  3.01% 50.41%      130ms  3.56%  github.com/nyan233/jjs-go/core/compiler.jitAppendBoolPtr
+     100ms  2.74% 53.15%      360ms  9.86%  github.com/nyan233/jjs-go/core/compiler.jitAppendIntPtr
+      90ms  2.47% 55.62%       90ms  2.47%  runtime.memclrNoHeapPointers
+      90ms  2.47% 58.08%      450ms 12.33%  strconv.ryuDigits
+      80ms  2.19% 60.27%     2840ms 77.81%  jjs.jit.1.jjs_encoder_0_1
+      80ms  2.19% 62.47%      190ms  5.21%  runtime.mallocgcSmallNoscan
+      70ms  1.92% 64.38%      820ms 22.47%  github.com/nyan233/jjs-go/core/compiler.jitAppendString
+      60ms  1.64% 66.03%      220ms  6.03%  runtime.mallocgcSmallScanNoHeader
+      60ms  1.64% 67.67%      140ms  3.84%  runtime.wbBufFlush1
+      60ms  1.64% 69.32%       60ms  1.64%  strconv.mulByLog10Log2 (inline)
+
+# FILE: Generic-Large-goccy.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:58:10 CST
+Duration: 7.36s, Total samples = 5300ms (72.02%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 4300ms, 81.13% of 5300ms total
+Dropped 33 nodes (cum <= 26.50ms)
+Showing top 18 nodes out of 63
+      flat  flat%   sum%        cum   cum%
+     880ms 16.60% 16.60%     1000ms 18.87%  github.com/goccy/go-json/internal/encoder.(*MapContext).SortKeys.func2
+     410ms  7.74% 24.34%      530ms 10.00%  internal/runtime/maps.(*Iter).Next
+     390ms  7.36% 31.70%      640ms 12.08%  github.com/goccy/go-json/internal/encoder.appendNormalizedHTMLString
+     380ms  7.17% 38.87%     5160ms 97.36%  github.com/goccy/go-json/internal/encoder/vm.Run
+     300ms  5.66% 44.53%     1280ms 24.15%  github.com/goccy/go-json/internal/encoder.AppendString
+     240ms  4.53% 49.06%      240ms  4.53%  github.com/goccy/go-json/internal/encoder.decodeRuneInString
+     230ms  4.34% 53.40%      790ms 14.91%  slices.partitionCmpFunc[go.shape.int32]
+     170ms  3.21% 56.60%      780ms 14.72%  github.com/goccy/go-json/internal/encoder.collectStringKeys[go.shape.[2]uint64]
+     170ms  3.21% 59.81%      170ms  3.21%  github.com/goccy/go-json/internal/encoder.scanStringNEON
+     170ms  3.21% 63.02%     1390ms 26.23%  github.com/goccy/go-json/internal/encoder/vm.appendScalar
+     170ms  3.21% 66.23%      480ms  9.06%  slices.insertionSortCmpFunc[go.shape.int32] (inline)
+     150ms  2.83% 69.06%     1740ms 32.83%  github.com/goccy/go-json/internal/encoder.(*MapContext).SortKeys
+     150ms  2.83% 71.89%      150ms  2.83%  runtime.memmove
+     120ms  2.26% 74.15%      220ms  4.15%  github.com/goccy/go-json/internal/encoder.(*RuntimeContext).EnterInterface
+     100ms  1.89% 76.04%      100ms  1.89%  cmpbody
+     100ms  1.89% 77.92%      340ms  6.42%  strconv.genericFtoa
+     100ms  1.89% 79.81%      170ms  3.21%  strconv.ryuDigits
+      70ms  1.32% 81.13%      110ms  2.08%  github.com/goccy/go-json/internal/encoder.keyPrefix (inline)
+
+# FILE: Generic-Large-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:58:02 CST
+Duration: 7.46s, Total samples = 1730ms (23.19%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 1250ms, 72.25% of 1730ms total
+Showing top 18 nodes out of 109
+      flat  flat%   sum%        cum   cum%
+     310ms 17.92% 17.92%      760ms 43.93%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     130ms  7.51% 25.43%     1690ms 97.69%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+     100ms  5.78% 31.21%      110ms  6.36%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscapeBytes (inline)
+      90ms  5.20% 36.42%       90ms  5.20%  unicode/utf8.DecodeRuneInString
+      80ms  4.62% 41.04%       80ms  4.62%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+      70ms  4.05% 45.09%      270ms 15.61%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscape
+      60ms  3.47% 48.55%       60ms  3.47%  runtime.memmove
+      50ms  2.89% 51.45%       50ms  2.89%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+      50ms  2.89% 54.34%       50ms  2.89%  runtime.asyncPreempt
+      50ms  2.89% 57.23%       90ms  5.20%  strconv.ryuDigits
+      40ms  2.31% 59.54%       70ms  4.05%  runtime.findObject
+      40ms  2.31% 61.85%      180ms 10.40%  strconv.genericFtoa
+      30ms  1.73% 63.58%      160ms  9.25%  gcWriteBarrier
+      30ms  1.73% 65.32%     1660ms 95.95%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+      30ms  1.73% 67.05%      250ms 14.45%  runtime.mallocgc
+      30ms  1.73% 68.79%      160ms  9.25%  runtime.mallocgcSmallScanNoHeader
+      30ms  1.73% 70.52%      160ms  9.25%  runtime.mapiternext
+      30ms  1.73% 72.25%       30ms  1.73%  runtime.memclrNoHeapPointers
+
+# FILE: Generic-Large-sonic.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:58:17 CST
+Duration: 7.46s, Total samples = 5.78s (77.43%)
+Active filters:
+   focus=benchmark(Binding|Generic)Encode
+Showing nodes accounting for 5.26s, 91.00% of 5.78s total
+Dropped 54 nodes (cum <= 0.03s)
+Showing top 18 nodes out of 51
+      flat  flat%   sum%        cum   cum%
+     1.09s 18.86% 18.86%      5.08s 87.89%  github.com/bytedance/sonic/internal/encoder/vm.Execute
+     0.79s 13.67% 32.53%      1.84s 31.83%  github.com/bytedance/sonic/internal/encoder/alg.Quote
+     0.72s 12.46% 44.98%      0.72s 12.46%  github.com/bytedance/sonic/internal/native/neon.__quote_entry__
+     0.47s  8.13% 53.11%      0.47s  8.13%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.38s  6.57% 59.69%      0.38s  6.57%  github.com/bytedance/sonic/internal/encoder/alg.lessFrom (inline)
+     0.32s  5.54% 65.22%      1.04s 17.99%  github.com/bytedance/sonic/internal/native/neon.__quote
+     0.31s  5.36% 70.59%      0.38s  6.57%  internal/runtime/maps.(*Iter).Next
+     0.27s  4.67% 75.26%      0.88s 15.22%  github.com/bytedance/sonic/internal/encoder/alg.radixQsort
+     0.19s  3.29% 78.55%      5.08s 87.89%  github.com/bytedance/sonic/internal/encoder/vm.EncodeTypedPointer
+     0.19s  3.29% 81.83%      0.19s  3.29%  github.com/bytedance/sonic/internal/native/neon.__html_escape_entry__
+     0.11s  1.90% 83.74%      0.54s  9.34%  github.com/bytedance/sonic/internal/encoder/alg.insertRadixSort
+     0.08s  1.38% 85.12%      1.66s 28.72%  github.com/bytedance/sonic/internal/encoder/alg.IteratorStart
+     0.07s  1.21% 86.33%      0.14s  2.42%  github.com/bytedance/sonic/internal/encoder/alg.F64toa
+     0.07s  1.21% 87.54%      0.08s  1.38%  github.com/bytedance/sonic/internal/encoder/alg.swap (inline)
+     0.06s  1.04% 88.58%      0.07s  1.21%  github.com/bytedance/sonic/internal/encoder/alg.(*MapIterator).append
+     0.05s  0.87% 89.45%      0.05s  0.87%  github.com/bytedance/sonic/internal/native/neon.__f64toa_entry__
+     0.05s  0.87% 90.31%      0.32s  5.54%  runtime.mapiternext
+     0.04s  0.69% 91.00%      0.04s  0.69%  sync.(*poolDequeue).pushHead
+
+# FILE: after-Decoder-Binding-Large.focused.txt
+File: optimized.test
+Type: cpu
+Time: 2026-11-23 14:16:11 CST
+Duration: 7.32s, Total samples = 5640ms (77.03%)
+Active filters:
+   focus=benchmark(Binding|Generic)(Encode|Decode)
+Showing nodes accounting for 4820ms, 85.46% of 5640ms total
+Dropped 54 nodes (cum <= 28.20ms)
+Showing top 20 nodes out of 75
+      flat  flat%   sum%        cum   cum%
+    1020ms 18.09% 18.09%     1980ms 35.11%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringInternal
+     930ms 16.49% 34.57%      930ms 16.49%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpaceRun (inline)
+     350ms  6.21% 40.78%      350ms  6.21%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipString
+     330ms  5.85% 46.63%      330ms  5.85%  unicode/utf8.DecodeRune
+     270ms  4.79% 51.42%     1200ms 21.28%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpace (inline)
+     260ms  4.61% 56.03%      470ms  8.33%  runtime.mapaccess2_faststr
+     230ms  4.08% 60.11%      370ms  6.56%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeLiteral (inline)
+     200ms  3.55% 63.65%      200ms  3.55%  runtime.memequal
+     180ms  3.19% 66.84%     5640ms   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectBody
+     140ms  2.48% 69.33%      230ms  4.08%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+     120ms  2.13% 71.45%     5640ms   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectStruct
+     110ms  1.95% 73.40%      110ms  1.95%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeByte (inline)
+     100ms  1.77% 75.18%      100ms  1.77%  aeshashbody
+      90ms  1.60% 76.77%      100ms  1.77%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeNumber
+      90ms  1.60% 78.37%      310ms  5.50%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).rawString (inline)
+      90ms  1.60% 79.96%      150ms  2.66%  github.com/nyan233/jjs-go/core/compiler.scanJSONStringEndWord
+      80ms  1.42% 81.38%     5640ms   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect
+      80ms  1.42% 82.80%       80ms  1.42%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseInteger
+      80ms  1.42% 84.22%     1330ms 23.58%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipDirectValueBody
+      70ms  1.24% 85.46%       70ms  1.24%  runtime.memclrNoHeapPointers
+
+# FILE: after-Decoder-Generic-Large.focused.txt
+File: optimized.test
+Type: cpu
+Time: 2026-11-23 14:16:18 CST
+Duration: 7.49s, Total samples = 1780ms (23.77%)
+Active filters:
+   focus=benchmark(Binding|Generic)(Encode|Decode)
+Showing nodes accounting for 1350ms, 75.84% of 1780ms total
+Showing top 20 nodes out of 107
+      flat  flat%   sum%        cum   cum%
+     350ms 19.66% 19.66%      760ms 42.70%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringInternal
+     140ms  7.87% 27.53%      140ms  7.87%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpaceRun (inline)
+     100ms  5.62% 33.15%      110ms  6.18%  unicode/utf8.DecodeRune
+      80ms  4.49% 37.64%     1780ms   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeAnyObject
+      70ms  3.93% 41.57%      120ms  6.74%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+      70ms  3.93% 45.51%      260ms 14.61%  runtime.mapassign_faststr
+      60ms  3.37% 48.88%       60ms  3.37%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+      60ms  3.37% 52.25%       60ms  3.37%  runtime.asyncPreempt
+      50ms  2.81% 55.06%       50ms  2.81%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeByte (inline)
+      50ms  2.81% 57.87%      140ms  7.87%  runtime.mallocgcSmallScanNoHeader
+      40ms  2.25% 60.11%     1780ms   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectAnyBody
+      40ms  2.25% 62.36%       40ms  2.25%  runtime.memclrNoHeapPointers
+      40ms  2.25% 64.61%       40ms  2.25%  runtime.memmove
+      30ms  1.69% 66.29%       30ms  1.69%  aeshashbody
+      30ms  1.69% 67.98%      120ms  6.74%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).copyString
+      30ms  1.69% 69.66%       90ms  5.06%  github.com/nyan233/jjs-go/core/compiler.scanJSONStringEndWord
+      30ms  1.69% 71.35%       30ms  1.69%  internal/runtime/maps.bitsetFirst (inline)
+      30ms  1.69% 73.03%       30ms  1.69%  runtime.(*mheap).initSpan
+      30ms  1.69% 74.72%       60ms  3.37%  strconv.atof64
+      20ms  1.12% 75.84%       30ms  1.69%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).boxFloat (inline)
+
+# FILE: after-Encoder-Binding-Large.focused.txt
+File: optimized.test
+Type: cpu
+Time: 2026-11-23 14:15:54 CST
+Duration: 9.68s, Total samples = 3770ms (38.94%)
+Active filters:
+   focus=benchmark(Binding|Generic)(Encode|Decode)
+Showing nodes accounting for 3200ms, 84.88% of 3770ms total
+Dropped 36 nodes (cum <= 18.85ms)
+Showing top 20 nodes out of 89
+      flat  flat%   sum%        cum   cum%
+     960ms 25.46% 25.46%     2130ms 56.50%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     740ms 19.63% 45.09%      740ms 19.63%  unicode/utf8.DecodeRuneInString
+     200ms  5.31% 50.40%     3560ms 94.43%  jjs.jit.2.jjs_encoder_1_2
+     130ms  3.45% 53.85%      170ms  4.51%  github.com/nyan233/jjs-go/core/compiler.jitReserveRaw
+     130ms  3.45% 57.29%      130ms  3.45%  runtime.memmove
+     100ms  2.65% 59.95%      100ms  2.65%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscapeBytes (inline)
+     100ms  2.65% 62.60%      100ms  2.65%  github.com/nyan233/jjs-go/core/compiler.scanJSONSpecialNEON
+     100ms  2.65% 65.25%      100ms  2.65%  runtime.memclrNoHeapPointers
+      80ms  2.12% 67.37%      120ms  3.18%  internal/runtime/maps.(*Iter).Next
+      70ms  1.86% 69.23%       90ms  2.39%  runtime.findObject
+      70ms  1.86% 71.09%      190ms  5.04%  runtime.wbBufFlush1
+      70ms  1.86% 72.94%      150ms  3.98%  strconv.ryuDigits
+      60ms  1.59% 74.54%     1990ms 52.79%  github.com/nyan233/jjs-go/core/compiler.jitAppendString
+      60ms  1.59% 76.13%     1010ms 26.79%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+      60ms  1.59% 77.72%      920ms 24.40%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+      60ms  1.59% 79.31%       60ms  1.59%  runtime.asyncPreempt
+      60ms  1.59% 80.90%       70ms  1.86%  strconv.formatBits
+      50ms  1.33% 82.23%      140ms  3.71%  github.com/nyan233/jjs-go/core/compiler.jitAppendIntPtr
+      50ms  1.33% 83.55%     3590ms 95.23%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+      50ms  1.33% 84.88%       50ms  1.33%  strconv.ryuDigits32
+
+# FILE: after-Encoder-Generic-Large.focused.txt
+File: optimized.test
+Type: cpu
+Time: 2026-11-23 14:16:03 CST
+Duration: 7.41s, Total samples = 1590ms (21.46%)
+Active filters:
+   focus=benchmark(Binding|Generic)(Encode|Decode)
+Showing nodes accounting for 1270ms, 79.87% of 1590ms total
+Showing top 20 nodes out of 101
+      flat  flat%   sum%        cum   cum%
+     230ms 14.47% 14.47%      630ms 39.62%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     120ms  7.55% 22.01%     1540ms 96.86%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+     110ms  6.92% 28.93%      130ms  8.18%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscapeBytes (inline)
+     110ms  6.92% 35.85%      170ms 10.69%  internal/runtime/maps.(*Iter).Next
+      90ms  5.66% 41.51%      110ms  6.92%  runtime.findObject
+      90ms  5.66% 47.17%       90ms  5.66%  unicode/utf8.DecodeRuneInString
+      70ms  4.40% 51.57%      260ms 16.35%  github.com/nyan233/jjs-go/core/compiler.scanJSONEscape
+      70ms  4.40% 55.97%       70ms  4.40%  runtime.asyncPreempt
+      60ms  3.77% 59.75%     1510ms 94.97%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+      50ms  3.14% 62.89%       50ms  3.14%  runtime.memmove
+      40ms  2.52% 65.41%       50ms  3.14%  strconv.ryuDigits
+      30ms  1.89% 67.30%      200ms 12.58%  gcWriteBarrier
+      30ms  1.89% 69.18%       30ms  1.89%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+      30ms  1.89% 71.07%     1510ms 94.97%  jjs.jit.2.jjs_encoder_1_2
+      30ms  1.89% 72.96%       30ms  1.89%  reflect.(*rtype).Kind
+      30ms  1.89% 74.84%      100ms  6.29%  runtime.mallocgcSmallScanNoHeader
+      20ms  1.26% 76.10%       20ms  1.26%  github.com/nyan233/jjs-go/core/compiler.jitAppendNull
+      20ms  1.26% 77.36%       20ms  1.26%  github.com/nyan233/jjs-go/core/compiler.scanJSONSpecialNEON
+      20ms  1.26% 78.62%       20ms  1.26%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+      20ms  1.26% 79.87%       20ms  1.26%  internal/runtime/maps.(*ctrlGroup).get (inline)
+
+# FILE: after-Encoder-Binding-Large.alloc_objects.txt
+File: optimized.test
+Type: alloc_objects
+Time: 2026-11-23 14:16:03 CST
+Showing nodes accounting for 8364093, 99.57% of 8400078 total
+Dropped 75 nodes (cum <= 42000)
+Showing top 10 nodes out of 15
+      flat  flat%   sum%        cum   cum%
+   8291060 98.70% 98.70%    8291060 98.70%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+     40261  0.48% 99.18%    8333192 99.20%  github.com/nyan233/jjs-go/core/compiler.(*jitCompiledEncoder).encode
+     32772  0.39% 99.57%    8366709 99.60%  github.com/nyan233/jjs-go/benchmark/compare.commonBindingCodecs[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func9
+         0     0% 99.57%    8333937 99.21%  github.com/nyan233/jjs-go.Marshal (inline)
+         0     0% 99.57%    8333937 99.21%  github.com/nyan233/jjs-go.MarshalTo
+         0     0% 99.57%    8366729 99.60%  github.com/nyan233/jjs-go/benchmark/compare.benchmarkBindingEncode[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func1
+         0     0% 99.57%    8333937 99.21%  github.com/nyan233/jjs-go/core/compiler.EncodeTo
+         0     0% 99.57%    8291060 98.70%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+         0     0% 99.57%    8291067 98.70%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+         0     0% 99.57%    8291067 98.70%  jjs.jit.1.jjs_encoder_0_1
+
+# FILE: after-Encoder-Binding-Large.alloc_space.txt
+File: optimized.test
+Type: alloc_space
+Time: 2026-11-23 14:16:03 CST
+Showing nodes accounting for 10829.16MB, 99.87% of 10843.46MB total
+Dropped 75 nodes (cum <= 54.22MB)
+Showing top 10 nodes out of 15
+      flat  flat%   sum%        cum   cum%
+10065.59MB 92.83% 92.83% 10827.70MB 99.85%  github.com/nyan233/jjs-go/core/compiler.(*jitCompiledEncoder).encode
+  759.07MB  7.00% 99.83%   759.07MB  7.00%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+    4.50MB 0.042% 99.87% 10832.70MB 99.90%  github.com/nyan233/jjs-go/benchmark/compare.commonBindingCodecs[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func9
+         0     0% 99.87% 10828.20MB 99.86%  github.com/nyan233/jjs-go.Marshal (inline)
+         0     0% 99.87% 10828.20MB 99.86%  github.com/nyan233/jjs-go.MarshalTo
+         0     0% 99.87% 10834.89MB 99.92%  github.com/nyan233/jjs-go/benchmark/compare.benchmarkBindingEncode[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func1
+         0     0% 99.87% 10828.20MB 99.86%  github.com/nyan233/jjs-go/core/compiler.EncodeTo
+         0     0% 99.87%   759.07MB  7.00%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+         0     0% 99.87%   759.61MB  7.01%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+         0     0% 99.87%   759.61MB  7.01%  jjs.jit.1.jjs_encoder_0_1
+
+# FILE: after-Encoder-Generic-Large.alloc_objects.txt
+File: optimized.test
+Type: alloc_objects
+Time: 2026-11-23 14:16:11 CST
+Showing nodes accounting for 16905827, 99.72% of 16953474 total
+Dropped 66 nodes (cum <= 84767)
+Showing top 10 nodes out of 14
+      flat  flat%   sum%        cum   cum%
+  16898901 99.68% 99.68%   16898911 99.68%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+      6926 0.041% 99.72%   16906582 99.72%  github.com/nyan233/jjs-go/core/compiler.(*jitCompiledEncoder).encode
+         0     0% 99.72%   16906582 99.72%  github.com/nyan233/jjs-go.Marshal
+         0     0% 99.72%   16906582 99.72%  github.com/nyan233/jjs-go.MarshalTo
+         0     0% 99.72%   16906587 99.72%  github.com/nyan233/jjs-go/benchmark/compare.benchmarkGenericEncode.func1
+         0     0% 99.72%   16906582 99.72%  github.com/nyan233/jjs-go/core/compiler.EncodeTo
+         0     0% 99.72%   16893450 99.65%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+         0     0% 99.72%   16893450 99.65%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+         0     0% 99.72%   16898911 99.68%  jjs.jit.1.jjs_encoder_0_1
+         0     0% 99.72%   16893450 99.65%  jjs.jit.2.jjs_encoder_1_2
+
+# FILE: after-Encoder-Generic-Large.alloc_space.txt
+File: optimized.test
+Type: alloc_space
+Time: 2026-11-23 14:16:11 CST
+Showing nodes accounting for 4.58GB, 99.70% of 4.59GB total
+Dropped 66 nodes (cum <= 0.02GB)
+Showing top 10 nodes out of 14
+      flat  flat%   sum%        cum   cum%
+    3.07GB 66.78% 66.78%     4.58GB 99.77%  github.com/nyan233/jjs-go/core/compiler.(*jitCompiledEncoder).encode
+    1.51GB 32.92% 99.70%     1.51GB 32.97%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+         0     0% 99.70%     4.58GB 99.77%  github.com/nyan233/jjs-go.Marshal
+         0     0% 99.70%     4.58GB 99.77%  github.com/nyan233/jjs-go.MarshalTo
+         0     0% 99.70%     4.58GB 99.78%  github.com/nyan233/jjs-go/benchmark/compare.benchmarkGenericEncode.func1
+         0     0% 99.70%     4.58GB 99.77%  github.com/nyan233/jjs-go/core/compiler.EncodeTo
+         0     0% 99.70%     1.51GB 32.96%  github.com/nyan233/jjs-go/core/compiler.jitEncodeInterface
+         0     0% 99.70%     1.51GB 32.96%  github.com/nyan233/jjs-go/core/compiler.jitEncodeSlice
+         0     0% 99.70%     1.51GB 32.97%  jjs.jit.1.jjs_encoder_0_1
+         0     0% 99.70%     1.51GB 32.96%  jjs.jit.2.jjs_encoder_1_2
+
+# FILE: encoder-large-cpu1.top.txt
+File: optimized.test
+Type: cpu
+Time: 2026-11-23 14:16:26 CST
+Duration: 10.42s, Total samples = 9s (86.35%)
+Showing nodes accounting for 7.51s, 83.44% of 9s total
+Dropped 122 nodes (cum <= 0.04s)
+Showing top 15 nodes out of 83
+      flat  flat%   sum%        cum   cum%
+     4.51s 50.11% 50.11%      4.51s 50.11%  runtime.kevent
+     0.86s  9.56% 59.67%      1.80s 20.00%  github.com/nyan233/jjs-go/core/compiler.appendQuoted
+     0.60s  6.67% 66.33%      0.60s  6.67%  unicode/utf8.DecodeRuneInString
+     0.21s  2.33% 68.67%      0.21s  2.33%  runtime.madvise
+     0.20s  2.22% 70.89%      0.34s  3.78%  runtime.findObject
+     0.20s  2.22% 73.11%      0.62s  6.89%  runtime.scanobject
+     0.14s  1.56% 74.67%      0.24s  2.67%  runtime.greyobject
+     0.13s  1.44% 76.11%      0.13s  1.44%  runtime.memmove
+     0.11s  1.22% 77.33%      3.21s 35.67%  jjs.jit.2.jjs_encoder_1_2
+     0.11s  1.22% 78.56%      0.11s  1.22%  runtime.spanOf (inline)
+     0.11s  1.22% 79.78%      0.11s  1.22%  strconv.formatBits
+     0.09s  1.00% 80.78%      0.09s  1.00%  github.com/nyan233/jjs-go/core/compiler.scanJSONSpecialNEON
+     0.08s  0.89% 81.67%      0.42s  4.67%  gcWriteBarrier
+     0.08s  0.89% 82.56%      0.79s  8.78%  github.com/nyan233/jjs-go/core/compiler.jitEncodeMap
+     0.08s  0.89% 83.44%      0.11s  1.22%  github.com/nyan233/jjs-go/core/compiler.jitReserveRaw

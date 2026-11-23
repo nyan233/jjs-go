@@ -1,0 +1,706 @@
+# Diagnostic decoder measurements, 2026-11-23
+# Base revision: 029830e; codec revision: 96ffa5b
+# Native darwin/arm64, Apple M1 Pro, Go 1.25.0
+# SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10; prebuilt binaries, no concurrent benchmark suites
+# A/B: five rounds; order rotates base/defer/scan/space by one per round
+# Command for each variant/round:
+# <binary> -test.run '^$' -test.bench '^BenchmarkDecoder_(Binding|Generic)$/(Small|Medium|Large)/^jjs-go$' -test.benchmem -test.benchtime=300ms -test.count=1 -test.cpu=10
+# Each patch applies independently to the base revision. Diagnostic only.
+
+# VARIANT: base
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  228542	      1432 ns/op	 254.91 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13060	     27549 ns/op	 472.72 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     249	   1450095 ns/op	 435.50 MB/s	  203257 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   93775	      3705 ns/op	  98.52 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5518	     64800 ns/op	 200.97 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     126	   2851555 ns/op	 221.46 MB/s	 2132675 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  245562	      1429 ns/op	 255.36 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13016	     27374 ns/op	 475.75 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     247	   1450822 ns/op	 435.28 MB/s	  203264 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   97699	      3714 ns/op	  98.27 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5708	     63274 ns/op	 205.82 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     124	   2859817 ns/op	 220.82 MB/s	 2132672 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  250261	      1420 ns/op	 257.07 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13190	     27345 ns/op	 476.25 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     249	   1450296 ns/op	 435.44 MB/s	  203256 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  100431	      3664 ns/op	  99.63 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5586	     62784 ns/op	 207.43 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     124	   2912276 ns/op	 216.85 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  250780	      1419 ns/op	 257.15 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13155	     27419 ns/op	 474.96 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     248	   1440083 ns/op	 438.53 MB/s	  203260 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   98113	      3668 ns/op	  99.51 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5281	     64952 ns/op	 200.50 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     123	   2865613 ns/op	 220.38 MB/s	 2132673 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  253065	      1418 ns/op	 257.45 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13177	     27266 ns/op	 477.63 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     246	   1475503 ns/op	 428.00 MB/s	  203268 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   95562	      3718 ns/op	  98.18 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5448	     63727 ns/op	 204.36 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     124	   2854060 ns/op	 221.27 MB/s	 2132680 B/op	   30873 allocs/op
+PASS
+
+# VARIANT: defer
+# PATCH BEGIN
+diff --git a/core/compiler/direct_decoder.go b/core/compiler/direct_decoder.go
+index 6173795..80b0868 100644
+--- a/core/compiler/direct_decoder.go
++++ b/core/compiler/direct_decoder.go
+@@ -186,6 +186,10 @@ func (p *jitJSONParser) decodeDirect(plan *directDecodePlan, dst unsafe.Pointer)
+ 		return p.errorf("maximum JSON depth exceeded")
+ 	}
+ 	defer func() { p.depth-- }()
++	return p.decodeDirectBody(plan, dst)
++}
++
++func (p *jitJSONParser) decodeDirectBody(plan *directDecodePlan, dst unsafe.Pointer) error {
+ 	p.skipSpace()
+ 	if p.consumeLiteral("null") {
+ 		switch plan.kind {
+@@ -557,6 +561,10 @@ func (p *jitJSONParser) decodeDirectAny() (any, error) {
+ 		return nil, p.errorf("maximum JSON depth exceeded")
+ 	}
+ 	defer func() { p.depth-- }()
++	return p.decodeDirectAnyBody()
++}
++
++func (p *jitJSONParser) decodeDirectAnyBody() (any, error) {
+ 	p.skipSpace()
+ 	if p.consumeLiteral("null") {
+ 		return nil, nil
+@@ -647,6 +655,10 @@ func (p *jitJSONParser) skipDirectValue() error {
+ 		return p.errorf("maximum JSON depth exceeded")
+ 	}
+ 	defer func() { p.depth-- }()
++	return p.skipDirectValueBody()
++}
++
++func (p *jitJSONParser) skipDirectValueBody() error {
+ 	p.skipSpace()
+ 	if p.consumeLiteral("null") || p.consumeLiteral("true") || p.consumeLiteral("false") {
+ 		return nil
+# PATCH END
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  380780	       960.1 ns/op	 380.16 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   15715	     22939 ns/op	 567.72 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     266	   1363978 ns/op	 462.99 MB/s	  203197 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  118408	      3037 ns/op	 120.20 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6138	     57167 ns/op	 227.81 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     136	   2630438 ns/op	 240.08 MB/s	 2132680 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  382046	       954.2 ns/op	 382.52 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   15477	     23596 ns/op	 551.91 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     265	   1368940 ns/op	 461.32 MB/s	  203199 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  115880	      3034 ns/op	 120.32 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6237	     56474 ns/op	 230.60 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     136	   2602571 ns/op	 242.65 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  380349	       967.1 ns/op	 377.41 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   15466	     23072 ns/op	 564.45 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     266	   1352232 ns/op	 467.02 MB/s	  203196 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  120710	      3066 ns/op	 119.04 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6172	     56658 ns/op	 229.85 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     138	   2585877 ns/op	 244.22 MB/s	 2132676 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  370170	       955.5 ns/op	 381.98 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   15572	     23091 ns/op	 563.99 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     266	   1385321 ns/op	 455.86 MB/s	  203197 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  118034	      3060 ns/op	 119.27 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6433	     56067 ns/op	 232.28 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     139	   2587179 ns/op	 244.09 MB/s	 2132672 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  379951	       952.8 ns/op	 383.07 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   15657	     23027 ns/op	 565.55 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     266	   1361923 ns/op	 463.69 MB/s	  203197 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	  116349	      3031 ns/op	 120.43 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5918	     57199 ns/op	 227.68 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     134	   2655386 ns/op	 237.82 MB/s	 2132676 B/op	   30873 allocs/op
+PASS
+
+# VARIANT: scan
+# PATCH BEGIN
+diff --git a/core/compiler/jit_json_parser.go b/core/compiler/jit_json_parser.go
+index a702c2a..01c47e8 100644
+--- a/core/compiler/jit_json_parser.go
++++ b/core/compiler/jit_json_parser.go
+@@ -208,10 +208,7 @@ func (p *jitJSONParser) parseStringInternal(copyValue bool) (string, error) {
+ 			if special < 0 {
+ 				return "", p.errorf("unexpected end of string")
+ 			}
+-			if special > 0 {
+-				p.index += special
+-				continue
+-			}
++			p.index += special
+ 		}
+ 		c := p.data[p.index]
+ 		if c == '"' {
+# PATCH END
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  255445	      1419 ns/op	 257.26 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13690	     26583 ns/op	 489.90 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     254	   1417126 ns/op	 445.63 MB/s	  203238 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   98394	      3671 ns/op	  99.42 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5746	     62126 ns/op	 209.62 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     126	   2886064 ns/op	 218.81 MB/s	 2132681 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  256752	      1418 ns/op	 257.37 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13645	     26281 ns/op	 495.53 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     250	   1428200 ns/op	 442.17 MB/s	  203252 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   97639	      3724 ns/op	  98.02 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5520	     63427 ns/op	 205.32 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     124	   2845278 ns/op	 221.95 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  254166	      1424 ns/op	 256.40 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13695	     26668 ns/op	 488.34 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     249	   1454891 ns/op	 434.06 MB/s	  203256 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   97303	      3689 ns/op	  98.93 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5832	     62417 ns/op	 208.65 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     126	   2849835 ns/op	 221.60 MB/s	 2132675 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  249074	      1439 ns/op	 253.61 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13501	     26551 ns/op	 490.48 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     252	   1428623 ns/op	 442.04 MB/s	  203246 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   97204	      3652 ns/op	  99.95 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5446	     62929 ns/op	 206.95 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     127	   2822160 ns/op	 223.77 MB/s	 2132675 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  251516	      1427 ns/op	 255.85 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   13477	     26168 ns/op	 497.67 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     253	   1438277 ns/op	 439.08 MB/s	  203242 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   98840	      3695 ns/op	  98.78 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5588	     63135 ns/op	 206.27 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     126	   2840969 ns/op	 222.29 MB/s	 2132675 B/op	   30873 allocs/op
+PASS
+
+# VARIANT: space
+# PATCH BEGIN
+diff --git a/core/compiler/jit_json_parser.go b/core/compiler/jit_json_parser.go
+index a702c2a..d3d19d3 100644
+--- a/core/compiler/jit_json_parser.go
++++ b/core/compiler/jit_json_parser.go
+@@ -396,14 +396,17 @@ func (p *jitJSONParser) consumeNumber() error {
+ }
+ 
+ func (p *jitJSONParser) skipSpace() {
+-	for p.index < len(p.data) && p.data[p.index] <= ' ' {
+-		switch p.data[p.index] {
++	index, data := p.index, p.data
++	for index < len(data) && data[index] <= ' ' {
++		switch data[index] {
+ 		case ' ', '\t', '\r', '\n':
+-			p.index++
++			index++
+ 		default:
++			p.index = index
+ 			return
+ 		}
+ 	}
++	p.index = index
+ }
+ 
+ func (p *jitJSONParser) consumeLiteral(literal string) bool {
+# PATCH END
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  245359	      1490 ns/op	 244.96 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   14581	     24502 ns/op	 531.51 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     278	   1292290 ns/op	 488.68 MB/s	  203158 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   98596	      3725 ns/op	  98.00 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5734	     59818 ns/op	 217.71 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     133	   2688179 ns/op	 234.92 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  242109	      1467 ns/op	 248.85 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   14740	     24467 ns/op	 532.27 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     279	   1290718 ns/op	 489.27 MB/s	  203157 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   96290	      3669 ns/op	  99.48 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6049	     59521 ns/op	 218.80 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     132	   2724425 ns/op	 231.80 MB/s	 2132673 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  246681	      1461 ns/op	 249.91 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   14605	     24576 ns/op	 529.92 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     277	   1288851 ns/op	 489.98 MB/s	  203162 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   97009	      3744 ns/op	  97.50 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    5820	     61189 ns/op	 212.83 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     130	   2726881 ns/op	 231.59 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  237255	      1466 ns/op	 248.98 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   14703	     24623 ns/op	 528.89 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     274	   1303888 ns/op	 484.33 MB/s	  203171 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   95824	      3771 ns/op	  96.80 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6438	     59919 ns/op	 217.34 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     130	   2713761 ns/op	 232.71 MB/s	 2132681 B/op	   30873 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkDecoder_Binding/Small/jjs-go-10  	  244772	      1474 ns/op	 247.58 MB/s	      64 B/op	       7 allocs/op
+BenchmarkDecoder_Binding/Medium/jjs-go-10 	   14498	     24709 ns/op	 527.05 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkDecoder_Binding/Large/jjs-go-10  	     276	   1306642 ns/op	 483.31 MB/s	  203165 B/op	    4236 allocs/op
+BenchmarkDecoder_Generic/Small/jjs-go-10  	   97003	      3709 ns/op	  98.41 MB/s	    3592 B/op	      72 allocs/op
+BenchmarkDecoder_Generic/Medium/jjs-go-10 	    6093	     59960 ns/op	 217.19 MB/s	   51544 B/op	     747 allocs/op
+BenchmarkDecoder_Generic/Large/jjs-go-10  	     132	   2710115 ns/op	 233.02 MB/s	 2132674 B/op	   30873 allocs/op
+PASS
+
+# COMPACT FIXTURE DIAGNOSTIC
+# Fixture transformation is outside the timer; compaction cost is excluded.
+# Command: probe-base.test -test.run '^$' -test.bench '^BenchmarkProbeCompact$/(Medium|Large)/(Original|Compact)/(jjs-go|goccy|sonic)$' -test.benchmem -test.benchtime=300ms -test.count=3 -test.cpu=10
+# HARNESS BEGIN
+package compare
+
+import (
+	"bytes"
+	"encoding/json"
+	"testing"
+)
+
+// Diagnostic-only fixture transform: strip formatting without changing keys,
+// value strings, number spellings, field order, or unknown fields.
+func BenchmarkProbeCompact(b *testing.B) {
+	for _, fixture := range []struct {
+		name string
+		data []byte
+	}{
+		{"Medium", MediumJSON}, {"Large", LargeJSON},
+	} {
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, fixture.data); err != nil {
+			b.Fatal(err)
+		}
+		for _, format := range []struct {
+			name string
+			data []byte
+		}{
+			{"Original", fixture.data}, {"Compact", compact.Bytes()},
+		} {
+			b.Run(fixture.name+"/"+format.name, func(b *testing.B) {
+				benchmarkBindingDecode(b, commonBindingCodecs[TwitterResponse](), format.data)
+			})
+		}
+	}
+}
+# HARNESS END
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkProbeCompact/Medium/Original/goccy-10   	   41973	      8452 ns/op	1540.78 MB/s	    3364 B/op	       1 allocs/op
+BenchmarkProbeCompact/Medium/Original/goccy-10   	   42172	      8725 ns/op	1492.66 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkProbeCompact/Medium/Original/goccy-10   	   41373	      8546 ns/op	1523.94 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkProbeCompact/Medium/Original/sonic-10   	   16016	     22340 ns/op	 582.94 MB/s	   18906 B/op	     110 allocs/op
+BenchmarkProbeCompact/Medium/Original/sonic-10   	   12745	     27347 ns/op	 476.22 MB/s	   19081 B/op	     110 allocs/op
+BenchmarkProbeCompact/Medium/Original/sonic-10   	   16179	     22465 ns/op	 579.69 MB/s	   18497 B/op	     110 allocs/op
+BenchmarkProbeCompact/Medium/Original/jjs-go-10  	   13096	     27408 ns/op	 475.15 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkProbeCompact/Medium/Original/jjs-go-10  	   13161	     27405 ns/op	 475.21 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkProbeCompact/Medium/Original/jjs-go-10  	   12967	     27615 ns/op	 471.59 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkProbeCompact/Medium/Compact/goccy-10    	   55663	      6417 ns/op	1389.04 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkProbeCompact/Medium/Compact/goccy-10    	   55538	      6396 ns/op	1393.73 MB/s	    3364 B/op	       1 allocs/op
+BenchmarkProbeCompact/Medium/Compact/goccy-10    	   56240	      6535 ns/op	1364.02 MB/s	    3363 B/op	       1 allocs/op
+BenchmarkProbeCompact/Medium/Compact/sonic-10    	   19507	     18746 ns/op	 475.52 MB/s	   14242 B/op	     110 allocs/op
+BenchmarkProbeCompact/Medium/Compact/sonic-10    	   20082	     18266 ns/op	 488.01 MB/s	   13784 B/op	     110 allocs/op
+BenchmarkProbeCompact/Medium/Compact/sonic-10    	   19629	     18061 ns/op	 493.55 MB/s	   13913 B/op	     110 allocs/op
+BenchmarkProbeCompact/Medium/Compact/jjs-go-10   	   17524	     20789 ns/op	 428.78 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkProbeCompact/Medium/Compact/jjs-go-10   	   17334	     20753 ns/op	 429.52 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkProbeCompact/Medium/Compact/jjs-go-10   	   17383	     20887 ns/op	 426.78 MB/s	    3272 B/op	     107 allocs/op
+BenchmarkProbeCompact/Large/Original/goccy-10    	     823	    434154 ns/op	1454.58 MB/s	  160460 B/op	     444 allocs/op
+BenchmarkProbeCompact/Large/Original/goccy-10    	     834	    431769 ns/op	1462.62 MB/s	  160469 B/op	     444 allocs/op
+BenchmarkProbeCompact/Large/Original/goccy-10    	     836	    431473 ns/op	1463.62 MB/s	  160458 B/op	     444 allocs/op
+BenchmarkProbeCompact/Large/Original/sonic-10    	     406	    892184 ns/op	 707.83 MB/s	  824884 B/op	    4099 allocs/op
+BenchmarkProbeCompact/Large/Original/sonic-10    	     405	    894186 ns/op	 706.24 MB/s	  830097 B/op	    4100 allocs/op
+BenchmarkProbeCompact/Large/Original/sonic-10    	     396	    908323 ns/op	 695.25 MB/s	  835874 B/op	    4100 allocs/op
+BenchmarkProbeCompact/Large/Original/jjs-go-10   	     246	   1449521 ns/op	 435.67 MB/s	  203267 B/op	    4236 allocs/op
+BenchmarkProbeCompact/Large/Original/jjs-go-10   	     250	   1449895 ns/op	 435.56 MB/s	  203253 B/op	    4236 allocs/op
+BenchmarkProbeCompact/Large/Original/jjs-go-10   	     248	   1438036 ns/op	 439.15 MB/s	  203261 B/op	    4236 allocs/op
+BenchmarkProbeCompact/Large/Compact/goccy-10     	    1003	    355043 ns/op	1315.07 MB/s	  160434 B/op	     444 allocs/op
+BenchmarkProbeCompact/Large/Compact/goccy-10     	    1011	    354323 ns/op	1317.74 MB/s	  160431 B/op	     444 allocs/op
+BenchmarkProbeCompact/Large/Compact/goccy-10     	    1027	    354871 ns/op	1315.71 MB/s	  160425 B/op	     444 allocs/op
+BenchmarkProbeCompact/Large/Compact/sonic-10     	     496	    720991 ns/op	 647.59 MB/s	  645731 B/op	    4099 allocs/op
+BenchmarkProbeCompact/Large/Compact/sonic-10     	     498	    716259 ns/op	 651.87 MB/s	  645694 B/op	    4099 allocs/op
+BenchmarkProbeCompact/Large/Compact/sonic-10     	     493	    725097 ns/op	 643.92 MB/s	  650038 B/op	    4099 allocs/op
+BenchmarkProbeCompact/Large/Compact/jjs-go-10    	     326	   1107741 ns/op	 421.49 MB/s	  203033 B/op	    4236 allocs/op
+BenchmarkProbeCompact/Large/Compact/jjs-go-10    	     326	   1093449 ns/op	 427.00 MB/s	  203034 B/op	    4236 allocs/op
+BenchmarkProbeCompact/Large/Compact/jjs-go-10    	     328	   1086624 ns/op	 429.69 MB/s	  203029 B/op	    4236 allocs/op
+PASS
+
+# FOCUSED CPU PROFILE SUMMARIES
+# go tool pprof -top -nodecount=22 -focus='benchmark(Binding|Generic)Decode' -relative_percentages <baseline-binary> <case.cpu.pprof>
+# These percentages exclude background stacks. Cumulative shares overlap.
+
+# Binding-Large-goccy.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:39:50 CST
+Duration: 12.11s, Total samples = 8.95s (73.92%)
+Active filters:
+   focus=benchmark(Binding|Generic)Decode
+Showing nodes accounting for 7.56s, 84.47% of 8.95s total
+Dropped 62 nodes (cum <= 0.04s)
+Showing top 22 nodes out of 78
+      flat  flat%   sum%        cum   cum%
+     1.45s 16.20% 16.20%      2.27s 25.36%  github.com/goccy/go-json/internal/decoder.skipFast
+     1.14s 12.74% 28.94%      1.16s 12.96%  unicode/utf8.Valid
+     1.01s 11.28% 40.22%      1.01s 11.28%  github.com/goccy/go-json/internal/decoder.skipWhiteSpace (inline)
+     0.93s 10.39% 50.61%      0.94s 10.50%  github.com/goccy/go-json/internal/decoder.keyEndBytes (inline)
+     0.62s  6.93% 57.54%      1.73s 19.33%  github.com/goccy/go-json/internal/decoder.(*structDecoder).decodeKey
+     0.37s  4.13% 61.68%      2.22s 24.80%  github.com/goccy/go-json/internal/decoder.(*stringDecoder).decodeStringField
+     0.27s  3.02% 64.69%      0.27s  3.02%  github.com/goccy/go-json/internal/decoder.char (inline)
+     0.26s  2.91% 67.60%      8.75s 97.77%  github.com/goccy/go-json/internal/decoder.(*structDecoder).Decode
+     0.26s  2.91% 70.50%      0.26s  2.91%  runtime.memmove
+     0.18s  2.01% 72.51%      0.18s  2.01%  github.com/goccy/go-json/internal/decoder.indexOf (inline)
+     0.14s  1.56% 74.08%      0.14s  1.56%  github.com/goccy/go-json/internal/decoder.specialKeyBytes (inline)
+     0.13s  1.45% 75.53%      0.33s  3.69%  runtime.mallocgcSmallScanNoHeader
+     0.12s  1.34% 76.87%      0.12s  1.34%  runtime.memclrNoHeapPointers
+     0.09s  1.01% 77.88%      2.37s 26.48%  github.com/goccy/go-json/internal/decoder.(*stringDecoder).Decode
+     0.09s  1.01% 78.88%      0.09s  1.01%  github.com/goccy/go-json/internal/decoder.foldASCIIWord (inline)
+     0.08s  0.89% 79.78%      0.22s  2.46%  github.com/goccy/go-json/internal/decoder.unescapeTo
+     0.07s  0.78% 80.56%      0.07s  0.78%  encoding/binary.littleEndian.Uint64 (inline)
+     0.07s  0.78% 81.34%      0.20s  2.23%  github.com/goccy/go-json/internal/decoder.(*boolDecoder).Decode
+     0.07s  0.78% 82.12%      1.18s 13.18%  github.com/goccy/go-json/internal/decoder.(*interfaceDecoder).Decode
+     0.07s  0.78% 82.91%      0.14s  1.56%  github.com/goccy/go-json/internal/decoder.(*structKeys).findASCII
+     0.07s  0.78% 83.69%      0.07s  0.78%  github.com/goccy/go-json/internal/decoder.parseDigits (inline)
+     0.07s  0.78% 84.47%      0.07s  0.78%  github.com/goccy/go-json/internal/decoder.validateFalse
+
+# Binding-Large-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:39:43 CST
+Duration: 7.46s, Total samples = 5.32s (71.30%)
+Active filters:
+   focus=benchmark(Binding|Generic)Decode
+Showing nodes accounting for 4.56s, 85.71% of 5.32s total
+Dropped 42 nodes (cum <= 0.03s)
+Showing top 22 nodes out of 66
+      flat  flat%   sum%        cum   cum%
+     1.26s 23.68% 23.68%      2.48s 46.62%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringInternal
+     1.04s 19.55% 43.23%      1.04s 19.55%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpace (inline)
+     0.23s  4.32% 47.56%      0.23s  4.32%  runtime.memequal
+     0.23s  4.32% 51.88%      0.23s  4.32%  unicode/utf8.DecodeRune
+     0.21s  3.95% 55.83%      0.36s  6.77%  github.com/nyan233/jjs-go/core/compiler.scanJSONStringEnd
+     0.20s  3.76% 59.59%      5.32s   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect
+     0.18s  3.38% 62.97%      0.35s  6.58%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+     0.12s  2.26% 65.23%      0.12s  2.26%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+     0.11s  2.07% 67.29%      0.16s  3.01%  runtime.(*_panic).nextDefer
+     0.11s  2.07% 69.36%      0.11s  2.07%  strings.EqualFold
+     0.10s  1.88% 71.24%      0.48s  9.02%  github.com/nyan233/jjs-go/core/compiler.(*directDecodePlan).lookupField
+     0.10s  1.88% 73.12%      5.32s   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectStruct
+     0.10s  1.88% 75.00%      0.10s  1.88%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.10s  1.88% 76.88%      0.27s  5.08%  runtime.mapaccess2_faststr
+     0.09s  1.69% 78.57%      0.27s  5.08%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeLiteral (inline)
+     0.07s  1.32% 79.89%      0.07s  1.32%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeByte (inline)
+     0.07s  1.32% 81.20%      0.34s  6.39%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).rawString (inline)
+     0.05s  0.94% 82.14%      0.05s  0.94%  aeshashbody
+     0.05s  0.94% 83.08%      1.77s 33.27%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipDirectValue
+     0.05s  0.94% 84.02%      0.06s  1.13%  runtime.(*_panic).start
+     0.05s  0.94% 84.96%      0.05s  0.94%  runtime.memclrNoHeapPointers
+     0.04s  0.75% 85.71%      0.06s  1.13%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeNumber
+
+# Binding-Large-sonic.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:40:02 CST
+Duration: 7.15s, Total samples = 2.56s (35.79%)
+Active filters:
+   focus=benchmark(Binding|Generic)Decode
+Showing nodes accounting for 2.42s, 94.53% of 2.56s total
+Dropped 19 nodes (cum <= 0.01s)
+Showing top 22 nodes out of 60
+      flat  flat%   sum%        cum   cum%
+     1.01s 39.45% 39.45%      1.01s 39.45%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding_entry__
+     0.67s 26.17% 65.62%      0.67s 26.17%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.11s  4.30% 69.92%      0.11s  4.30%  runtime.memmove
+     0.10s  3.91% 73.83%      0.80s 31.25%  github.com/bytedance/sonic/internal/decoder/optdec.(*structDecoder).FromDom
+     0.09s  3.52% 77.34%      0.18s  7.03%  runtime.mapaccess2_faststr
+     0.07s  2.73% 80.08%      0.07s  2.73%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.04s  1.56% 81.64%      0.04s  1.56%  aeshashbody
+     0.04s  1.56% 83.20%      0.18s  7.03%  github.com/bytedance/sonic/internal/decoder/optdec.(*efaceDecoder).FromDom
+     0.04s  1.56% 84.77%      0.04s  1.56%  github.com/bytedance/sonic/internal/decoder/optdec.Node.AsStrRef
+     0.04s  1.56% 86.33%      0.22s  8.59%  github.com/bytedance/sonic/internal/optcaching.(*FieldCache).Get
+     0.03s  1.17% 87.50%      0.23s  8.98%  github.com/bytedance/sonic/internal/decoder/optdec.(*stringDecoder).FromDom
+     0.03s  1.17% 88.67%      0.13s  5.08%  runtime.mallocgcSmallNoscan
+     0.02s  0.78% 89.45%      0.14s  5.47%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEfaceFallback
+     0.02s  0.78% 90.23%      0.02s  0.78%  github.com/bytedance/sonic/internal/decoder/optdec.Object.Len (inline)
+     0.02s  0.78% 91.02%      0.02s  0.78%  internal/runtime/maps.bitsetFirst (inline)
+     0.02s  0.78% 91.80%      0.25s  9.77%  runtime.mallocgc
+     0.02s  0.78% 92.58%      0.08s  3.12%  runtime.mallocgcSmallScanNoHeader
+     0.01s  0.39% 92.97%      0.14s  5.47%  github.com/bytedance/sonic/internal/decoder/optdec.(*sliceEfaceDecoder).FromDom
+     0.01s  0.39% 93.36%      0.23s  8.98%  github.com/bytedance/sonic/internal/decoder/optdec.Node.AsStr
+     0.01s  0.39% 93.75%      0.03s  1.17%  internal/runtime/maps.bitset.first (inline)
+     0.01s  0.39% 94.14%      0.02s  0.78%  runtime.(*mheap).initSpan
+     0.01s  0.39% 94.53%      0.02s  0.78%  runtime.heapSetTypeNoHeader (inline)
+
+# Binding-Medium-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:39:35 CST
+Duration: 7.47s, Total samples = 5.97s (79.96%)
+Active filters:
+   focus=benchmark(Binding|Generic)Decode
+Showing nodes accounting for 5.73s, 95.98% of 5.97s total
+Dropped 36 nodes (cum <= 0.03s)
+Showing top 22 nodes out of 41
+      flat  flat%   sum%        cum   cum%
+     1.66s 27.81% 27.81%      1.67s 27.97%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpace (inline)
+     1.16s 19.43% 47.24%      2.27s 38.02%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringInternal
+     0.48s  8.04% 55.28%      5.97s   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect
+     0.36s  6.03% 61.31%      0.36s  6.03%  runtime.memequal
+     0.35s  5.86% 67.17%      0.49s  8.21%  runtime.(*_panic).nextDefer
+     0.34s  5.70% 72.86%      0.62s 10.39%  github.com/nyan233/jjs-go/core/compiler.scanJSONStringEnd
+     0.27s  4.52% 77.39%      0.27s  4.52%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+     0.19s  3.18% 80.57%      5.97s   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectStruct
+     0.14s  2.35% 82.91%      0.14s  2.35%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseInteger
+     0.10s  1.68% 84.59%      0.10s  1.68%  runtime.popDefer
+     0.07s  1.17% 85.76%      0.07s  1.17%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+     0.07s  1.17% 86.93%      0.07s  1.17%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.07s  1.17% 88.11%      0.09s  1.51%  runtime.(*_panic).start
+     0.07s  1.17% 89.28%      0.07s  1.17%  runtime.duffzero
+     0.06s  1.01% 90.28%      0.06s  1.01%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeByte (inline)
+     0.06s  1.01% 91.29%      0.30s  5.03%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeLiteral (inline)
+     0.06s  1.01% 92.29%      0.41s  6.87%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).rawString (inline)
+     0.05s  0.84% 93.13%      0.05s  0.84%  runtime.memmove
+     0.05s  0.84% 93.97%      0.35s  5.86%  runtime.slicebytetostring
+     0.04s  0.67% 94.64%      0.04s  0.67%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect.func1
+     0.04s  0.67% 95.31%      0.04s  0.67%  runtime.(*_panic).nextFrame
+     0.04s  0.67% 95.98%      0.26s  4.36%  runtime.mallocgc
+
+# Binding-Small-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:39:26 CST
+Duration: 8.88s, Total samples = 7020ms (79.03%)
+Active filters:
+   focus=benchmark(Binding|Generic)Decode
+Showing nodes accounting for 6440ms, 91.74% of 7020ms total
+Dropped 44 nodes (cum <= 35.10ms)
+Showing top 22 nodes out of 49
+      flat  flat%   sum%        cum   cum%
+     960ms 13.68% 13.68%     6900ms 98.29%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect
+     890ms 12.68% 26.35%     1790ms 25.50%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringInternal
+     770ms 10.97% 37.32%     1050ms 14.96%  runtime.(*_panic).nextDefer
+     550ms  7.83% 45.16%      550ms  7.83%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpace (inline)
+     400ms  5.70% 50.85%      400ms  5.70%  runtime.memequal
+     380ms  5.41% 56.27%      390ms  5.56%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseInteger
+     360ms  5.13% 61.40%     6850ms 97.58%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectStruct
+     200ms  2.85% 64.25%      200ms  2.85%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeByte (inline)
+     190ms  2.71% 66.95%      190ms  2.71%  runtime.(*_panic).start
+     190ms  2.71% 69.66%      250ms  3.56%  runtime.mallocgcTiny
+     170ms  2.42% 72.08%      170ms  2.42%  runtime.popDefer
+     150ms  2.14% 74.22%     3900ms 55.56%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectSlice
+     150ms  2.14% 76.35%      150ms  2.14%  runtime.memmove
+     140ms  1.99% 78.35%      800ms 11.40%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).rawString (inline)
+     140ms  1.99% 80.34%      140ms  1.99%  runtime.deferprocStack
+     140ms  1.99% 82.34%      480ms  6.84%  runtime.mallocgc
+     130ms  1.85% 84.19%      390ms  5.56%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeLiteral (inline)
+     130ms  1.85% 86.04%      130ms  1.85%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect.func1
+     110ms  1.57% 87.61%      130ms  1.85%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).consumeNumber
+     110ms  1.57% 89.17%      110ms  1.57%  runtime.(*_panic).nextFrame
+     100ms  1.42% 90.60%      100ms  1.42%  strconv.readFloat
+      80ms  1.14% 91.74%       80ms  1.14%  unicode/utf8.DecodeRune
+
+# Generic-Large-jjs-go.focused.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: cpu
+Time: 2026-11-23 13:40:09 CST
+Duration: 7.76s, Total samples = 4800ms (61.86%)
+Active filters:
+   focus=benchmark(Binding|Generic)Decode
+Showing nodes accounting for 3450ms, 71.88% of 4800ms total
+Dropped 64 nodes (cum <= 24ms)
+Showing top 22 nodes out of 88
+      flat  flat%   sum%        cum   cum%
+     610ms 12.71% 12.71%     1490ms 31.04%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringInternal
+     580ms 12.08% 24.79%      590ms 12.29%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).skipSpace (inline)
+     240ms  5.00% 29.79%      240ms  5.00%  aeshashbody
+     240ms  5.00% 34.79%      510ms 10.62%  runtime.mallocgcSmallScanNoHeader
+     180ms  3.75% 38.54%     4800ms   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectAny
+     180ms  3.75% 42.29%     1370ms 28.54%  runtime.mallocgc
+     160ms  3.33% 45.62%     1520ms 31.67%  runtime.mapassign_faststr
+     150ms  3.12% 48.75%      150ms  3.12%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     120ms  2.50% 51.25%      120ms  2.50%  unicode/utf8.DecodeRune
+     110ms  2.29% 53.54%      160ms  3.33%  runtime.(*_panic).nextDefer
+     100ms  2.08% 55.62%      250ms  5.21%  internal/runtime/maps.(*table).uncheckedPutSlot
+      90ms  1.88% 57.50%       90ms  1.88%  runtime.nextFreeFast (inline)
+      80ms  1.67% 59.17%      140ms  2.92%  runtime.mallocgcTiny
+      80ms  1.67% 60.83%       80ms  1.67%  runtime.memmove
+      70ms  1.46% 62.29%      170ms  3.54%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+      70ms  1.46% 63.75%       70ms  1.46%  github.com/nyan233/jjs-go/core/compiler.jsonByteEqualMask (inline)
+      70ms  1.46% 65.21%      150ms  3.12%  github.com/nyan233/jjs-go/core/compiler.scanJSONStringEnd
+      70ms  1.46% 66.67%      260ms  5.42%  runtime.mallocgcSmallNoscan
+      70ms  1.46% 68.12%       70ms  1.46%  runtime.memclrNoHeapPointers
+      60ms  1.25% 69.38%       60ms  1.25%  internal/runtime/maps.(*groupReference).elem (inline)
+      60ms  1.25% 70.62%      770ms 16.04%  internal/runtime/maps.(*table).grow
+      60ms  1.25% 71.88%       60ms  1.25%  runtime.(*_panic).start
+
+# ALLOCATION PROFILE SUMMARIES (statistical sampling)
+
+# Binding-Large-goccy.alloc_objects.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: alloc_objects
+Time: 2026-11-23 13:40:02 CST
+Showing nodes accounting for 11271998, 99.72% of 11303352 total
+Dropped 99 nodes (cum <= 56516)
+Showing top 7 nodes out of 20
+      flat  flat%   sum%        cum   cum%
+   5631502 49.82% 49.82%   11030268 97.58%  github.com/goccy/go-json/internal/decoder.decodeNewStringAnyMap
+   4893485 43.29% 93.11%    5065559 44.81%  github.com/goccy/go-json/internal/decoder.(*interfaceDecoder).decodeAnySlice
+    297105  2.63% 95.74%     297105  2.63%  github.com/goccy/go-json/internal/decoder.(*RuntimeContext).boxString (inline)
+    268353  2.37% 98.12%     268353  2.37%  github.com/goccy/go-json/internal/decoder.(*RuntimeContext).boxFloat (inline)
+    181553  1.61% 99.72%     181553  1.61%  github.com/goccy/go-json/internal/decoder.(*RuntimeContext).reserveArena (inline)
+         0     0% 99.72%   11281643 99.81%  github.com/goccy/go-json.Unmarshal
+         0     0% 99.72%   11281643 99.81%  github.com/goccy/go-json.unmarshal
+
+# Binding-Large-jjs-go.alloc_objects.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: alloc_objects
+Time: 2026-11-23 13:39:50 CST
+Showing nodes accounting for 16942342, 99.90% of 16959108 total
+Dropped 66 nodes (cum <= 84795)
+Showing top 7 nodes out of 18
+      flat  flat%   sum%        cum   cum%
+  10167960 59.96% 59.96%   10167960 59.96%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).rawString (inline)
+   5206750 30.70% 90.66%    8314300 49.03%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectAny
+   1567627  9.24% 99.90%    1567627  9.24%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+         5 2.9e-05% 99.90%   16920497 99.77%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectSlice
+         0     0% 99.90%   16942342 99.90%  github.com/nyan233/jjs-go.Unmarshal
+         0     0% 99.90%   16942347 99.90%  github.com/nyan233/jjs-go/benchmark/compare.benchmarkBindingDecode[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func1
+         0     0% 99.90%   16942342 99.90%  github.com/nyan233/jjs-go/benchmark/compare.commonBindingCodecs[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func10
+
+# Binding-Large-sonic.alloc_objects.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: alloc_objects
+Time: 2026-11-23 13:40:09 CST
+Showing nodes accounting for 24849902, 99.38% of 25004258 total
+Dropped 78 nodes (cum <= 125021)
+Showing top 7 nodes out of 18
+      flat  flat%   sum%        cum   cum%
+  15756890 63.02% 63.02%   17172214 68.68%  github.com/bytedance/sonic/internal/decoder/optdec.Node.AsStr
+   7653518 30.61% 93.63%   11882849 47.52%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEfaceFallback
+   1415324  5.66% 99.29%    1415324  5.66%  github.com/bytedance/sonic/internal/decoder/optdec.Node.StringCopyEsc
+     16385 0.066% 99.35%   24843353 99.36%  github.com/bytedance/sonic/internal/decoder/optdec.Decode
+      7785 0.031% 99.38%   24851138 99.39%  github.com/bytedance/sonic.frozenConfig.Unmarshal
+         0     0% 99.38%   24843353 99.36%  github.com/bytedance/sonic.frozenConfig.UnmarshalFromString
+         0     0% 99.38%   24843353 99.36%  github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode
+
+# Generic-Large-goccy.alloc_objects.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: alloc_objects
+Time: 2026-11-23 13:40:25 CST
+Showing nodes accounting for 26386932, 99.67% of 26474856 total
+Dropped 67 nodes (cum <= 132374)
+Showing top 7 nodes out of 14
+      flat  flat%   sum%        cum   cum%
+  20963832 79.18% 79.18%   26386932 99.67%  github.com/goccy/go-json/internal/decoder.decodeNewStringAnyMap
+   3854533 14.56% 93.74%   26324121 99.43%  github.com/goccy/go-json/internal/decoder.(*interfaceDecoder).decodeAnySlice
+    981466  3.71% 97.45%     981466  3.71%  github.com/goccy/go-json/internal/decoder.(*RuntimeContext).boxString (inline)
+    438377  1.66% 99.11%     438377  1.66%  github.com/goccy/go-json/internal/decoder.(*RuntimeContext).boxFloat (inline)
+    148724  0.56% 99.67%     148724  0.56%  github.com/goccy/go-json/internal/decoder.(*RuntimeContext).reserveArena (inline)
+         0     0% 99.67%   26387306 99.67%  github.com/goccy/go-json.Unmarshal
+         0     0% 99.67%   26387306 99.67%  github.com/goccy/go-json.unmarshal
+
+# Generic-Large-jjs-go.alloc_objects.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: alloc_objects
+Time: 2026-11-23 13:40:17 CST
+Showing nodes accounting for 70102625, 100% of 70122453 total
+Dropped 47 nodes (cum <= 350612)
+Showing top 7 nodes out of 13
+      flat  flat%   sum%        cum   cum%
+  36488810 52.04% 52.04%   36488810 52.04%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).rawString (inline)
+  32789464 46.76% 98.80%   70102625   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirectAny
+    824351  1.18%   100%     824351  1.18%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).parseStringSlow
+         0     0%   100%   70102625   100%  github.com/nyan233/jjs-go.Unmarshal
+         0     0%   100%   70102625   100%  github.com/nyan233/jjs-go/benchmark/compare.benchmarkGenericDecode.func1
+         0     0%   100%   70102625   100%  github.com/nyan233/jjs-go/core/compiler.(*Decoder).Compile.func1.1
+         0     0%   100%   70102625   100%  github.com/nyan233/jjs-go/core/compiler.(*jitJSONParser).decodeDirect
+
+# Generic-Large-sonic.alloc_objects.txt
+File: jjs-m1pro-compare-96ffa5b.test
+Type: alloc_objects
+Time: 2026-11-23 13:40:31 CST
+Showing nodes accounting for 92747113, 100% of 92789058 total
+Dropped 74 nodes (cum <= 463945)
+Showing top 7 nodes out of 12
+      flat  flat%   sum%        cum   cum%
+  51656894 55.67% 55.67%   51656894 55.67%  github.com/bytedance/sonic/internal/decoder/optdec.Node.AsStr
+  39871884 42.97% 98.64%   92743177   100%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEfaceFallback
+   1214399  1.31%   100%    1214399  1.31%  github.com/bytedance/sonic/internal/decoder/optdec.Node.StringCopyEsc
+      3936 0.0042%   100%   92764704   100%  github.com/bytedance/sonic.frozenConfig.Unmarshal
+         0     0%   100%   92760768   100%  github.com/bytedance/sonic.frozenConfig.UnmarshalFromString
+         0     0%   100%   92744384   100%  github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode
+         0     0%   100%   92743177   100%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEface
