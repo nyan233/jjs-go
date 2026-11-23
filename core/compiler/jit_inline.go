@@ -85,17 +85,13 @@ func (g *jitEncoderGenerator) emitInteger(offset int64, width int, signed bool) 
 	if signed {
 		positive := c.newLabel()
 		c.compareConst(0, _RBX)
-		c.branch(jitNegative, positive)
-		// The branch's taken block handles the negative magnitude, including
-		// MinInt64, using unsigned arithmetic.
-		done := c.newLabel()
-		c.branch(jitAlways, done)
-		c.bind(positive)
+		c.branch(jitNonNegative, positive)
+		// Unsigned magnitude also handles MinInt64 without overflow.
 		c.negate(_RBX)
 		c.movConst('-', _RAX)
 		c.store8(_RAX, mem(_RT1, 0))
 		c.addConst(1, _RT1)
-		c.bind(done)
+		c.bind(positive)
 	}
 	c.lea(_RSP, c.scratchSlot()+24, _RDI)
 	loop, last, single, copyDigits := c.newLabel(), c.newLabel(), c.newLabel(), c.newLabel()

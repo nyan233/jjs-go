@@ -48,6 +48,7 @@ const (
 	jitBelow
 	jitAboveEqual
 	jitNegative
+	jitNonNegative
 	jitAlways
 )
 
@@ -80,6 +81,9 @@ func (c *jitCodeBuilder) initEncoderLocals() {
 	for i := 0; i < jitInlineDepth; i++ {
 		c.mov(_R11, mem(_RSP, c.rootSlot(i)))
 	}
+	// Word copies of the final digits may include up to seven padding bytes.
+	// Never expose uninitialized stack contents through output capacity.
+	c.mov(_R11, mem(_RSP, c.scratchSlot()+24))
 }
 
 func newJITCodeBuilder(name string) *jitCodeBuilder {

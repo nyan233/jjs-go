@@ -10,7 +10,7 @@ import (
 func (c *jitCodeBuilder) bind(l *jitLabel) { c.emit(l.prog) }
 
 func (c *jitCodeBuilder) branch(condition int, l *jitLabel) {
-	op := [...]obj.As{x86.AJEQ, x86.AJNE, x86.AJCS, x86.AJCC, x86.AJMI, obj.AJMP}[condition]
+	op := [...]obj.As{x86.AJEQ, x86.AJNE, x86.AJCS, x86.AJCC, x86.AJMI, x86.AJPL, obj.AJMP}[condition]
 	c.emit(&obj.Prog{As: op, To: obj.Addr{Type: obj.TYPE_BRANCH, Val: l.prog}})
 }
 

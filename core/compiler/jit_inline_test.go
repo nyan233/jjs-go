@@ -8,9 +8,49 @@ import (
 	"math"
 	"math/rand"
 	"reflect"
+	"runtime"
 	"strconv"
 	"testing"
 )
+
+func unexpectedInlineHelper() { panic("typed fast path called a generic JIT helper") }
+
+func TestJITInlineAvoidsTypeHelpers(t *testing.T) {
+	number := 42
+	value := struct {
+		Bool    bool
+		Int     int
+		Float   float64
+		Pointer *int
+		Nil     *int
+		Slice   []int
+		Bytes   []byte
+	}{
+		true, -42, 1.25, &number, nil, []int{1, -2, 3}, []byte("hello"),
+	}
+	program, err := compileJITEncoder(reflect.TypeOf(&value))
+	if err != nil {
+		t.Fatal(err)
+	}
+	indices := []int{jitHelperBool, jitHelperInt, jitHelperFloat, jitHelperNull, jitHelperPointer, jitHelperSlice}
+	if runtime.GOARCH == "arm64" {
+		indices = append(indices, jitHelperByteSlice)
+	}
+	for _, index := range indices {
+		program.program.helpers[index] = reflect.ValueOf(unexpectedInlineHelper).Pointer()
+	}
+	got, err := program.encode(nil, reflect.ValueOf(&value).UnsafePointer())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("got %s, want %s", got, want)
+	}
+}
 
 func checkInlineJSON(t *testing.T, value any) {
 	t.Helper()
@@ -125,6 +165,21 @@ func TestJITInlineContainers(t *testing.T) {
 	long := make([]int, 40000)
 	long[16383], long[16384], long[32768] = -1, 42, math.MaxInt
 	checkInlineJSON(t, &long)
+}
+
+func TestJITInlineArrayCodeSizeBounded(t *testing.T) {
+	// Array length changes the loop bound, not the number of emitted elements.
+	small, err := EncoderCodegenStats(reflect.TypeOf([32]int64{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	large, err := EncoderCodegenStats(reflect.TypeOf([32768]int64{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if large.CodeBytes > small.CodeBytes+32 || large.Functions != small.Functions {
+		t.Fatalf("array loop unexpectedly expanded: small=%+v large=%+v", small, large)
+	}
 }
 
 type inlineGCValue int

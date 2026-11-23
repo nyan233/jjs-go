@@ -15,7 +15,7 @@ func (c *jitCodeBuilder) branch(condition int, l *jitLabel) {
 		c.word(0x14000000)
 		return
 	}
-	cond := [...]uint32{0, 1, 3, 2, 4}[condition]
+	cond := [...]uint32{0, 1, 3, 2, 4, 5}[condition]
 	c.word(0x54000000 | cond)
 }
 
