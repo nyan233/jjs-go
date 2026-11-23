@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func TestCompileCachePerKey(t *testing.T) {
-	var cache baseCache[string, int]
+func TestRCUCachePerKey(t *testing.T) {
+	var cache rcuCache[string, int]
 	started, release := make(chan struct{}), make(chan struct{})
 	var builds atomic.Int32
 	build := func() (int, error) {
@@ -52,8 +52,8 @@ func TestCompileCachePerKey(t *testing.T) {
 	}
 }
 
-func TestCompileCacheRetainsErrors(t *testing.T) {
-	var cache baseCache[int, int]
+func TestRCUCacheRetainsErrors(t *testing.T) {
+	var cache rcuCache[int, int]
 	want := errors.New("unsupported")
 	builds := 0
 	for i := 0; i < 2; i++ {

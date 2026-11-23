@@ -23,11 +23,11 @@ func CompileDecoder(typ reflect.Type) (DecodeHandler, error) {
 }
 
 type Decoder struct {
-	baseCache[reflect.Type, DecodeHandler]
+	rcuCache[reflect.Type, DecodeHandler]
 }
 
 func (d *Decoder) init() *Decoder {
-	d.baseCache.init()
+	d.rcuCache.init()
 	return d
 }
 
@@ -38,7 +38,7 @@ func (d *Decoder) Compile(typ reflect.Type) (DecodeHandler, error) {
 	if handler, ok := d.getCompileResult(typ); ok {
 		return handler, nil
 	}
-	return d.baseCache.compile(typ, func() (DecodeHandler, error) {
+	return d.rcuCache.compile(typ, func() (DecodeHandler, error) {
 		program, err := compileJITDecoder(typ)
 		if err != nil {
 			return nil, err

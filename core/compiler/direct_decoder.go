@@ -36,7 +36,7 @@ type directDecodeField struct {
 	plan     *directDecodePlan
 }
 
-var directPlans baseCache[reflect.Type, *directDecodePlan]
+var directPlans rcuCache[reflect.Type, *directDecodePlan]
 
 func compileDirectDecodePlan(typ reflect.Type) (*directDecodePlan, error) {
 	if plan, ok := directPlans.getCompileResult(typ); ok {

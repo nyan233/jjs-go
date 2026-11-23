@@ -13,7 +13,7 @@ import (
 
 var gEncoder = new(Encoder).init()
 
-var jitEncoderPrograms baseCache[uintptr, *jitCompiledEncoder]
+var jitEncoderPrograms rcuCache[uintptr, *jitCompiledEncoder]
 
 func loadCompiledEncoder(typ reflect.Type) (*jitCompiledEncoder, error) {
 	key := typePointer(typ)
@@ -50,11 +50,11 @@ func EncodeTo(typ reflect.Type, dst []byte, data unsafe.Pointer) ([]byte, error)
 }
 
 type Encoder struct {
-	baseCache[reflect.Type, EncodeHandler]
+	rcuCache[reflect.Type, EncodeHandler]
 }
 
 func (e *Encoder) init() *Encoder {
-	e.baseCache.init()
+	e.rcuCache.init()
 	return e
 }
 
@@ -65,7 +65,7 @@ func (e *Encoder) Compile(typ reflect.Type, _ uint64) (EncodeHandler, error) {
 	if handler, ok := e.getCompileResult(typ); ok {
 		return handler, nil
 	}
-	return e.baseCache.compile(typ, func() (EncodeHandler, error) {
+	return e.rcuCache.compile(typ, func() (EncodeHandler, error) {
 		program, err := loadCompiledEncoder(typ)
 		if err != nil {
 			return nil, err
