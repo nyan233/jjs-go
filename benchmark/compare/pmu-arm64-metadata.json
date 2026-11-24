@@ -1,0 +1,32 @@
+{
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "phase": "counters",
+  "rounds": 5,
+  "uid": 501,
+  "target_seconds": 1.0,
+  "gomaxprocs": 1,
+  "binary": "/private/tmp/jjs-profilecodec-kpc",
+  "sha256": "6b8030f50b2430098ea8e95a08155409e586a8fa2e851787ee1a29c71724ed14",
+  "mach_timebase": {
+    "numer": 125,
+    "denom": 3
+  },
+  "counter_source": "proc_pid_rusage RUSAGE_INFO_V6; process scope",
+  "worker_counter_group": null,
+  "handshake": "stopped-child snapshots bracket the loop plus bounded pipe/signal/format/readMemStats overhead",
+  "codec_revision": "2ebe8204bc985f27211d4968d33c798a161d070b",
+  "sonic": "v1.15.5",
+  "machine": "Apple M1 Pro, 10 cores, 32 GiB",
+  "os": "macOS27.0.1",
+  "artifact_dir": "/Users/rainstorm/.codex/visualizations/2026/11/23/01a20691-09a5-7d60-bdef-045ab41c91eb/jjs-pmu-20261124",
+  "raw_source_dir": "/tmp/jjs-pmu-20261124/final",
+  "xcode": "download canceled at user request; not installed",
+  "worker_pmu_status": "single-case capability probes passed; full paired captures awaiting macOS administrator authentication",
+  "primary_samples": 120,
+  "cpu_profile_cases": 24,
+  "exact_allocation_profile_cases": 24,
+  "extra_cpu_rusage_cases": 4,
+  "single_operation_controls": 10,
+  "sonic_input_control_samples": 18,
+  "preliminary_data": "/tmp/jjs-pmu-20261124/process-counters was collected during Xcode download and is excluded from final tables"
+}

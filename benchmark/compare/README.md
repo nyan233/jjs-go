@@ -113,6 +113,13 @@ Static pointer checks for recursive, large and deep pointees are measured in
 [`JIT_POINTER_ARM64.md`](JIT_POINTER_ARM64.md), including the remaining Go
 call bridge, regression coverage and compilation costs.
 
+The current Small/Medium/Large jjs-versus-Sonic investigation is in
+[`PMU_COMPARISON_ARM64.md`](PMU_COMPARISON_ARM64.md). It includes process
+IPC/CPI, CPU/allocation profiles and an input-copy control; the report marks
+the status of paired worker cache/branch captures. The
+[`methodology`](PMU_METHODOLOGY_ARM64.md) explains the native macOS counters
+and their scopes without requiring a full Xcode installation.
+
 ## Code generation metrics
 
 The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from

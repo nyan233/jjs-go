@@ -1,0 +1,23 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkSonicInputCopy/Small/Bytes   	  359638	      1616 ns/op	 225.91 MB/s	     544 B/op	      10 allocs/op
+BenchmarkSonicInputCopy/Small/Bytes   	  336577	      1657 ns/op	 220.30 MB/s	     544 B/op	      10 allocs/op
+BenchmarkSonicInputCopy/Small/Bytes   	  360574	      1574 ns/op	 231.90 MB/s	     544 B/op	      10 allocs/op
+BenchmarkSonicInputCopy/Small/String  	  442696	      1425 ns/op	 256.15 MB/s	     160 B/op	       9 allocs/op
+BenchmarkSonicInputCopy/Small/String  	  436545	      1446 ns/op	 252.33 MB/s	     160 B/op	       9 allocs/op
+BenchmarkSonicInputCopy/Small/String  	  397525	      1440 ns/op	 253.48 MB/s	     160 B/op	       9 allocs/op
+BenchmarkSonicInputCopy/Medium/Bytes  	   22197	     27074 ns/op	 481.02 MB/s	   16936 B/op	     110 allocs/op
+BenchmarkSonicInputCopy/Medium/Bytes  	   21996	     26793 ns/op	 486.06 MB/s	   16936 B/op	     110 allocs/op
+BenchmarkSonicInputCopy/Medium/Bytes  	   21621	     27258 ns/op	 477.76 MB/s	   16936 B/op	     110 allocs/op
+BenchmarkSonicInputCopy/Medium/String 	   26316	     21747 ns/op	 598.85 MB/s	    3368 B/op	     109 allocs/op
+BenchmarkSonicInputCopy/Medium/String 	   27054	     22936 ns/op	 567.81 MB/s	    3368 B/op	     109 allocs/op
+BenchmarkSonicInputCopy/Medium/String 	   26737	     22102 ns/op	 589.22 MB/s	    3368 B/op	     109 allocs/op
+BenchmarkSonicInputCopy/Large/Bytes   	     510	   1089661 ns/op	 579.55 MB/s	  808966 B/op	    4099 allocs/op
+BenchmarkSonicInputCopy/Large/Bytes   	     513	   1094964 ns/op	 576.74 MB/s	  808967 B/op	    4099 allocs/op
+BenchmarkSonicInputCopy/Large/Bytes   	     540	   1087269 ns/op	 580.83 MB/s	  808967 B/op	    4099 allocs/op
+BenchmarkSonicInputCopy/Large/String  	     685	    922186 ns/op	 684.80 MB/s	  169979 B/op	    4098 allocs/op
+BenchmarkSonicInputCopy/Large/String  	     690	    915518 ns/op	 689.79 MB/s	  169979 B/op	    4098 allocs/op
+BenchmarkSonicInputCopy/Large/String  	     648	    907176 ns/op	 696.13 MB/s	  169979 B/op	    4098 allocs/op
+PASS
