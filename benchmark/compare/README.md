@@ -121,6 +121,14 @@ from the P-heavy process measurements and records scheduling controls. The
 [`methodology`](PMU_METHODOLOGY_ARM64.md) explains the native macOS counters
 and their scopes without requiring a full Xcode installation.
 
+The separate Sonic `feat/dev_hw_arm` comparison pins development commit
+`ba8b7aa` and tests its native ARM64 JIT against its own forced VM,
+Sonic v1.15.5 and jjs. See
+[`SONIC_ARM64_JIT_COMPARISON.md`](SONIC_ARM64_JIT_COMPARISON.md) for 240 warmed
+samples, 45 first-Pretouch/backend probes, IPC/allocation results and profiles.
+The development module and its matching loader are replaced only in isolated
+benchmark copies; the dependency listed above remains v1.15.5.
+
 ## Code generation metrics
 
 The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from

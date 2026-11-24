@@ -1,0 +1,328 @@
+
+sonic-dev-vm encode-reuse flat
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:08:56 CST
+Duration: 3.13s, Total samples = 2.62s (83.69%)
+Showing nodes accounting for 2.52s, 96.18% of 2.62s total
+Dropped 29 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 70
+      flat  flat%   sum%        cum   cum%
+     0.90s 34.35% 34.35%      0.90s 34.35%  runtime.kevent
+     0.48s 18.32% 52.67%      1.02s 38.93%  github.com/bytedance/sonic/internal/encoder/vm.Execute
+     0.27s 10.31% 62.98%      0.27s 10.31%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.14s  5.34% 68.32%      0.25s  9.54%  github.com/bytedance/sonic/internal/native.Quote
+     0.12s  4.58% 72.90%      0.14s  5.34%  runtime.greyobject
+     0.10s  3.82% 76.72%      0.35s 13.36%  github.com/bytedance/sonic/internal/encoder/alg.Quote
+     0.09s  3.44% 80.15%      0.09s  3.44%  github.com/bytedance/sonic/internal/native/neon.__quote_entry__
+     0.07s  2.67% 82.82%      0.07s  2.67%  runtime.findObject
+     0.06s  2.29% 85.11%      0.06s  2.29%  github.com/bytedance/sonic/internal/native/neon.__html_escape_entry__
+     0.06s  2.29% 87.40%      0.26s  9.92%  runtime.scanobject
+     0.05s  1.91% 89.31%      0.05s  1.91%  runtime.memmove
+     0.04s  1.53% 90.84%      0.04s  1.53%  runtime.madvise
+     0.03s  1.15% 91.98%      0.05s  1.91%  gcWriteBarrier
+     0.02s  0.76% 92.75%      0.11s  4.20%  github.com/bytedance/sonic/internal/native/neon.__quote
+     0.02s  0.76% 93.51%      0.04s  1.53%  runtime.scanblock
+     0.02s  0.76% 94.27%      0.02s  0.76%  runtime.typePointers.next
+     0.01s  0.38% 94.66%      0.02s  0.76%  github.com/bytedance/sonic/internal/encoder/alg.F64toa
+     0.01s  0.38% 95.04%      1.02s 38.93%  github.com/bytedance/sonic/internal/encoder/vm.EncodeTypedPointer
+     0.01s  0.38% 95.42%      0.02s  0.76%  runtime.mallocgcSmallScanNoHeader
+     0.01s  0.38% 95.80%      0.02s  0.76%  strconv.AppendInt
+     0.01s  0.38% 96.18%      0.02s  0.76%  sync.(*Pool).Get
+         0     0% 96.18%      1.62s 61.83%  github.com/bytedance/sonic/internal/encoder.EncodeInto
+         0     0% 96.18%      0.32s 12.21%  github.com/bytedance/sonic/internal/encoder.HTMLEscape (inline)
+         0     0% 96.18%      0.59s 22.52%  github.com/bytedance/sonic/internal/encoder.encodeFinish
+         0     0% 96.18%      1.03s 39.31%  github.com/bytedance/sonic/internal/encoder.encodeInto
+         0     0% 96.18%      1.03s 39.31%  github.com/bytedance/sonic/internal/encoder.encodeIntoCheckRace (inline)
+         0     0% 96.18%      0.32s 12.21%  github.com/bytedance/sonic/internal/encoder/alg.HtmlEscape
+         0     0% 96.18%      0.02s  0.76%  github.com/bytedance/sonic/internal/encoder/alg.I64toa (inline)
+         0     0% 96.18%      0.03s  1.15%  github.com/bytedance/sonic/internal/encoder/alg.IteratorStart
+         0     0% 96.18%      0.02s  0.76%  github.com/bytedance/sonic/internal/encoder/vars.(*Stack).Drop (inline)
+
+sonic-dev-vm encode-reuse cumulative
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:08:56 CST
+Duration: 3.13s, Total samples = 2.62s (83.69%)
+Showing nodes accounting for 1.76s, 67.18% of 2.62s total
+Dropped 29 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 70
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      1.65s 62.98%  main.main
+         0     0%     0%      1.65s 62.98%  main.run
+         0     0%     0%      1.65s 62.98%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func1
+         0     0%     0%      1.65s 62.98%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func3
+         0     0%     0%      1.65s 62.98%  runtime.main
+         0     0%     0%      1.62s 61.83%  github.com/bytedance/sonic/internal/encoder.EncodeInto
+         0     0%     0%      1.27s 48.47%  runtime.systemstack
+         0     0%     0%      1.03s 39.31%  github.com/bytedance/sonic/internal/encoder.encodeInto
+         0     0%     0%      1.03s 39.31%  github.com/bytedance/sonic/internal/encoder.encodeIntoCheckRace (inline)
+     0.01s  0.38%  0.38%      1.02s 38.93%  github.com/bytedance/sonic/internal/encoder/vm.EncodeTypedPointer
+     0.48s 18.32% 18.70%      1.02s 38.93%  github.com/bytedance/sonic/internal/encoder/vm.Execute
+     0.90s 34.35% 53.05%      0.90s 34.35%  runtime.kevent
+         0     0% 53.05%      0.90s 34.35%  runtime.netpoll
+         0     0% 53.05%      0.90s 34.35%  runtime.startTheWorldWithSema
+         0     0% 53.05%      0.59s 22.52%  github.com/bytedance/sonic/internal/encoder.encodeFinish
+         0     0% 53.05%      0.53s 20.23%  runtime.gcStart.func4
+         0     0% 53.05%      0.37s 14.12%  runtime.gcMarkTermination.func3
+     0.10s  3.82% 56.87%      0.35s 13.36%  github.com/bytedance/sonic/internal/encoder/alg.Quote
+         0     0% 56.87%      0.32s 12.21%  github.com/bytedance/sonic/internal/encoder.HTMLEscape (inline)
+         0     0% 56.87%      0.32s 12.21%  github.com/bytedance/sonic/internal/encoder/alg.HtmlEscape
+         0     0% 56.87%      0.31s 11.83%  runtime.mallocgc
+         0     0% 56.87%      0.27s 10.31%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast
+     0.27s 10.31% 67.18%      0.27s 10.31%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+         0     0% 67.18%      0.27s 10.31%  github.com/bytedance/sonic/utf8.Validate
+         0     0% 67.18%      0.27s 10.31%  github.com/bytedance/sonic/utf8.ValidateString (inline)
+         0     0% 67.18%      0.27s 10.31%  runtime.deductAssistCredit
+         0     0% 67.18%      0.27s 10.31%  runtime.gcAssistAlloc
+         0     0% 67.18%      0.27s 10.31%  runtime.gcAssistAlloc.func2
+         0     0% 67.18%      0.27s 10.31%  runtime.gcAssistAlloc1
+         0     0% 67.18%      0.27s 10.31%  runtime.gcDrainN
+
+sonic-dev-vm decode-reuse flat
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:09:00 CST
+Duration: 3.13s, Total samples = 2.53s (80.73%)
+Showing nodes accounting for 2.31s, 91.30% of 2.53s total
+Dropped 51 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 73
+      flat  flat%   sum%        cum   cum%
+     0.91s 35.97% 35.97%      0.91s 35.97%  runtime.kevent
+     0.47s 18.58% 54.55%      0.47s 18.58%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding_entry__
+     0.27s 10.67% 65.22%      0.27s 10.67%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.19s  7.51% 72.73%      0.19s  7.51%  runtime.madvise
+     0.10s  3.95% 76.68%      0.10s  3.95%  runtime.memmove
+     0.05s  1.98% 78.66%      0.45s 17.79%  github.com/bytedance/sonic/internal/decoder/optdec.(*structDecoder).FromDom
+     0.05s  1.98% 80.63%      0.06s  2.37%  runtime.greyobject
+     0.05s  1.98% 82.61%      0.12s  4.74%  runtime.mapaccess2_faststr
+     0.03s  1.19% 83.79%      0.03s  1.19%  aeshashbody
+     0.03s  1.19% 84.98%      0.03s  1.19%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.03s  1.19% 86.17%      0.03s  1.19%  runtime.findObject
+     0.03s  1.19% 87.35%      0.03s  1.19%  runtime.scanblock
+     0.02s  0.79% 88.14%      0.06s  2.37%  runtime.mallocgcTiny
+     0.02s  0.79% 88.93%      0.02s  0.79%  runtime.typePointers.next
+     0.01s   0.4% 89.33%      0.11s  4.35%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEfaceFallback
+     0.01s   0.4% 89.72%      1.37s 54.15%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func4
+     0.01s   0.4% 90.12%      0.10s  3.95%  runtime.gcDrainN
+     0.01s   0.4% 90.51%      0.25s  9.88%  runtime.mallocgc
+     0.01s   0.4% 90.91%      0.10s  3.95%  runtime.scanobject
+     0.01s   0.4% 91.30%      0.03s  1.19%  runtime.wbBufFlush1
+         0     0% 91.30%      0.03s  1.19%  gcWriteBarrier
+         0     0% 91.30%      1.36s 53.75%  github.com/bytedance/sonic.frozenConfig.Unmarshal
+         0     0% 91.30%      1.26s 49.80%  github.com/bytedance/sonic.frozenConfig.UnmarshalFromString
+         0     0% 91.30%      1.23s 48.62%  github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode
+         0     0% 91.30%      0.03s  1.19%  github.com/bytedance/sonic/internal/decoder/api.NewDecoder
+         0     0% 91.30%      0.11s  4.35%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEface
+         0     0% 91.30%      0.47s 18.58%  github.com/bytedance/sonic/internal/decoder/optdec.(*Parser).parse
+         0     0% 91.30%      0.11s  4.35%  github.com/bytedance/sonic/internal/decoder/optdec.(*efaceDecoder).FromDom
+         0     0% 91.30%      0.36s 14.23%  github.com/bytedance/sonic/internal/decoder/optdec.(*recuriveDecoder).FromDom
+         0     0% 91.30%      0.44s 17.39%  github.com/bytedance/sonic/internal/decoder/optdec.(*sliceDecoder).FromDom
+
+sonic-dev-vm decode-reuse cumulative
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:09:00 CST
+Duration: 3.13s, Total samples = 2.53s (80.73%)
+Showing nodes accounting for 1.72s, 67.98% of 2.53s total
+Dropped 51 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 73
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      1.37s 54.15%  main.main
+         0     0%     0%      1.37s 54.15%  main.run
+     0.01s   0.4%   0.4%      1.37s 54.15%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func4
+         0     0%   0.4%      1.37s 54.15%  runtime.main
+         0     0%   0.4%      1.36s 53.75%  github.com/bytedance/sonic.frozenConfig.Unmarshal
+         0     0%   0.4%      1.31s 51.78%  runtime.systemstack
+         0     0%   0.4%      1.26s 49.80%  github.com/bytedance/sonic.frozenConfig.UnmarshalFromString
+         0     0%   0.4%      1.23s 48.62%  github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode
+         0     0%   0.4%      1.23s 48.62%  github.com/bytedance/sonic/internal/decoder/optdec.Decode
+         0     0%   0.4%      0.92s 36.36%  runtime.startTheWorldWithSema
+     0.91s 35.97% 36.36%      0.91s 35.97%  runtime.kevent
+         0     0% 36.36%      0.91s 35.97%  runtime.netpoll
+         0     0% 36.36%      0.78s 30.83%  github.com/bytedance/sonic/internal/decoder/optdec.NewContext
+         0     0% 36.36%      0.63s 24.90%  runtime.gcStart.func4
+         0     0% 36.36%      0.47s 18.58%  github.com/bytedance/sonic/internal/decoder/optdec.(*Parser).parse
+         0     0% 36.36%      0.47s 18.58%  github.com/bytedance/sonic/internal/native.ParseWithPadding
+         0     0% 36.36%      0.47s 18.58%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding
+     0.47s 18.58% 54.94%      0.47s 18.58%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding_entry__
+     0.05s  1.98% 56.92%      0.45s 17.79%  github.com/bytedance/sonic/internal/decoder/optdec.(*structDecoder).FromDom
+         0     0% 56.92%      0.44s 17.39%  github.com/bytedance/sonic/internal/decoder/optdec.(*sliceDecoder).FromDom
+         0     0% 56.92%      0.36s 14.23%  github.com/bytedance/sonic/internal/decoder/optdec.(*recuriveDecoder).FromDom
+         0     0% 56.92%      0.31s 12.25%  github.com/bytedance/sonic/internal/decoder/optdec.newParser
+         0     0% 56.92%      0.29s 11.46%  runtime.gcMarkTermination.func3
+         0     0% 56.92%      0.27s 10.67%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast
+     0.27s 10.67% 67.59%      0.27s 10.67%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+         0     0% 67.59%      0.27s 10.67%  github.com/bytedance/sonic/utf8.ValidateString (inline)
+     0.01s   0.4% 67.98%      0.25s  9.88%  runtime.mallocgc
+         0     0% 67.98%      0.23s  9.09%  runtime.slicebytetostring
+         0     0% 67.98%      0.20s  7.91%  runtime.(*mheap).alloc.func1
+         0     0% 67.98%      0.20s  7.91%  runtime.(*mheap).allocSpan
+
+sonic-dev-jit encode-reuse flat
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:09:03 CST
+Duration: 2.66s, Total samples = 2.23s (83.92%)
+Showing nodes accounting for 2.08s, 93.27% of 2.23s total
+Dropped 35 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 79
+      flat  flat%   sum%        cum   cum%
+     0.55s 24.66% 24.66%      0.55s 24.66%  runtime.kevent
+     0.39s 17.49% 42.15%      0.39s 17.49%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.28s 12.56% 54.71%      0.28s 12.56%  github.com/bytedance/sonic/internal/native/neon.__quote_entry__
+     0.26s 11.66% 66.37%      0.26s 11.66%  github.com/bytedance/sonic/internal/native/neon.__html_escape_entry__
+     0.09s  4.04% 70.40%      0.28s 12.56%  encode_compare.User
+     0.06s  2.69% 73.09%      0.22s  9.87%  runtime.scanobject
+     0.05s  2.24% 75.34%      0.68s 30.49%  encode_compare.TwitterResponse
+     0.05s  2.24% 77.58%      0.05s  2.24%  runtime.greyobject
+     0.04s  1.79% 79.37%      0.04s  1.79%  github.com/bytedance/sonic/internal/native/neon.__i64toa_entry__
+     0.04s  1.79% 81.17%      0.04s  1.79%  runtime.typePointers.next
+     0.03s  1.35% 82.51%      0.03s  1.35%  github.com/bytedance/sonic/internal/native/neon.__f64toa_entry__
+     0.03s  1.35% 83.86%      0.04s  1.79%  runtime.findObject
+     0.03s  1.35% 85.20%      0.03s  1.35%  runtime.madvise
+     0.02s   0.9% 86.10%      0.23s 10.31%  encode_map[...]interface {}
+     0.02s   0.9% 87.00%      0.05s  2.24%  gcWriteBarrier
+     0.02s   0.9% 87.89%      0.02s   0.9%  runtime.(*mspan).heapBitsSmallForAddr
+     0.02s   0.9% 88.79%      0.02s   0.9%  runtime.markrootSpans
+     0.02s   0.9% 89.69%      0.02s   0.9%  runtime.scanblock
+     0.02s   0.9% 90.58%      0.03s  1.35%  runtime.wbBufFlush1
+     0.01s  0.45% 91.03%      0.02s   0.9%  encode_[...]interface {}
+     0.01s  0.45% 91.48%      0.23s 10.31%  encode_compare.Entities
+     0.01s  0.45% 91.93%      0.03s  1.35%  encode_float64
+     0.01s  0.45% 92.38%      0.08s  3.59%  github.com/bytedance/sonic/internal/encoder/alg.IteratorStart
+     0.01s  0.45% 92.83%      0.69s 30.94%  github.com/bytedance/sonic/internal/encoder/arm64.EncodeTypedPointer
+     0.01s  0.45% 93.27%      0.03s  1.35%  runtime.(*mspan).typePointersOfUnchecked
+         0     0% 93.27%      1.57s 70.40%  github.com/bytedance/sonic/internal/encoder.EncodeInto
+         0     0% 93.27%      0.50s 22.42%  github.com/bytedance/sonic/internal/encoder.HTMLEscape (inline)
+         0     0% 93.27%      0.89s 39.91%  github.com/bytedance/sonic/internal/encoder.encodeFinish
+         0     0% 93.27%      0.68s 30.49%  github.com/bytedance/sonic/internal/encoder.encodeInto
+         0     0% 93.27%      0.68s 30.49%  github.com/bytedance/sonic/internal/encoder.encodeIntoCheckRace (inline)
+Local symbolization failed for dyld: open /usr/lib/dyld: unrecognized object file
+Local symbolization failed for dyld: open /usr/lib/dyld: unrecognized object file
+Some binary filenames not available. Symbolization may be incomplete.
+Try setting PPROF_BINARY_PATH to the search path for local binaries.
+
+sonic-dev-jit encode-reuse cumulative
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:09:03 CST
+Duration: 2.66s, Total samples = 2.23s (83.92%)
+Showing nodes accounting for 1.63s, 73.09% of 2.23s total
+Dropped 35 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 79
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      1.58s 70.85%  main.main
+         0     0%     0%      1.58s 70.85%  main.run
+         0     0%     0%      1.58s 70.85%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func1
+         0     0%     0%      1.58s 70.85%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func3
+         0     0%     0%      1.58s 70.85%  runtime.main
+         0     0%     0%      1.57s 70.40%  github.com/bytedance/sonic/internal/encoder.EncodeInto
+         0     0%     0%      0.90s 40.36%  runtime.systemstack
+         0     0%     0%      0.89s 39.91%  github.com/bytedance/sonic/internal/encoder.encodeFinish
+     0.01s  0.45%  0.45%      0.69s 30.94%  github.com/bytedance/sonic/internal/encoder/arm64.EncodeTypedPointer
+     0.05s  2.24%  2.69%      0.68s 30.49%  encode_compare.TwitterResponse
+         0     0%  2.69%      0.68s 30.49%  github.com/bytedance/sonic/internal/encoder.encodeInto
+         0     0%  2.69%      0.68s 30.49%  github.com/bytedance/sonic/internal/encoder.encodeIntoCheckRace (inline)
+     0.55s 24.66% 27.35%      0.55s 24.66%  runtime.kevent
+         0     0% 27.35%      0.55s 24.66%  runtime.netpoll
+         0     0% 27.35%      0.55s 24.66%  runtime.startTheWorldWithSema
+         0     0% 27.35%      0.50s 22.42%  github.com/bytedance/sonic/internal/encoder.HTMLEscape (inline)
+         0     0% 27.35%      0.50s 22.42%  github.com/bytedance/sonic/internal/encoder/alg.HtmlEscape
+         0     0% 27.35%      0.39s 17.49%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast
+     0.39s 17.49% 44.84%      0.39s 17.49%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+         0     0% 44.84%      0.39s 17.49%  github.com/bytedance/sonic/utf8.Validate
+         0     0% 44.84%      0.39s 17.49%  github.com/bytedance/sonic/utf8.ValidateString (inline)
+         0     0% 44.84%      0.30s 13.45%  runtime.gcStart.func4
+     0.09s  4.04% 48.88%      0.28s 12.56%  encode_compare.User
+     0.28s 12.56% 61.43%      0.28s 12.56%  github.com/bytedance/sonic/internal/native/neon.__quote_entry__
+         0     0% 61.43%      0.28s 12.56%  runtime.mallocgc
+         0     0% 61.43%      0.26s 11.66%  github.com/bytedance/sonic/internal/native.HTMLEscape
+         0     0% 61.43%      0.26s 11.66%  github.com/bytedance/sonic/internal/native/neon.__html_escape
+     0.26s 11.66% 73.09%      0.26s 11.66%  github.com/bytedance/sonic/internal/native/neon.__html_escape_entry__
+         0     0% 73.09%      0.25s 11.21%  runtime.gcMarkTermination.func3
+         0     0% 73.09%      0.24s 10.76%  github.com/bytedance/sonic/internal/rt.GrowSlice
+Local symbolization failed for dyld: open /usr/lib/dyld: unrecognized object file
+Local symbolization failed for dyld: open /usr/lib/dyld: unrecognized object file
+Some binary filenames not available. Symbolization may be incomplete.
+Try setting PPROF_BINARY_PATH to the search path for local binaries.
+
+sonic-dev-jit decode-reuse flat
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:09:06 CST
+Duration: 2.89s, Total samples = 2.35s (81.39%)
+Showing nodes accounting for 2.14s, 91.06% of 2.35s total
+Dropped 68 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 86
+      flat  flat%   sum%        cum   cum%
+     0.73s 31.06% 31.06%      0.73s 31.06%  runtime.kevent
+     0.55s 23.40% 54.47%      0.55s 23.40%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding_entry__
+     0.30s 12.77% 67.23%      0.30s 12.77%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+     0.10s  4.26% 71.49%      0.15s  6.38%  runtime.mapaccess2_faststr
+     0.10s  4.26% 75.74%      0.10s  4.26%  runtime.memmove
+     0.06s  2.55% 78.30%      0.06s  2.55%  runtime.madvise
+     0.04s  1.70% 80.00%      0.04s  1.70%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.04s  1.70% 81.70%      0.04s  1.70%  runtime.findObject
+     0.04s  1.70% 83.40%      0.04s  1.70%  runtime.greyobject
+     0.03s  1.28% 84.68%      0.19s  8.09%  github.com/bytedance/sonic/internal/optcaching.(*FieldCache).Get
+     0.02s  0.85% 85.53%      0.49s 20.85%  github.com/bytedance/sonic/internal/decoder/optdec.(*structDecoder).FromDom
+     0.02s  0.85% 86.38%      0.04s  1.70%  runtime.(*sweepLocked).sweep
+     0.02s  0.85% 87.23%      0.30s 12.77%  runtime.mallocgc
+     0.02s  0.85% 88.09%      0.02s  0.85%  runtime.memequal
+     0.02s  0.85% 88.94%      0.02s  0.85%  runtime.wbBufFlush1
+     0.01s  0.43% 89.36%      0.16s  6.81%  github.com/bytedance/sonic/internal/decoder/optdec.(*stringDecoder).FromDom
+     0.01s  0.43% 89.79%      0.02s  0.85%  runtime.(*mheap).freeSpanLocked
+     0.01s  0.43% 90.21%      0.02s  0.85%  runtime.(*spanSet).pop
+     0.01s  0.43% 90.64%      0.07s  2.98%  runtime.scanobject
+     0.01s  0.43% 91.06%      0.05s  2.13%  runtime.stkbucket
+         0     0% 91.06%      0.02s  0.85%  gcWriteBarrier
+         0     0% 91.06%      1.53s 65.11%  github.com/bytedance/sonic.frozenConfig.Unmarshal
+         0     0% 91.06%      1.40s 59.57%  github.com/bytedance/sonic.frozenConfig.UnmarshalFromString
+         0     0% 91.06%      1.38s 58.72%  github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode
+         0     0% 91.06%      0.02s  0.85%  github.com/bytedance/sonic/internal/decoder/api.NewDecoder
+         0     0% 91.06%      0.08s  3.40%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEface
+         0     0% 91.06%      0.08s  3.40%  github.com/bytedance/sonic/internal/decoder/optdec.(*Node).AsEfaceFallback
+         0     0% 91.06%      0.55s 23.40%  github.com/bytedance/sonic/internal/decoder/optdec.(*Parser).parse
+         0     0% 91.06%      0.09s  3.83%  github.com/bytedance/sonic/internal/decoder/optdec.(*efaceDecoder).FromDom
+         0     0% 91.06%      0.35s 14.89%  github.com/bytedance/sonic/internal/decoder/optdec.(*recuriveDecoder).FromDom
+
+sonic-dev-jit decode-reuse cumulative
+File: profilecodec-dev
+Type: cpu
+Time: 2026-11-24 14:09:06 CST
+Duration: 2.89s, Total samples = 2.35s (81.39%)
+Showing nodes accounting for 1.66s, 70.64% of 2.35s total
+Dropped 68 nodes (cum <= 0.01s)
+Showing top 30 nodes out of 86
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      1.53s 65.11%  github.com/bytedance/sonic.frozenConfig.Unmarshal
+         0     0%     0%      1.53s 65.11%  main.main
+         0     0%     0%      1.53s 65.11%  main.run
+         0     0%     0%      1.53s 65.11%  main.typedWorkload[go.shape.struct { Statuses []github.com/nyan233/jjs-go/benchmark/compare.Status "json:\"statuses\""; SearchMetadata github.com/nyan233/jjs-go/benchmark/compare.SearchMetadata "json:\"search_metadata\"" }].func4
+         0     0%     0%      1.53s 65.11%  runtime.main
+         0     0%     0%      1.40s 59.57%  github.com/bytedance/sonic.frozenConfig.UnmarshalFromString
+         0     0%     0%      1.38s 58.72%  github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode
+         0     0%     0%      1.38s 58.72%  github.com/bytedance/sonic/internal/decoder/optdec.Decode
+         0     0%     0%      0.97s 41.28%  runtime.systemstack
+         0     0%     0%      0.89s 37.87%  github.com/bytedance/sonic/internal/decoder/optdec.NewContext
+         0     0%     0%      0.74s 31.49%  runtime.startTheWorldWithSema
+     0.73s 31.06% 31.06%      0.73s 31.06%  runtime.kevent
+         0     0% 31.06%      0.73s 31.06%  runtime.netpoll
+         0     0% 31.06%      0.60s 25.53%  runtime.gcStart.func4
+         0     0% 31.06%      0.55s 23.40%  github.com/bytedance/sonic/internal/decoder/optdec.(*Parser).parse
+         0     0% 31.06%      0.55s 23.40%  github.com/bytedance/sonic/internal/native.ParseWithPadding
+         0     0% 31.06%      0.55s 23.40%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding
+     0.55s 23.40% 54.47%      0.55s 23.40%  github.com/bytedance/sonic/internal/native/neon.__parse_with_padding_entry__
+         0     0% 54.47%      0.49s 20.85%  github.com/bytedance/sonic/internal/decoder/optdec.(*sliceDecoder).FromDom
+     0.02s  0.85% 55.32%      0.49s 20.85%  github.com/bytedance/sonic/internal/decoder/optdec.(*structDecoder).FromDom
+         0     0% 55.32%      0.35s 14.89%  github.com/bytedance/sonic/internal/decoder/optdec.(*recuriveDecoder).FromDom
+         0     0% 55.32%      0.34s 14.47%  github.com/bytedance/sonic/internal/decoder/optdec.newParser
+         0     0% 55.32%      0.30s 12.77%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast
+     0.30s 12.77% 68.09%      0.30s 12.77%  github.com/bytedance/sonic/internal/native/neon.__validate_utf8_fast_entry__
+         0     0% 68.09%      0.30s 12.77%  github.com/bytedance/sonic/utf8.ValidateString (inline)
+     0.02s  0.85% 68.94%      0.30s 12.77%  runtime.mallocgc
+         0     0% 68.94%      0.27s 11.49%  runtime.slicebytetostring
+     0.03s  1.28% 70.21%      0.19s  8.09%  github.com/bytedance/sonic/internal/optcaching.(*FieldCache).Get
+     0.01s  0.43% 70.64%      0.16s  6.81%  github.com/bytedance/sonic/internal/decoder/optdec.(*stringDecoder).FromDom
+         0     0% 70.64%      0.15s  6.38%  github.com/bytedance/sonic/internal/decoder/optdec.Node.AsStr
