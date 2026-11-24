@@ -1,0 +1,31 @@
+goos: windows
+goarch: amd64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Intel(R) Core(TM) i7-14700KF
+BenchmarkJITInline/Bytes0-16    	27874693	        21.52 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-16    	27563522	        21.19 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-16    	25607538	        21.11 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-16    	29389578	        21.09 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes0-16    	27817442	        21.10 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-16   	24132729	        25.99 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-16   	21642366	        26.21 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-16   	20995244	        26.29 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-16   	23060780	        26.42 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes12-16   	24950826	        27.24 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-16   	11661716	        43.85 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-16   	14364720	        46.34 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-16   	13298550	        43.29 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-16   	14066510	        44.46 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes48-16   	11995489	        43.35 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-16 	 1086315	       524.2 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-16 	  965934	       540.6 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-16 	  974594	       546.2 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-16 	 1000000	       519.9 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes1024-16 	 1151372	       524.0 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-16         	   18396	     31377 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-16         	   19026	     31991 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-16         	   19436	     31247 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-16         	   19176	     33053 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITInline/Bytes65536-16         	   18714	     31957 ns/op	       148.0 code-B	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/nyan233/jjs-go/core/compiler	18.097s

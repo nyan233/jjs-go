@@ -13,6 +13,9 @@ layout, and machine-code emission.
   assembling.
 - Requires AVX2 and SSE4.2. Initialization fails fast on unsupported CPUs.
 - Uses AVX2 for long string runs and SSE4.2 for short encoder strings.
+- Encodes byte slices with a bounded AVX2 Base64 kernel. The vector loop
+  consumes exactly 12 input bytes per iteration and never reads past a chunk;
+  a scalar tail handles the remaining 0-11 bytes.
 
 ## arm64 backend
 

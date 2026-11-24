@@ -22,6 +22,8 @@ longer runs. ARM64 uses hand-written NEON quoting that fuses byte classification
 escaping and UTF-8 validation in one bounded assembly call. NEON handles 8/16-byte
 ASCII blocks and validates non-ASCII blocks with three UTF-8 lookup tables.
 Scalar ARM64 instructions handle escapes, invalid sequences and short tails.
+amd64 byte slices use a bounded AVX2 Base64 kernel with exact 12-byte vector
+loads and a scalar tail; ARM64 uses an equivalent generated NEON kernel.
 Decoding retains word scanning based on full-document measurements.
 Unescaped decode strings are validated once, and short values are copied into
 append-only storage chunks. Encoders use a
@@ -220,6 +222,8 @@ Hardware-counter profiling notes and raw results are in
 [`benchmark/compare/PROFILING.md`](benchmark/compare/PROFILING.md),
 [`benchmark/compare/HARDWARE_RESULTS.md`](benchmark/compare/HARDWARE_RESULTS.md)
 and [`benchmark/compare/SHORT_STRING_SCAN.md`](benchmark/compare/SHORT_STRING_SCAN.md).
+The AVX2 byte-slice study is in
+[`benchmark/compare/AMD64_BASE64.md`](benchmark/compare/AMD64_BASE64.md).
 
 ### macOS ARM64 — Apple M1 Pro
 

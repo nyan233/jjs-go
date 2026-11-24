@@ -77,6 +77,8 @@ the native ARM64 backend.
 The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
 raw three-sample output behind that summary is
 [`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
+The focused AVX2 byte-slice A/B study is in
+[`AMD64_BASE64.md`](AMD64_BASE64.md).
 
 The latest native Apple M1 Pro comparison uses `main` revision `2813ca6`,
 after typed JIT encoder inlining, typed map encoders and NEON Base64 merged to
