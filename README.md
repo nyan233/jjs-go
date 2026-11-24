@@ -140,20 +140,26 @@ direct instruction encoder and its own Go ABI frame/cache-flush sequence.
 ## Benchmarks
 
 `benchmark/compare` is an independent Go module that compares this checkout
-against `encoding/json`, goccy/go-json, json-iterator, EasyJSON and Sonic using
-Sonic's small/medium/large fixtures. Windows tables are medians of three
-one-second runs; the ARM64 tables are medians of six one-second samples from
-one full suite run. Each cell is `ns/op (allocs/op)`; lower is better.
+against `encoding/json`, `encoding/json/v2`, goccy/go-json, json-iterator,
+EasyJSON and Sonic using Sonic's small/medium/large fixtures. Windows tables
+are medians of three one-second runs; the ARM64 tables are medians of six
+one-second samples from one full suite run. Each cell is
+`ns/op (allocs/op)`; lower is better.
 
 ### Windows amd64 — Intel Core i7-14700KF
 
-Measured on 2026-11-21 with Windows 11 26200, Go 1.22.0, an Intel Core
+Measured on 2026-11-24 with Windows 11 26200, Go 1.25.0, an Intel Core
 i7-14700KF, and `GOMAXPROCS=16`. Sonic uses `ConfigStd` and
-`SONIC_NO_ASYNC_GC=1`. EasyJSON is absent from Generic because the generic
-fixtures have no generated concrete type.
+`SONIC_NO_ASYNC_GC=1`. `encoding/json/v2` is enabled with
+`GOEXPERIMENT=jsonv2` and uses options for nil map/slice, case-insensitive
+names and invalid UTF-8 that keep the fixture semantics comparable to v1.
+EasyJSON is absent from Generic because the generic fixtures have no generated
+concrete type.
 
 ```powershell
 cd benchmark/compare
+$env:GOTOOLCHAIN='go1.25.0'
+$env:GOEXPERIMENT='jsonv2'
 $env:SONIC_NO_ASYNC_GC='1'
 go test -run '^$' -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' `
   -benchmem -benchtime 1s -count 3
@@ -163,54 +169,85 @@ Binding encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 1,138 (2) | 7,616 (2) | 331,717 (1,112) |
-| `goccy/go-json` | 642 (2) | 3,145 (2) | 169,234 (2) |
-| `json-iterator/go` | 684 (2) | 8,486 (2) | 392,372 (1,322) |
-| Sonic (`ConfigStd`) | 396 (3) | 3,193 (3) | 126,150 (3) |
-| EasyJSON | 701 (6) | 8,607 (67) | 377,694 (2,547) |
-| **jjs-go** | **762 (3)** | **5,789 (3)** | **377,902 (107)** |
+| `encoding/json` | 1,317 (3) | 15,526 (5) | 452,066 (468) |
+| `encoding/json/v2` | 1,540 (3) | 14,499 (5) | 435,799 (468) |
+| `goccy/go-json` | 590.5 (2) | 4,163 (2) | 215,982 (2) |
+| `json-iterator/go` | 805.5 (2) | 12,261 (2) | 464,880 (1,426) |
+| Sonic (`ConfigStd`) | 552.5 (3) | 4,473 (3) | 169,816 (108) |
+| EasyJSON | 748.5 (6) | 13,244 (69) | 484,477 (3,116) |
+| **jjs-go** | **517.2 (2)** | **7,731 (2)** | **304,442 (2)** |
 
 Binding decoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 3,608 (15) | 65,729 (132) | 2,862,507 (4,903) |
-| `goccy/go-json` | 350 (0) | 7,050 (1) | 381,700 (444) |
-| `json-iterator/go` | 886 (18) | 18,667 (357) | 978,812 (18,715) |
-| Sonic (`ConfigStd`) | 698 (9) | 13,711 (109) | 510,542 (4,100) |
-| EasyJSON | 1,027 (7) | 17,162 (124) | 1,323,084 (4,338) |
-| **jjs-go** | **1,303 (7)** | **20,204 (107)** | **1,097,236 (5,142)** |
+| `encoding/json` | 2,290 (0) | 30,592 (42) | 1,647,209 (4,419) |
+| `encoding/json/v2` | 1,789 (0) | 22,575 (64) | 1,165,944 (3,336) |
+| `goccy/go-json` | 379.2 (0) | 7,800 (1) | 411,481 (444) |
+| `json-iterator/go` | 935.1 (18) | 20,015 (351) | 1,047,214 (17,681) |
+| Sonic (`ConfigStd`) | 744.3 (9) | 12,695 (109) | 558,028 (4,100) |
+| EasyJSON | 1,064 (7) | 17,509 (124) | 1,048,628 (4,338) |
+| **jjs-go** | **802.4 (0)** | **14,736 (1)** | **749,916 (444)** |
+
+Fresh-destination binding decoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json` | 2,797 (11) | 33,210 (70) | 1,716,765 (4,589) |
+| `encoding/json/v2` | 2,238 (11) | 24,590 (68) | 1,223,510 (3,345) |
+| `goccy/go-json` | 638.7 (6) | 9,537 (19) | 454,738 (583) |
+| `json-iterator/go` | 1,260 (31) | 22,050 (379) | 1,121,820 (17,851) |
+| Sonic (`ConfigStd`) | 1,000 (17) | 13,901 (128) | 594,142 (4,245) |
+| EasyJSON | 1,319 (14) | 19,470 (128) | 1,076,136 (4,347) |
+| **jjs-go** | **1,006 (6)** | **16,883 (19)** | **805,157 (587)** |
 
 Generic encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 3,707 (52) | 55,827 (653) | 2,462,122 (27,955) |
-| `goccy/go-json` | 1,418 (1) | 22,051 (1) | 1,104,454 (1) |
-| `json-iterator/go` | 4,056 (61) | 61,998 (575) | 2,612,538 (22,565) |
-| Sonic (`ConfigStd`) | 1,186 (2) | 18,314 (2) | 857,194 (3) |
-| **jjs-go** | **2,850 (7)** | **24,338 (40)** | **1,351,242 (1,267)** |
+| `encoding/json` | 3,611 (26) | 34,131 (8) | 1,622,860 (9) |
+| `encoding/json/v2` | 2,939 (15) | 19,390 (6) | 951,765 (6) |
+| `goccy/go-json` | 1,560 (1) | 22,994 (1) | 1,178,919 (1) |
+| `json-iterator/go` | 4,496 (66) | 68,714 (613) | 2,947,162 (23,833) |
+| Sonic (`ConfigStd`) | 1,565 (7) | 22,233 (40) | 1,010,284 (1,267) |
+| **jjs-go** | **1,371 (1)** | **14,792 (1)** | **948,404 (1)** |
 
 Generic decoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 3,935 (90) | 79,561 (771) | 3,590,047 (31,261) |
-| `goccy/go-json` | 1,612 (21) | 20,566 (118) | 939,846 (3,526) |
-| `json-iterator/go` | 3,535 (111) | 53,030 (1,075) | 2,318,649 (45,198) |
-| Sonic (`ConfigStd`) | 2,394 (72) | 38,046 (724) | 1,556,728 (29,781) |
-| **jjs-go** | **2,991 (70)** | **47,407 (724)** | **2,220,079 (30,009)** |
+| `encoding/json` | 7,907 (102) | 93,631 (930) | 4,015,852 (38,275) |
+| `encoding/json/v2` | 3,748 (71) | 47,802 (678) | 2,250,367 (28,099) |
+| `goccy/go-json` | 1,838 (23) | 19,827 (134) | 889,863 (4,087) |
+| `json-iterator/go` | 3,584 (113) | 47,414 (1,084) | 2,087,374 (44,976) |
+| Sonic (`ConfigStd`) | 2,698 (74) | 35,520 (747) | 1,488,211 (30,645) |
+| **jjs-go** | **2,326 (23)** | **27,476 (134)** | **1,290,195 (4,083)** |
 
-The direct decoder is substantially faster than `encoding/json` on all typed
-sizes, including a 2.61x advantage on Large. Typed jjs-go encoding is faster
-than the standard library on Small and Medium, but remains slower than goccy,
-Sonic and the standard library on Large. Generic jjs-go performance is faster
-than stdlib on all sizes, while goccy and Sonic remain ahead.
+Unordered Generic encoder:
+
+| Library | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| `encoding/json/v2` | 3,232 (15) | 29,585 (6) | 1,373,985 (6) |
+| `goccy/go-json` | 1,231 (1) | 12,024 (1) | 711,338 (1) |
+| Sonic (unsorted, HTML escaping enabled) | 1,237 (7) | 13,057 (40) | 727,125 (1,267) |
+| **jjs-go** | **1,314 (1)** | **15,589 (1)** | **951,546 (1)** |
+
+Typed jjs-go encoding is faster than both v1 and v2 at every size, but goccy
+and Sonic remain faster on Medium and Large. Typed jjs-go decoding is faster
+than v1 and v2 at every size; goccy and Sonic remain ahead, and jsonv2 is
+roughly between Sonic and jjs-go.
+
+Generic jjs-go encoding has the lowest median at all three sizes, narrowly
+ahead of jsonv2 on Large. Generic jjs-go decoding beats v1, v2 and Sonic on all
+sizes; goccy remains ahead. In the unsorted-map control, jjs-go trails goccy
+and Sonic.
 
 See [`benchmark/compare/README.md`](benchmark/compare/README.md) for the full
 methodology and
-[`benchmark/compare/results-windows-amd64-final.txt`](benchmark/compare/results-windows-amd64-final.txt)
-for all three raw samples.
+[`benchmark/compare/results-windows-amd64-jsonv2.txt`](benchmark/compare/results-windows-amd64-jsonv2.txt)
+for all three raw samples. The unordered family was rerun separately with
+jsonv2 enabled; its raw samples are in
+[`benchmark/compare/results-windows-amd64-jsonv2-unordered.txt`](benchmark/compare/results-windows-amd64-jsonv2-unordered.txt).
 
 The subsequent hot-path changes are measured separately against correctness
 commit `5b211eb` on Apple M1 Pro with Go 1.25.0. See

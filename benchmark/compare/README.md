@@ -7,6 +7,7 @@ Sonic's benchmark methodology.
 ## Libraries
 
 - `encoding/json` from the Go toolchain named in each results report
+- `encoding/json/v2` when built with Go 1.25+ and `GOEXPERIMENT=jsonv2`
 - `github.com/goccy/go-json` v0.11.0
 - `github.com/json-iterator/go` v1.1.12
 - `github.com/mailru/easyjson` v0.9.2
@@ -15,7 +16,8 @@ Sonic's benchmark methodology.
 
 EasyJSON is excluded from Generic because generic values do not have a
 code-generation target. Sonic uses `ConfigStd` so escaping and integer decoding
-stay compatible with the other codecs.
+stay compatible with the other codecs. The jsonv2 codec uses nil map/slice,
+case matching and invalid UTF-8 options compatible with the v1 fixtures.
 
 ## Fixtures
 
@@ -44,9 +46,11 @@ include `ns/op`, `B/op`, `allocs/op`, and MB/s based on fixture bytes.
 its results include allocating the decoded slices, maps and pointers.
 Generic decoding resets the destination to `nil` on every iteration.
 
-Map key ordering is not normalized across codecs. In particular, jjs-go
-encodes maps without sorting keys, while `encoding/json` and Sonic `ConfigStd`
-sort them. Generic encoding results include this behavior difference.
+Map key ordering is not normalized across codecs. In particular, jjs-go and
+default jsonv2 encode maps without deterministic sorting, while
+`encoding/json` and Sonic `ConfigStd` sort them. Generic encoding results
+include this behavior difference. The UnorderedGeneric control applies
+explicit unsorted options to goccy and Sonic.
 
 ## Run
 
@@ -54,6 +58,16 @@ sort them. Generic encoding results include this behavior difference.
 cd benchmark/compare
 go test -run '^$' -bench '.*_Binding' -benchmem -benchtime 2s -count 3
 go test -run '^$' -bench '.*_Generic' -benchmem -benchtime 2s -count 3
+```
+
+Include the experimental standard-library jsonv2 codec with Go 1.25+:
+
+```powershell
+$env:GOTOOLCHAIN = "go1.25.0"
+$env:GOEXPERIMENT = "jsonv2"
+$env:SONIC_NO_ASYNC_GC = "1"
+go test -run '^$' -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' `
+  -benchmem -benchtime 1s -count 3
 ```
 
 Or run the ready-made script:
@@ -75,8 +89,10 @@ Compare results only on the same machine, Go toolchain, power mode, and
 the native ARM64 backend.
 
 The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
-raw three-sample output behind that summary is
-[`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
+raw three-sample output behind the Binding, FreshBinding and Generic tables is
+[`results-windows-amd64-jsonv2.txt`](results-windows-amd64-jsonv2.txt).
+UnorderedGeneric has a separate jsonv2 run in
+[`results-windows-amd64-jsonv2-unordered.txt`](results-windows-amd64-jsonv2-unordered.txt).
 The focused AVX2 byte-slice A/B study is in
 [`AMD64_BASE64.md`](AMD64_BASE64.md).
 

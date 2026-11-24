@@ -18,13 +18,20 @@ func unorderedEncoderCodecs() []bindingCodec[any] {
 		CopyString:       true,
 		ValidateString:   true,
 	}.Froze()
-	return []bindingCodec[any]{
+	codecs := []bindingCodec[any]{
 		{name: "goccy", marshal: func(value any) ([]byte, error) {
 			return goccyjson.MarshalWithOption(value, goccyjson.UnorderedMap())
 		}},
 		{name: "sonic", marshal: sonicUnordered.Marshal},
 		{name: "jjs-go", marshal: jjs.Marshal},
 	}
+	if jsonV2Available {
+		codecs = append(codecs, bindingCodec[any]{
+			name:    "stdlib-jsonv2",
+			marshal: jsonV2Marshal,
+		})
+	}
+	return codecs
 }
 
 func BenchmarkEncoder_UnorderedGeneric(b *testing.B) {

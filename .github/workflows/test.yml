@@ -28,6 +28,12 @@ jobs:
       - run: go build ./...
       - run: go test ./...
         working-directory: benchmark/compare
+      - name: Test benchmark module with encoding/json/v2
+        if: matrix.go == '1.25.x'
+        working-directory: benchmark/compare
+        env:
+          GOEXPERIMENT: jsonv2
+        run: go test ./...
 
   macos:
     strategy:

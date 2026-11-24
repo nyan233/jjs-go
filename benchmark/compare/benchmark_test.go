@@ -33,7 +33,7 @@ type genericCodec struct {
 }
 
 func commonBindingCodecs[T any]() []bindingCodec[T] {
-	return []bindingCodec[T]{
+	codecs := []bindingCodec[T]{
 		{
 			name:      "stdlib",
 			marshal:   func(value T) ([]byte, error) { return stdjson.Marshal(value) },
@@ -60,6 +60,14 @@ func commonBindingCodecs[T any]() []bindingCodec[T] {
 			unmarshal: func(data []byte, target *T) error { return jjs.Unmarshal(data, target) },
 		},
 	}
+	if jsonV2Available {
+		codecs = append(codecs, bindingCodec[T]{
+			name:      "stdlib-jsonv2",
+			marshal:   func(value T) ([]byte, error) { return jsonV2Marshal(value) },
+			unmarshal: func(data []byte, target *T) error { return jsonV2Unmarshal(data, target) },
+		})
+	}
+	return codecs
 }
 
 func bookCodecs() []bindingCodec[Book] {
@@ -89,13 +97,21 @@ func twitterCodecs() []bindingCodec[TwitterResponse] {
 }
 
 func genericCodecs() []genericCodec {
-	return []genericCodec{
+	codecs := []genericCodec{
 		{name: "stdlib", marshal: stdjson.Marshal, unmarshal: stdjson.Unmarshal},
 		{name: "goccy", marshal: goccyjson.Marshal, unmarshal: goccyjson.Unmarshal},
 		{name: "jsoniter", marshal: jsoniterStd.Marshal, unmarshal: jsoniterStd.Unmarshal},
 		{name: "sonic", marshal: sonicStd.Marshal, unmarshal: sonicStd.Unmarshal},
 		{name: "jjs-go", marshal: jjs.Marshal, unmarshal: jjs.Unmarshal},
 	}
+	if jsonV2Available {
+		codecs = append(codecs, genericCodec{
+			name:      "stdlib-jsonv2",
+			marshal:   jsonV2Marshal,
+			unmarshal: jsonV2Unmarshal,
+		})
+	}
+	return codecs
 }
 
 func prepareBindingEncode[T any](b *testing.B, codec bindingCodec[T], value T) {
