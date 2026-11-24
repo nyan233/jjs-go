@@ -139,8 +139,9 @@ direct instruction encoder and its own Go ABI frame/cache-flush sequence.
 
 `benchmark/compare` is an independent Go module that compares this checkout
 against `encoding/json`, goccy/go-json, json-iterator, EasyJSON and Sonic using
-Sonic's small/medium/large fixtures. The tables below are medians of three
-one-second runs. Each cell is `ns/op (allocs/op)`; lower is better.
+Sonic's small/medium/large fixtures. Windows tables are medians of three
+one-second runs; the ARM64 tables are medians of six one-second samples from
+one full suite run. Each cell is `ns/op (allocs/op)`; lower is better.
 
 ### Windows amd64 — Intel Core i7-14700KF
 
@@ -222,84 +223,98 @@ and [`benchmark/compare/SHORT_STRING_SCAN.md`](benchmark/compare/SHORT_STRING_SC
 
 ### macOS ARM64 — Apple M1 Pro
 
-Measured on 2026-11-23 with macOS 27.0.1 (26A434), Go 1.25.0,
+Measured on 2026-11-24 with macOS 27.0.1 (26A434), Go 1.25.0,
 Apple M1 Pro (10 cores, 32 GiB RAM), and `GOMAXPROCS=10`, on AC power
-with Low Power Mode disabled. The measured `main` revision is **`cb635eb`**,
-after all merged correctness, decoder, cache and ARM64 quoting/lookup4 changes.
+with Low Power Mode disabled. The measured `main` revision is **`2813ca6`**,
+after typed JIT encoder inlining, typed map encoders, NEON Base64 and the
+earlier correctness, decoder, cache and ARM64 quoting/lookup4 changes.
 The SSA experiment is excluded. Sonic uses `ConfigStd` with
 `SONIC_NO_ASYNC_GC=1`, except for the explicitly unordered encoder below.
 
-Values are medians of three one-second samples, shown as **ns/op (allocs/op)**.
+Values are medians of six one-second samples, shown as **ns/op (allocs/op)**.
 All loops are serial and codecs are warmed before timing. Encoding includes
 output allocation. Binding decode reuses a destination; FreshBinding creates
 one per iteration; Generic decode resets its destination to nil.
 Go reports integer average allocation counts, so a reported zero can coexist
 with nonzero B/op when allocation is amortized across operations.
-The Windows amd64 results use a different Go version, codec revision and
-configuration; compare libraries within each platform's table.
+The machine remained in normal desktop use with all applications running.
+The Telegram process, a sustained background CPU consumer of about 85%, was
+moved to the Darwin background scheduling policy for the measurement and
+restored afterward; two uncontrolled passes measured the unchanged libraries
+about 16–20% slower on average. The Windows amd64 results use a different Go
+version, codec
+revision and configuration; compare libraries within each platform's table.
 
 ```sh
 cd benchmark/compare
 SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10 go test -run '^$' \
   -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' \
-  -benchmem -benchtime=1s -count=3 -cpu=10
+  -benchmem -benchtime=1s -count=6 -cpu=10
 ```
 
 Binding encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 927.3 (2) | 11,309 (2) | 415,566 (1,112) |
-| `goccy/go-json` | 557.3 (2) | 4,103 (2) | 216,507 (2) |
-| `json-iterator/go` | 1,022 (2) | 21,055 (2) | 659,704 (1,426) |
-| Sonic (`ConfigStd`) | 1,597 (3) | 16,544 (3) | 483,994 (107) |
-| EasyJSON | 915.2 (6) | 10,742 (67) | 415,904 (2,547) |
-| **jjs-go** | **652.5 (2)** | **4,787 (2)** | **172,340 (210)** |
+| `encoding/json` | 897.5 (2) | 10,352 (2) | 410,798 (1,112) |
+| `goccy/go-json` | 575.2 (2) | 4,050 (2) | 215,806 (2) |
+| `json-iterator/go` | 1,022 (2) | 21,430 (2) | 644,206 (1,426) |
+| Sonic (`ConfigStd`) | 1,594 (3) | 16,743 (3) | 485,286 (107) |
+| EasyJSON | 914.2 (6) | 10,891 (67) | 414,778 (2,547) |
+| **jjs-go** | **485.1 (2)** | **3,414 (2)** | **137,045 (2)** |
 
 Binding decoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 4,253 (15) | 89,580 (132) | 3,965,404 (4,903) |
-| `goccy/go-json` | 446.7 (0) | 8,521 (1) | 445,444 (444) |
-| `json-iterator/go` | 1,122 (18) | 26,750 (351) | 1,353,053 (17,681) |
-| Sonic (`ConfigStd`) | 1,358 (10) | 22,352 (110) | 945,391 (4,099) |
-| EasyJSON | 1,206 (7) | 19,535 (124) | 1,916,119 (4,338) |
-| **jjs-go** | **949.4 (0)** | **17,059 (1)** | **877,257 (444)** |
+| `encoding/json` | 4,276 (15) | 88,942 (132) | 3,950,088 (4,903) |
+| `goccy/go-json` | 434.6 (0) | 8,372 (1) | 441,072 (444) |
+| `json-iterator/go` | 1,118 (18) | 26,636 (351) | 1,368,273 (17,681) |
+| Sonic (`ConfigStd`) | 1,350 (10) | 22,048 (110) | 899,736 (4,099) |
+| EasyJSON | 1,184 (7) | 19,318 (124) | 1,891,829 (4,338) |
+| **jjs-go** | **933.3 (0)** | **16,932 (1)** | **852,557 (444)** |
 
 Generic encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 4,206 (52) | 63,492 (653) | 2,856,557 (27,955) |
-| `goccy/go-json` | 1,697 (1) | 25,272 (1) | 1,306,152 (1) |
-| `json-iterator/go` | 5,160 (66) | 85,042 (613) | 4,299,568 (23,832) |
-| Sonic (`ConfigStd`) | 4,327 (7) | 50,643 (40) | 2,279,421 (1,268) |
-| **jjs-go** | **1,871 (11)** | **20,740 (77)** | **975,216 (2,529)** |
+| `encoding/json` | 4,122 (52) | 63,710 (653) | 2,833,784 (27,955) |
+| `goccy/go-json` | 1,678 (1) | 24,935 (1) | 1,285,131 (1) |
+| `json-iterator/go` | 5,110 (66) | 84,578 (613) | 3,440,172 (23,834) |
+| Sonic (`ConfigStd`) | 4,250 (7) | 50,548 (40) | 2,244,160 (1,268) |
+| **jjs-go** | **1,434 (1)** | **15,131 (1)** | **782,752 (1)** |
 
 Generic decoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 5,018 (92) | 105,414 (794) | 4,968,004 (32,124) |
-| `goccy/go-json` | 2,254 (23) | 26,757 (134) | 1,144,130 (4,087) |
-| `json-iterator/go` | 4,113 (113) | 65,951 (1,084) | 2,903,149 (44,976) |
-| Sonic (`ConfigStd`) | 2,795 (73) | 38,354 (705) | 1,620,922 (28,731) |
-| **jjs-go** | **2,672 (23)** | **36,395 (134)** | **1,628,045 (4,084)** |
+| `encoding/json` | 4,888 (92) | 105,178 (794) | 4,854,846 (32,124) |
+| `goccy/go-json` | 2,124 (23) | 24,631 (134) | 1,089,802 (4,087) |
+| `json-iterator/go` | 4,084 (113) | 63,955 (1,084) | 2,857,082 (44,976) |
+| Sonic (`ConfigStd`) | 2,606 (73) | 36,843 (705) | 1,561,852 (28,731) |
+| **jjs-go** | **2,633 (23)** | **35,194 (134)** | **1,535,946 (4,084)** |
 
 Unordered Generic encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `goccy/go-json` | 1,452 (1) | 15,992 (1) | 850,284 (1) |
-| Sonic (unsorted, HTML escaping enabled) | 4,112 (7) | 42,331 (40) | 1,874,143 (1,267) |
-| **jjs-go** | **1,854 (11)** | **19,140 (77)** | **913,779 (2,529)** |
+| `goccy/go-json` | 1,441 (1) | 14,878 (1) | 846,360 (1) |
+| Sonic (unsorted, HTML escaping enabled) | 4,034 (7) | 41,912 (40) | 1,907,963 (1,267) |
+| **jjs-go** | **1,421 (1)** | **14,771 (1)** | **780,358 (1)** |
 
-jjs-go's Binding encoding is 1.42–2.41x as fast as stdlib in these samples.
-Its Large median is below goccy.
+jjs-go's Binding encoding is 1.85–3.03x as fast as stdlib in these samples and
+ahead of goccy, Sonic and EasyJSON at all three sizes. The typed JIT encoder
+also removes most per-operation allocations: Binding Large reports 2 allocs/op,
+down from 210 in the preceding run, and Generic encoding drops to one
+allocation per operation.
 
-jjs-go's Binding decoding is 4.48–5.25x as fast as stdlib in these samples.
-goccy has a lower median at all three sizes.
+jjs-go's Binding decoding is 4.58–5.25x as fast as stdlib in these samples and
+ahead of Sonic and EasyJSON; goccy has a lower median at all three sizes.
+
+Generic jjs-go encoding has the lowest median at all three sizes. Generic
+jjs-go decoding is 1.86–3.16x as fast as stdlib and level with Sonic; goccy
+remains ahead. In the unsorted-map control, jjs-go is ahead of goccy at every
+size and well ahead of Sonic.
 
 Default Generic encoding includes different map-order behavior: jjs-go does
 not sort keys, while stdlib and Sonic `ConfigStd` do. The UnorderedGeneric
@@ -308,11 +323,12 @@ escaping and string validation. Use that control when assessing their generic
 encoding performance with sorting removed.
 
 The [full ARM64 report](benchmark/compare/RESULTS_ARM64.md) includes the
-fresh-destination decode table, complete methodology and sample variability.
-The [raw output](benchmark/compare/results-darwin-arm64-main-cb635eb.txt) contains all 279 samples;
-all tables above come from this one run after the merged optimizations.
-The [older ARM64 report](benchmark/compare/RESULTS_ARM64_96ffa5b.md) remains
-available as a historical snapshot.
+fresh-destination decode table, complete methodology, host controls and sample
+variability. The [raw output](benchmark/compare/results-darwin-arm64-main-2813ca6.txt)
+contains all 558 samples; all tables above come from this one run. The
+[cb635eb report](benchmark/compare/RESULTS_ARM64_cb635eb.md) and the
+[96ffa5b report](benchmark/compare/RESULTS_ARM64_96ffa5b.md) remain available
+as historical snapshots.
 
 The [decoder/SIMD study](benchmark/compare/CODEC_OPTIMIZATION_ARM64.md),
 [assembly quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md) and

@@ -1,0 +1,47 @@
+{
+  "prepared_utc": "2026-11-24T07:37:46Z",
+  "revision": "2813ca6957cf1797a9ef294e2221de9d6f857181",
+  "branch": "main",
+  "worktree": "/tmp/jjs-main-bench-2813ca6",
+  "environment": {
+    "GOMAXPROCS": "10",
+    "SONIC_NO_ASYNC_GC": "1"
+  },
+  "settings": {
+    "benchtime": "1s",
+    "count": 6,
+    "cpu": 10
+  },
+  "go_version": "go version go1.25.0 darwin/arm64",
+  "go_env": "darwin\narm64\nv8.0\n1",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+  "hardware": "Apple M1 Pro\n10\n34359738368",
+  "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=36175971)\t80%; AC attached; not charging present: true",
+  "power_settings": "Battery Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           0\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         60\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10",
+  "host_controls": {
+    "background_cpu_process": "Telegram (pid 1356) consumed about 85% CPU before measurement",
+    "action": "taskpolicy -b -p 1356 for the duration of the run; taskpolicy -B -p 1356 restored it afterward",
+    "validation": "Two uncontrolled full passes measured the unchanged libraries 16-20% slower on average; a cb635eb-binary Binding-encoder control under the same demotion matched that report's medians within a few percent"
+  },
+  "command": [
+    "/tmp/jjs-main-compare-2813ca6.test",
+    "-test.run=^$",
+    "-test.bench=^(BenchmarkEncoder_|BenchmarkDecoder_)",
+    "-test.benchmem",
+    "-test.benchtime=1s",
+    "-test.count=6",
+    "-test.cpu=10"
+  ],
+  "binary_sha256": "a30a658b36341ac4ab353acee6666406a24d94438394358165a9cbb012a89e29",
+  "started_utc": "2026-11-24T08:03:27.946295+00:00",
+  "completed_utc": "2026-11-24T08:16:42.280905+00:00",
+  "exit_code": 0,
+  "samples": 558,
+  "power_after": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=36175971)\t80%; AC attached; not charging present: true",
+  "rechecked_cases": [
+    "Encoder_Binding/Medium/jsoniter"
+  ],
+  "spread_threshold_percent": 20,
+  "rechecks_completed_utc": "2026-11-24T08:17:23+00:00",
+  "power_settings_after": "Battery Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           0\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         60\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10"
+}
