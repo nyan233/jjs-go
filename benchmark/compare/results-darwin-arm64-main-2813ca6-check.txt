@@ -1,0 +1,13 @@
+# Same 2813ca6 binary and controlled host conditions; recheck the only case whose
+# six-sample spread was >= 20%; original six-sample median retained in tables.
+# 2026-11-24T08:17:16Z Telegram pid 1356 demoted to background scheduling policy
+# /tmp/jjs-main-compare-2813ca6.test '-test.run=^$' '-test.bench=^BenchmarkEncoder_Binding$/^Medium$/^jsoniter$' -test.benchmem -test.benchtime=1s -test.count=3 -test.cpu=10
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Apple M1 Pro
+BenchmarkEncoder_Binding/Medium/jsoniter-10         	   52597	     24136 ns/op	 539.57 MB/s	    9633 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jsoniter-10         	   59259	     21278 ns/op	 612.04 MB/s	    9636 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jsoniter-10         	   59215	     21854 ns/op	 595.90 MB/s	    9636 B/op	       2 allocs/op
+PASS
+# Telegram policy restored at 2026-11-24T08:17:23Z

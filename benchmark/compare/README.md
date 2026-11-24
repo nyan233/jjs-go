@@ -78,19 +78,24 @@ The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
 raw three-sample output behind that summary is
 [`results-windows-amd64-final.txt`](results-windows-amd64-final.txt).
 
-The latest native Apple M1 Pro comparison uses `main` revision `cb635eb`,
-after all merged optimizations. It is summarized in
-[`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all 279 samples in
-[`results-darwin-arm64-main-cb635eb.txt`](results-darwin-arm64-main-cb635eb.txt). It includes the original four comparison families,
-fresh-destination decode and unsorted-map encoder controls. The earlier
-[`96ffa5b report`](RESULTS_ARM64_96ffa5b.md) and raw output are preserved.
-Reproduce the full suite on this Go 1.25.0 darwin/arm64 setup with:
+The latest native Apple M1 Pro comparison uses `main` revision `2813ca6`,
+after typed JIT encoder inlining, typed map encoders and NEON Base64 merged to
+`main`. It is summarized in [`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all
+558 samples in
+[`results-darwin-arm64-main-2813ca6.txt`](results-darwin-arm64-main-2813ca6.txt).
+It includes the original four comparison families, fresh-destination decode and
+unsorted-map encoder controls. The host control that temporarily demoted the
+CPU-heavy Telegram process is documented in the report and
+[metadata](results-darwin-arm64-main-2813ca6-metadata.json). The earlier
+[`cb635eb report`](RESULTS_ARM64_cb635eb.md) and
+[`96ffa5b report`](RESULTS_ARM64_96ffa5b.md) with their raw output are
+preserved. Reproduce the full suite on this Go 1.25.0 darwin/arm64 setup with:
 
 ```sh
 cd benchmark/compare
 SONIC_NO_ASYNC_GC=1 GOMAXPROCS=10 go test -run '^$' \
   -bench '^(BenchmarkEncoder_|BenchmarkDecoder_)' \
-  -benchmem -benchtime=1s -count=3 -cpu=10
+  -benchmem -benchtime=1s -count=6 -cpu=10
 ```
 
 The published run built the test binary first and then invoked it with the
