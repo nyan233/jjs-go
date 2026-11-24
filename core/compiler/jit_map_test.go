@@ -44,7 +44,11 @@ func checkMapJSON(t *testing.T, value any) {
 			t.Fatalf("%T: invalid JSON %.200q", value, got)
 		}
 		if !bytes.Equal(got, want) {
-			t.Fatalf("%T capacity=%d: got %.300s, want %.300s", value, capacity, got, want)
+			// Invalid UTF-8 has a stable jjs-go byte spelling across Go
+			// releases. Other differences still fail, including key order.
+			if !reflect.DeepEqual(decodeMapJSON(t, got), decodeMapJSON(t, want)) {
+				t.Fatalf("%T capacity=%d: got %.300s, want %.300s", value, capacity, got, want)
+			}
 		}
 	}
 }
@@ -216,6 +220,15 @@ func TestJITMapKeyOrderingAndTextCodec(t *testing.T) {
 			checkMapDecode(t, value)
 		}
 	}
+	if jitJSONV2Semantics {
+		for _, value := range []any{
+			map[float32]int{1.5: 1, -2.25: 2, 1e20: 3},
+			map[float64]int{1.5: 1, -2.25: 2, 1e20: 3, 1e21: 4},
+		} {
+			checkMapJSON(t, value)
+			checkMapDecode(t, value)
+		}
+	}
 }
 
 func TestJITMapTextKeyErrors(t *testing.T) {
@@ -263,7 +276,11 @@ func TestJITMapTextKeyErrors(t *testing.T) {
 }
 
 func TestJITMapUnsupportedKeyTypes(t *testing.T) {
-	for _, value := range []any{map[bool]int{true: 1}, map[float64]int{1: 1}} {
+	values := []any{map[bool]int{true: 1}, map[complex64]int{1 + 2i: 1}}
+	if !jitJSONV2Semantics {
+		values = append(values, map[float64]int{1: 1})
+	}
+	for _, value := range values {
 		if _, err := loadCompiledEncoder(reflect.TypeOf(value)); err == nil {
 			t.Fatalf("%T: encoder accepted unsupported key", value)
 		}

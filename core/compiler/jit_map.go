@@ -151,20 +151,14 @@ func (frame *jitMapFrame) resetEntries() {
 }
 
 func (frame *jitMapFrame) resolveName(key unsafe.Pointer, keyType reflect.Type) (string, error) {
+	if jitJSONV2Semantics && keyType.Implements(jitTextMarshalerType) {
+		return frame.resolveTextName(key, keyType)
+	}
 	if keyType.Kind() == reflect.String {
 		return *(*string)(key), nil
 	}
 	if keyType.Implements(jitTextMarshalerType) {
-		value := reflect.NewAt(keyType, key).Elem()
-		marshaler := value.Interface().(encoding.TextMarshaler)
-		if keyType.Kind() == reflect.Pointer && value.IsNil() {
-			return "", nil
-		}
-		text, err := marshaler.MarshalText()
-		if err != nil {
-			return "", err
-		}
-		return frame.copyName(text), nil
+		return frame.resolveTextName(key, keyType)
 	}
 	switch keyType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -175,9 +169,34 @@ func (frame *jitMapFrame) resolveName(key unsafe.Pointer, keyType reflect.Type) 
 		start := len(frame.names)
 		frame.names = strconv.AppendUint(frame.names, loadMapKeyUint(key, keyType.Bits()), 10)
 		return unsafe.String(&frame.names[start], len(frame.names)-start), nil
+	case reflect.Float32, reflect.Float64:
+		if !jitJSONV2Semantics {
+			panic("json: unexpected map key type")
+		}
+		start := len(frame.names)
+		value := loadMapKeyFloat(key, keyType.Bits())
+		formatted, err := appendJSONFloat(frame.names, value, keyType.Bits()/8)
+		frame.names = formatted
+		if err != nil {
+			return "", err
+		}
+		return unsafe.String(&frame.names[start], len(frame.names)-start), nil
 	default:
 		panic("json: unexpected map key type")
 	}
+}
+
+func (frame *jitMapFrame) resolveTextName(key unsafe.Pointer, keyType reflect.Type) (string, error) {
+	value := reflect.NewAt(keyType, key).Elem()
+	marshaler := value.Interface().(encoding.TextMarshaler)
+	if keyType.Kind() == reflect.Pointer && value.IsNil() {
+		return "", nil
+	}
+	text, err := marshaler.MarshalText()
+	if err != nil {
+		return "", err
+	}
+	return frame.copyName(text), nil
 }
 
 func loadMapKeyInt(ptr unsafe.Pointer, bits int) int64 {
@@ -208,6 +227,13 @@ func loadMapKeyUint(ptr unsafe.Pointer, bits int) uint64 {
 	default:
 		panic("json: unexpected unsigned map-key width")
 	}
+}
+
+func loadMapKeyFloat(ptr unsafe.Pointer, bits int) float64 {
+	if bits == 32 {
+		return float64(*(*float32)(ptr))
+	}
+	return *(*float64)(ptr)
 }
 
 func (frame *jitMapFrame) copyName(text []byte) string {

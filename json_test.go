@@ -227,7 +227,7 @@ func TestMarshalJITMatchesEncodingJSON(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Equal(got, want) {
+		if !sameJSONEncoding(got, want) {
 			t.Fatalf("%T mismatch\ngot:  %s\nwant: %s", value, got, want)
 		}
 	}

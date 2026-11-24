@@ -102,12 +102,14 @@ still allocate.
 - JSON tags, `omitempty` and `json:"-"`
 - user-defined `json.Marshaler` and `json.Unmarshaler`
 - nil pointers, nil maps/slices and typed-nil interfaces
-- standard-library-compatible map keys: strings, all integer widths and
-  `encoding.TextMarshaler`/`TextUnmarshaler` keys
+- standard-library-compatible map keys: strings, all integer widths,
+  `encoding.TextMarshaler`/`TextUnmarshaler` keys, plus float keys on Go 1.27+
 - map keys sorted by their formatted string, matching `encoding/json`
 
-Unsupported map keys such as bool or float return a compile-time error from
-the JIT plan instead of silently falling back to reflection.
+Unsupported map keys such as bool return a compile-time error from the JIT
+plan instead of silently falling back to reflection. Map-key method precedence
+and float-key support follow the host Go release because Go 1.27 enables the
+jsonv2 semantics by default.
 
 ## Requirements
 

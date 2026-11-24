@@ -273,9 +273,17 @@ func jitAppendFloatPtr(ctx *jitEncodeContext, ptr unsafe.Pointer, width int) {
 		ctx.setError(errors.New("json: unsupported float width"))
 		return
 	}
-	if math.IsNaN(value) || math.IsInf(value, 0) {
-		ctx.setError(errors.New("json: unsupported non-finite float"))
+	dst, err := appendJSONFloat(ctx.dst, value, width)
+	if err != nil {
+		ctx.setError(err)
 		return
+	}
+	ctx.dst = dst
+}
+
+func appendJSONFloat(dst []byte, value float64, width int) ([]byte, error) {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return dst, errors.New("json: unsupported non-finite float")
 	}
 	format := byte('f')
 	abs := math.Abs(value)
@@ -286,13 +294,14 @@ func jitAppendFloatPtr(ctx *jitEncodeContext, ptr unsafe.Pointer, width int) {
 	if abs != 0 && (abs < lower || abs >= upper) {
 		format = 'e'
 	}
-	ctx.dst = strconv.AppendFloat(ctx.dst, value, format, -1, width*8)
+	dst = strconv.AppendFloat(dst, value, format, -1, width*8)
 	if format == 'e' {
-		if n := len(ctx.dst); n >= 4 && ctx.dst[n-4] == 'e' && ctx.dst[n-3] == '-' && ctx.dst[n-2] == '0' {
-			ctx.dst[n-2] = ctx.dst[n-1]
-			ctx.dst = ctx.dst[:n-1]
+		if n := len(dst); n >= 4 && dst[n-4] == 'e' && dst[n-3] == '-' && dst[n-2] == '0' {
+			dst[n-2] = dst[n-1]
+			dst = dst[:n-1]
 		}
 	}
+	return dst, nil
 }
 
 //go:noinline

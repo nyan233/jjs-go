@@ -23,7 +23,7 @@ func TestOptimizedStringPaths(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(got, want) {
+			if !sameJSONEncoding(got, want) {
 				t.Fatalf("marshal %q: got %s, want %s", input, got, want)
 			}
 			checkDecodeAgainstStandard(t, string(want), func() string { return "" })

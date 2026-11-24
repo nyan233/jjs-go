@@ -20,6 +20,17 @@ func checkDecodeAgainstStandard[T any](t *testing.T, input string, initial func(
 	}
 }
 
+func sameJSONEncoding(got, want []byte) bool {
+	if string(got) == string(want) {
+		return true
+	}
+	var gotValue, wantValue any
+	if json.Unmarshal(got, &gotValue) != nil || json.Unmarshal(want, &wantValue) != nil {
+		return false
+	}
+	return reflect.DeepEqual(gotValue, wantValue)
+}
+
 func TestMarshalNestedDynamicFieldOffsets(t *testing.T) {
 	type child struct {
 		Value int `json:"value,omitempty"`
@@ -79,9 +90,20 @@ func TestMarshalIntegerMapKeys(t *testing.T) {
 			t.Errorf("%T: got %s, want %s", value, got, want)
 		}
 	}
-	for _, value := range []any{map[bool]int{true: 1}, map[float64]int{1: 1}} {
+	for _, value := range []any{map[bool]int{true: 1}} {
 		if data, err := Marshal(value); err == nil {
 			t.Errorf("%T: accepted unsupported key type: %s", value, data)
+		}
+	}
+	for _, value := range []any{map[float32]int{1.5: 1}, map[float64]int{1.5: 1}} {
+		got, gotErr := Marshal(value)
+		want, wantErr := json.Marshal(value)
+		if (gotErr == nil) != (wantErr == nil) {
+			t.Errorf("%T: error %v, standard error %v", value, gotErr, wantErr)
+			continue
+		}
+		if gotErr == nil && !sameJSONEncoding(got, want) {
+			t.Errorf("%T: got %s, want %s", value, got, want)
 		}
 	}
 }

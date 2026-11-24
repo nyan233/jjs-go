@@ -562,6 +562,10 @@ func (p *jitJSONParser) decodeDirectInterface(plan *directDecodePlan, dst unsafe
 		}
 	}
 	if plan.nonEmpty {
+		if jitJSONV2Semantics {
+			*(*unsafe.Pointer)(dst) = nil
+			*(*unsafe.Pointer)(unsafe.Add(dst, 8)) = nil
+		}
 		return p.errorf("cannot unmarshal into non-empty interface without a non-nil pointer")
 	}
 	value, err := p.decodeDirectAny()

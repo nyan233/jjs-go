@@ -19,6 +19,8 @@ func supportsJITMapKeyEncode(typ reflect.Type) bool {
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		return true
+	case reflect.Float32, reflect.Float64:
+		return jitJSONV2Semantics
 	default:
 		return typ.Implements(jitTextMarshalerType)
 	}
@@ -30,6 +32,8 @@ func supportsJITMapKeyDecode(typ reflect.Type) bool {
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		return true
+	case reflect.Float32, reflect.Float64:
+		return jitJSONV2Semantics
 	default:
 		return reflect.PointerTo(typ).Implements(jitTextUnmarshalerType)
 	}
@@ -88,6 +92,21 @@ func assignDecodedMapKey(mapType, hmap unsafe.Pointer, keyType reflect.Type, tex
 			*(*uint64)(unsafe.Pointer(&key[0])) = value
 		default:
 			panic("json: unexpected unsigned map-key width")
+		}
+		return runtimeMapAssign(mapType, hmap, unsafe.Pointer(&key[0])), nil
+	case reflect.Float32, reflect.Float64:
+		if !jitJSONV2Semantics {
+			return nil, &stdjson.UnsupportedTypeError{Type: keyType}
+		}
+		value, err := strconv.ParseFloat(text, keyType.Bits())
+		if err != nil {
+			return nil, &stdjson.UnmarshalTypeError{Value: "number " + text, Type: keyType}
+		}
+		var key [8]byte
+		if keyType.Bits() == 32 {
+			*(*float32)(unsafe.Pointer(&key[0])) = float32(value)
+		} else {
+			*(*float64)(unsafe.Pointer(&key[0])) = value
 		}
 		return runtimeMapAssign(mapType, hmap, unsafe.Pointer(&key[0])), nil
 	default:
