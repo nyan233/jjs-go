@@ -60,8 +60,12 @@ class MacCounters:
 def command(args, codec, operation, size, count):
     cmd = [str(args.binary), "-codec", codec, "-operation", operation,
            "-size", size, "-n", str(count)]
+    if getattr(args, "application_policy", False):
+        cmd = ["/usr/sbin/taskpolicy", "-a"] + cmd
     if args.pmu:
         cmd += ["-pmu", args.pmu]
+    if args.worker_qos:
+        cmd += ["-worker-qos", args.worker_qos]
     return cmd
 
 
@@ -138,6 +142,8 @@ def main():
     parser.add_argument("--seconds", type=float, default=1)
     parser.add_argument("--gomaxprocs", type=int, default=1)
     parser.add_argument("--pmu", choices=("branch", "cache", "tlb", "simd"))
+    parser.add_argument("--worker-qos", choices=("user-initiated",))
+    parser.add_argument("--application-policy", action="store_true", help="launch through macOS taskpolicy -a")
     parser.add_argument("--operation", action="append", choices=("encode", "encode-reuse", "decode-reuse", "decode-fresh"))
     args = parser.parse_args()
     # Serialize root PMU captures and ordinary profile/counter captures.
@@ -156,6 +162,8 @@ def main():
         "mach_timebase": {"numer": counters.numer, "denom": counters.denom},
         "counter_source": "proc_pid_rusage RUSAGE_INFO_V6; process scope",
         "worker_counter_group": args.pmu,
+        "worker_qos": args.worker_qos,
+        "application_policy": args.application_policy,
         "handshake": "stopped-child snapshots bracket the loop plus bounded pipe/signal/format/readMemStats overhead",
     }
     (args.output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")

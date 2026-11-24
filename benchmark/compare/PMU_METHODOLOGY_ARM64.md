@@ -397,3 +397,97 @@ it is not merely a way to make absolute thread readings start at zero. Avoid
 period changes for this direct-count experiment unless needed for a separately
 validated reason, and save/restore them if used. Source:
 [`kpc_get_configurable_counters` and `kpc_set_reload_xcall`](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/arm64/kpc.c).
+
+## Worker QoS and P/E residency
+
+The initial privileged batch, launched through the administrator helper,
+showed substantial E-core execution; earlier unprivileged captures mostly ran
+on P cores. Keep those samples as a separate scheduling condition. A different
+inherited task policy is a hypothesis, not an established effect of root UID
+or proof of the helper's policy. XNU inherits a parent's background flags and
+QoS clamp at task creation. Its effective thread policy can then clamp a
+higher requested QoS or reduce it to background. Sources:
+[`task_policy_create` and task policy calculation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/task_policy.c#L730),
+[`thread_policy_update`](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/thread_policy.c#L1645).
+
+Use the same explicit worker QoS condition for both libraries and all three
+fixture sizes. The diagnostic CLI's optional
+`-worker-qos=user-initiated` mode is designed to:
+
+1. Lock the worker to its current OS thread before warmup and measurement.
+2. Read the original requested class and relative priority using
+   `pthread_get_qos_class_np(pthread_self(), &original_class, &original_relpri)`.
+3. Request `pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0)`, then
+   read back the requested class and relative priority. Check the returned
+   errno value from each API; these functions return it directly.
+4. Record the original/requested values with the sample. Keep that worker
+   locked until this single-run process exits, including output and cleanup.
+   Do not return the modified thread to Go's general worker pool.
+
+This process-lifetime choice avoids an invalid restoration: the getter can
+return `QOS_CLASS_UNSPECIFIED`, but the public setter rejects that value with
+`EINVAL`. For a reusable worker whose original class is one of the five valid
+classes, restoring the saved class and relative priority is possible and must
+be checked before unlocking. Do not use `pthread_setschedparam` as a reset:
+it can permanently opt the thread out of QoS. API contracts and implementation:
+[Apple pthread QoS header](https://github.com/apple-oss-distributions/libpthread/blob/main/include/pthread/qos.h),
+[Apple pthread QoS implementation](https://github.com/apple-oss-distributions/libpthread/blob/main/src/qos.c#L138).
+
+Requested QoS is a scheduling input, not CPU affinity. Apple explicitly
+describes P/E placement as a decision based on QoS, workload and system state;
+apps and daemons may be treated differently. The pthread getter reports the
+requested class and does not expose QoS overrides or prove the effective task
+policy. A successful request therefore does not prove P-core execution.
+Sources: [Apple's P/E scheduling guidance](https://developer.apple.com/news/?id=vk3m204o),
+[Apple's pthread QoS contract](https://github.com/apple-oss-distributions/libpthread/blob/main/include/pthread/qos.h).
+
+Report observed process-wide P-cycle fraction
+`delta(ri_pcycles) / delta(ri_cycles)` and P CPU-time fraction
+`delta(ri_user_ptime + ri_system_ptime) / delta(ri_user_time + ri_system_time)`
+for every condition. These fractions are different quantities; neither pins a
+thread or identifies a particular core. KPC worker events remain scoped to the
+locked worker, while rusage includes other Go/runtime threads. If a requested
+QoS condition still has mixed residency, retain that fact and avoid presenting
+its aggregate IPC/cache behavior as a pure P-core machine-code comparison.
+Compare only runs with matched QoS settings, capture method and similar
+measured residency; retain the initial batch rather than silently replacing
+or pooling it with later captures.
+
+### Application-role launch is another scheduling condition
+
+Apple's `taskpolicy -a` implementation sets the spawn process type to
+`POSIX_SPAWN_PROC_TYPE_APP_DEFAULT` and Darwin role to `PRIO_DARWIN_ROLE_UI`.
+XNU maps that role to `TASK_DEFAULT_APPLICATION`; it is not the focal
+`TASK_FOREGROUND_APPLICATION` role. It also updates the application's thread
+group flag. This creates an application-policy condition, not a P-core binding.
+Sources: [Apple taskpolicy implementation](https://github.com/apple-oss-distributions/system_cmds/blob/408bba7453608006b89772db185defbac8fe2fd0/taskpolicy/taskpolicy.c#L275),
+[XNU role mapping and spawn policy](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/task_policy.c#L1976).
+
+`taskpolicy -B -p PID` calls `setpriority(PRIO_DARWIN_PROCESS, PID, 0)`.
+When a helper changes another process, XNU clears that target's external
+background request; when a process changes itself, it clears its internal
+request. It does not clear every background source, QoS clamp or coalition
+policy. Sources: [taskpolicy background option](https://github.com/apple-oss-distributions/system_cmds/blob/408bba7453608006b89772db185defbac8fe2fd0/taskpolicy/taskpolicy.c#L209),
+[XNU `do_background_proc`](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_resource.c#L1216).
+
+The rusage `ri_cpu_time_qos_*` buckets come from effective-QoS accounting,
+unlike the pthread requested-class getter. Mostly user-initiated CPU time
+therefore argues against a simple background-QoS clamp during that interval;
+it still does not imply P-core placement. Source:
+[XNU rusage QoS accounting](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/bsd_kern.c#L1315).
+
+Apple documents that daemon/agent process type and propagated XPC context
+affect resource decisions. A requesting application's performance behavior
+does not automatically carry over to its services. This supports investigating
+launch context, but does not establish which responsibility, coalition or
+thread-group policy an administrator helper applied in these captures.
+Source: [Apple daemon and agent guidance](https://developer.apple.com/documentation/apple-silicon/tuning-your-code-s-performance-for-apple-silicon).
+
+If the application-role smoke run remains mixed, the capture is still a valid
+observation of that scheduling condition. Instruction and branch counts per
+operation can describe executed work; prediction misses, cache misses, cycles
+and IPC depend on the core mixture and migration as well as the code. Avoid
+precise cross-library rankings of those metrics when residency differs. Use
+the high-P process-rusage series for the main CPU-efficiency comparison and
+label mixed KPC samples as supplementary diagnostics. Do not combine their
+ratios with denominators from a separate high-P run.

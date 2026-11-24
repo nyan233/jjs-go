@@ -4,12 +4,12 @@ Measured 2026-11-24, Apple M1 Pro (10 cores, 32 GiB), macOS 27.0.1,
 Go 1.25.0 darwin/arm64, AC power. Codec source: `2ebe820` (including the pointer
 fallback fix), Sonic v1.15.5. This branch changes diagnostic tooling only.
 
-**Status:** process IPC/CPI, CPU/heap profiles and input-copy controls are
-complete. Single-case privileged branch/cache/TLB/SIMD probes succeeded and
-restored the original counter configuration. Full paired worker-PMU captures
-are awaiting local macOS administrator authentication. No cache/branch
-comparison between the libraries is claimed yet. Xcode download was canceled
-at the user's request; Xcode was not installed and SIP was not changed.
+**Status:** process IPC/CPI, CPU/heap profiles, input-copy controls and all
+144 paired worker branch/cache/TLB/SIMD captures are complete. The worker
+captures have mixed P/E residency and are reported separately from the
+P-heavy process counters. QoS and application-role controls did not eliminate
+this difference. Xcode download was canceled at the user's request; Xcode
+was not installed and SIP was not changed.
 
 ## What is being compared
 
@@ -197,29 +197,119 @@ advantage over Sonic's byte API therefore cannot all be credited to its
 parser or code generation. The remaining object-count difference is large.
 [All 18 control samples](pmu-arm64-sonic-input-copy.txt) are retained.
 
-## Worker PMU status
+## Worker hardware counters: separate mixed-core condition
 
-Without Xcode, root capability probes successfully collected:
+All four privileged groups completed: 144 samples = 4 groups × 2 operations ×
+3 sizes × 2 libraries × 3 rounds. These runs used the same original executable
+as the process/profile captures. However, their measured P-cycle fraction is
+**42.15–65.12%**, unlike the original process samples (at least 98.96%).
+The following results describe this separate mixed P/E scheduling condition.
+They are not pure P-core counters and must not be joined to the process IPC
+rows as if they came from one interval. Scheduling differences also limit
+attribution of a miss-rate difference to code generation alone. All samples
+are retained, rather than filtered by speed or residency.
 
-- retired branch count and branch mispredictions;
-- retired L1D load misses and demand L1I misses;
-- L1D and L2 data-TLB misses;
-- retired SIMD/FP ALU and integer/SIMD load counts.
+The helper locks the worker to one OS thread and requests user-only configurable
+events. Other Go GC/runtime threads are outside this worker scope. MPKI means
+events per 1,000 **worker user instructions**, aggregated over all three rounds;
+branch miss percentage divides retired mispredictions by retired branches
+from the same group and scope. Cache/TLB values below are MPKI, not a percentage
+of cache accesses. The groups are collected sequentially, without multiplexing.
 
-The helper locks the worker to one OS thread and requests user-only
-configurable events. It preserves the normal OS fixed/power counter mask,
-refuses an existing configurable capture, and restores state on normal/error
-exits. All four probes restored force=0, counting=5, thread_counting=0.
-XNU virtual thread counters can have negative uint64 offsets after a
-configuration switch. Raw before/after values are retained; modular deltas
-are bounded/checked against fixed instructions. Three independent probe
-groups reported about 6,035 user instructions per Small jjs operation.
+[Raw worker JSONL](pmu-arm64-worker-mixed.jsonl) and
+[complete CSV summary](pmu-arm64-worker-mixed-summary.csv) retain event counts,
+per-operation values, time, IPC and residency.
 
-The full library-by-size comparison is pending local administrator
-verification; isolated capability probes are not used to claim comparative
-cache/branch performance. The local M1 descriptor exposes no L2 data-cache
-miss event. L2 TLB misses will not be labeled L2 cache misses. INST_SIMD_ALU
-includes scalar FP and is not a pure NEON effectiveness metric.
+### Encoding with a reused output buffer
+
+| Size | Library | Branch miss % | Branch MPKI | L1D load-miss MPKI | L1I demand-miss MPKI | L1D TLB MPKI | L2 data-TLB MPKI |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Small | jjs | 0.0348 | 0.0664 | 0.0190 | 0.0139 | 0.0159 | 0.0046 |
+| Small | sonic | 2.2021 | 4.1984 | 0.7771 | 0.0701 | 0.1817 | 0.2945 |
+| Medium | jjs | 0.1084 | 0.2197 | 0.0426 | 0.0238 | 0.0364 | 0.0167 |
+| Medium | sonic | 1.8475 | 3.8344 | 2.0466 | 0.0783 | 0.2174 | 0.1403 |
+| Large | jjs | 0.6227 | 1.3063 | 1.7714 | 0.0383 | 0.0450 | 0.0225 |
+| Large | sonic | 2.2201 | 4.5678 | 1.9292 | 0.0688 | 0.2187 | 0.1432 |
+
+### Decoding into a reused target
+
+| Size | Library | Branch miss % | Branch MPKI | L1D load-miss MPKI | L1I demand-miss MPKI | L1D TLB MPKI | L2 data-TLB MPKI |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Small | jjs | 0.1774 | 0.5030 | 0.0596 | 0.0240 | 0.0259 | 0.1004 |
+| Small | sonic | 0.5092 | 1.0548 | 0.4650 | 0.0721 | 0.2972 | 0.1261 |
+| Medium | jjs | 0.3473 | 1.0091 | 0.4123 | 0.0424 | 0.0654 | 0.0643 |
+| Medium | sonic | 0.3458 | 0.7608 | 3.2231 | 0.0826 | 0.4865 | 0.0896 |
+| Large | jjs | 0.3400 | 0.9297 | 1.0083 | 0.0545 | 0.1104 | 0.0516 |
+| Large | sonic | 0.5121 | 1.1336 | 2.6694 | 0.0532 | 0.3759 | 0.0685 |
+
+In this condition, jjs encoding has fewer mispredictions per instruction
+and lower L1I miss density across all sizes. This is consistent with the
+VM-dispatch difference, but the aggregate counters do not locate misses at
+specific instructions. The low L1I miss density does not show an instruction
+cache capacity problem that would independently justify SSA. For Large decode,
+jjs has lower L1D miss density, while its ordinary P-heavy process run still
+executes more instructions than Sonic. Reducing parser work remains a stronger
+next experiment than treating cache misses as the sole explanation. These
+are diagnostic directions, not a conversion of MPKI into percent CPU cost.
+
+The descriptor exposes no L2 **data-cache** miss event. L2 data-TLB events
+are not cache misses. L1D_TLB_MISS_NONSPEC is retired-only while the L2 event
+is not described that way; their values are not a nested miss-rate funnel.
+
+### SIMD/FP activity
+
+| Operation | Size | Library | SIMD/FP ALU instructions/op | SIMD/FP loads/op | Integer loads/op |
+|---|---|---|---:|---:|---:|
+| encode-reuse | Small | jjs | 46.0 | 7.0 | 1,014.0 |
+| encode-reuse | Small | sonic | 290.2 | 28.1 | 3,584.7 |
+| encode-reuse | Medium | jjs | 1,142.0 | 245.0 | 7,752.1 |
+| encode-reuse | Medium | sonic | 7,941.2 | 216.8 | 44,388.3 |
+| encode-reuse | Large | jjs | 132,285.1 | 10,867.6 | 293,321.6 |
+| encode-reuse | Large | sonic | 252,341.3 | 7,324.6 | 1,284,760.1 |
+| decode-reuse | Small | jjs | 17.1 | 5.0 | 4,324.7 |
+| decode-reuse | Small | sonic | 1,167.9 | 190.1 | 4,405.1 |
+| decode-reuse | Medium | jjs | 14.5 | 3.4 | 58,110.3 |
+| decode-reuse | Medium | sonic | 21,841.1 | 3,202.7 | 62,703.7 |
+| decode-reuse | Large | jjs | 106,121.1 | 24,398.9 | 2,671,230.6 |
+| decode-reuse | Large | sonic | 950,920.0 | 123,209.1 | 2,254,941.4 |
+
+The SIMD/FP ALU event conflicts with INST_ALL on this chip, so this group
+reports counts per operation instead of user-instruction MPKI. It includes
+scalar floating point and therefore is not a pure NEON instruction count.
+The counters and profiles confirm vector/FP routines execute; more SIMD
+instructions do not imply more useful work or a faster algorithm. In particular,
+Sonic does substantially more SIMD/FP work in decoding, while jjs Medium decode
+has little. That supports investigating vectorized whitespace/string scanning
+in jjs, but does not measure its potential speedup. An equal-algorithm scalar
+ablation would be needed to quantify the current NEON speedup.
+
+### Scheduling control and restoration
+
+An optional public pthread QoS request was added to the short-lived harness.
+The worker stays locked through process exit; requested class/relative priority
+are recorded. A same-user, three-round reused-buffer/target control (36 samples)
+with user-initiated QoS observed 97.78–100% P cycles. A six-case privileged
+QoS smoke test observed 35.94–99.92% P cycles despite a successful request;
+five cases remained mixed. Thus the QoS request alone did not provide a
+comparable P-heavy privileged batch. Those controls remain separate from
+the 144 original worker samples. A second six-case control requested application
+policy with `taskpolicy -a` and cleared the parent process's external background
+flag; it still observed 47.26–91.43% P cycles. Neither privileged smoke condition
+met the predefined requirement that every case reach 95% P cycles, so their
+full batches were not run. The ordinary
+QoS, privileged QoS and application-policy controls are preserved in
+[48 raw control samples](pmu-arm64-scheduling-controls.jsonl). Root QoS samples
+spent 97.87–99.82% of measured CPU time at effective user-initiated QoS; a simple
+background-QoS clamp therefore does not explain them. Launch context and
+privileged counter configuration are not isolated from each other here. The
+captures do not establish that root UID causes the scheduling difference.
+
+Each completed group and both privileged smoke tests restored the initial PMU state:
+force=0, counting=5 (normal fixed + power counters), thread_counting=0.
+[Saved restoration checks](pmu-arm64-counter-state.json) cover all of those
+captures. No system file, SIP setting or global scheduling policy was changed. Raw
+before/after thread counter values are retained, including modular-offset
+wrap flags; the helper checks positive counts and plausible deltas.
 
 ## Reproduce and inspect
 
@@ -236,7 +326,14 @@ python3 profile-macos.py --binary /tmp/profilecodec --output /tmp/alloc-profiles
 # Optional worker PMU; repeat with cache, tlb and simd:
 sudo python3 profile-macos.py --binary /tmp/profilecodec --output /tmp/worker-branch \
   --pmu branch --operation encode-reuse --operation decode-reuse --rounds 3 --seconds 1
+# Optional scheduling condition; always verify observed residency:
+# add --worker-qos user-initiated, and optionally --application-policy
 ```
+
+The exact original binary is retained as `profilecodec` in the artifact folder;
+the optional QoS-control binary is `profilecodec-qos`, with both hashes in metadata.
+The QoS request and `taskpolicy -a` are local to each launched process; they
+are experimental scheduling conditions and do not promise P-core placement.
 
 The root counters require cgo and macOS. The command also builds without cgo,
 and on other platforms, with an explicit unsupported error only if PMU is
@@ -259,6 +356,7 @@ snapshots cover one final retained value and pools, not long-running growth.
    the typed JIT loop already removes substantial VM dispatch work.
 3. Preserve buffer reuse in callers that can use it. Allocation/GC costs in
    the owned-buffer path are material and independent of JIT instruction count.
-4. Wait for the paired worker counters before diagnosing branch prediction,
-   cache capacity or TLB pressure. Static code size and IPC alone do not
-   establish those bottlenecks or justify adding SSA.
+4. Use the mixed-core worker counters as scoped diagnostics. A pure P-core
+   cache/branch claim still needs a capture with verified matching residency;
+   the QoS smoke test did not achieve that. Static code size and IPC alone
+   do not establish cache bottlenecks or justify adding SSA.

@@ -156,6 +156,7 @@ func run() (runErr error) {
 	delay := flag.Duration("delay", 0, "wait after warmup for an external profiler to attach")
 	gate := flag.Bool("counter-gate", false, "wait for one stdin byte before and after the measured loop")
 	pmuGroup := flag.String("pmu", "", "optional privileged worker counters: branch, cache, tlb or simd")
+	workerQoS := flag.String("worker-qos", "", "optional macOS worker QoS: user-initiated (process lifetime)")
 	profiles := flag.String("profiles", "", "directory for CPU and before/after heap profiles")
 	collectCPU := flag.Bool("cpu", true, "collect CPU samples when profiles is set; disable for allocation-only captures")
 	memRate := flag.Int("mem-rate", 512*1024, "heap profile sampling interval; 1 records every allocation")
@@ -164,9 +165,22 @@ func run() (runErr error) {
 		return fmt.Errorf("n and mem-rate must be positive")
 	}
 	runtime.MemProfileRate = *memRate
-	if *pmuGroup != "" {
+	if *pmuGroup != "" || *workerQoS != "" {
 		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
+		// A thread with an unspecified initial QoS cannot restore that class
+		// through the public setter. Keep this CLI worker locked until process
+		// exit when QoS is requested; never return it to the runtime's pool.
+		if *workerQoS == "" {
+			defer runtime.UnlockOSThread()
+		}
+	}
+	var qos map[string]int
+	if *workerQoS != "" {
+		var err error
+		qos, err = requestWorkerQoS(*workerQoS)
+		if err != nil {
+			return err
+		}
 	}
 	w, err := selectWorkload(*codec, *operation, *size)
 	if err != nil {
@@ -297,6 +311,7 @@ func run() (runErr error) {
 		GCs, PauseNS                            uint64
 		PMUGroup                                string
 		PMU                                     map[string]uint64
+		WorkerQoS                               map[string]int
 	}{
 		pmuStart, pmuEnd, pmuWrapped,
 		*codec, *operation, *size, w.typ, runtime.Version(),
@@ -307,6 +322,7 @@ func run() (runErr error) {
 		float64(after.Mallocs-before.Mallocs) / float64(*n),
 		uint64(after.NumGC - before.NumGC), after.PauseTotalNs - before.PauseTotalNs,
 		*pmuGroup, pmuDelta,
+		qos,
 	}
 	return json.NewEncoder(os.Stdout).Encode(result)
 }

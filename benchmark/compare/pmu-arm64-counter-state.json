@@ -1,0 +1,100 @@
+{
+  "counter-state.json": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  },
+  "state-after-tlb.json": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  },
+  "state-after-simd.json": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  },
+  "state-after-cache.json": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  },
+  "state-after-branch.json": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  },
+  "qos-counter-state.json": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  },
+  "application-policy": {
+    "before": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    },
+    "after": {
+      "force_result": 0,
+      "force": 0,
+      "counting": 5,
+      "thread": 0
+    }
+  }
+}

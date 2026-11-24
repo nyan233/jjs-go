@@ -115,8 +115,9 @@ call bridge, regression coverage and compilation costs.
 
 The current Small/Medium/Large jjs-versus-Sonic investigation is in
 [`PMU_COMPARISON_ARM64.md`](PMU_COMPARISON_ARM64.md). It includes process
-IPC/CPI, CPU/allocation profiles and an input-copy control; the report marks
-the status of paired worker cache/branch captures. The
+IPC/CPI, CPU/allocation profiles, an input-copy control and 144 paired worker
+branch/cache/TLB/SIMD samples. The report separates their mixed P/E residency
+from the P-heavy process measurements and records scheduling controls. The
 [`methodology`](PMU_METHODOLOGY_ARM64.md) explains the native macOS counters
 and their scopes without requiring a full Xcode installation.
 

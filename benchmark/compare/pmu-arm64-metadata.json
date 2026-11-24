@@ -21,12 +21,94 @@
   "artifact_dir": "/Users/rainstorm/.codex/visualizations/2026/11/23/01a20691-09a5-7d60-bdef-045ab41c91eb/jjs-pmu-20261124",
   "raw_source_dir": "/tmp/jjs-pmu-20261124/final",
   "xcode": "download canceled at user request; not installed",
-  "worker_pmu_status": "single-case capability probes passed; full paired captures awaiting macOS administrator authentication",
+  "worker_pmu_status": "144 paired samples complete; mixed P/E residency, supplementary condition, not pooled with primary process counters",
   "primary_samples": 120,
   "cpu_profile_cases": 24,
   "exact_allocation_profile_cases": 24,
   "extra_cpu_rusage_cases": 4,
   "single_operation_controls": 10,
   "sonic_input_control_samples": 18,
-  "preliminary_data": "/tmp/jjs-pmu-20261124/process-counters was collected during Xcode download and is excluded from final tables"
+  "preliminary_data": "/tmp/jjs-pmu-20261124/process-counters was collected during Xcode download and is excluded from final tables",
+  "worker_samples": 144,
+  "worker_P_cycle_range": [
+    0.42150339418100163,
+    0.6512388171117278
+  ],
+  "worker_groups": {
+    "branch": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "phase": "counters",
+      "rounds": 3,
+      "uid": 0,
+      "target_seconds": 1.0,
+      "gomaxprocs": 1,
+      "binary": "/private/tmp/jjs-profilecodec-kpc",
+      "sha256": "6b8030f50b2430098ea8e95a08155409e586a8fa2e851787ee1a29c71724ed14",
+      "mach_timebase": {
+        "numer": 125,
+        "denom": 3
+      },
+      "counter_source": "proc_pid_rusage RUSAGE_INFO_V6; process scope",
+      "worker_counter_group": "branch",
+      "handshake": "stopped-child snapshots bracket the loop plus bounded pipe/signal/format/readMemStats overhead"
+    },
+    "cache": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "phase": "counters",
+      "rounds": 3,
+      "uid": 0,
+      "target_seconds": 1.0,
+      "gomaxprocs": 1,
+      "binary": "/private/tmp/jjs-profilecodec-kpc",
+      "sha256": "6b8030f50b2430098ea8e95a08155409e586a8fa2e851787ee1a29c71724ed14",
+      "mach_timebase": {
+        "numer": 125,
+        "denom": 3
+      },
+      "counter_source": "proc_pid_rusage RUSAGE_INFO_V6; process scope",
+      "worker_counter_group": "cache",
+      "handshake": "stopped-child snapshots bracket the loop plus bounded pipe/signal/format/readMemStats overhead"
+    },
+    "tlb": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "phase": "counters",
+      "rounds": 3,
+      "uid": 0,
+      "target_seconds": 1.0,
+      "gomaxprocs": 1,
+      "binary": "/private/tmp/jjs-profilecodec-kpc",
+      "sha256": "6b8030f50b2430098ea8e95a08155409e586a8fa2e851787ee1a29c71724ed14",
+      "mach_timebase": {
+        "numer": 125,
+        "denom": 3
+      },
+      "counter_source": "proc_pid_rusage RUSAGE_INFO_V6; process scope",
+      "worker_counter_group": "tlb",
+      "handshake": "stopped-child snapshots bracket the loop plus bounded pipe/signal/format/readMemStats overhead"
+    },
+    "simd": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "phase": "counters",
+      "rounds": 3,
+      "uid": 0,
+      "target_seconds": 1.0,
+      "gomaxprocs": 1,
+      "binary": "/private/tmp/jjs-profilecodec-kpc",
+      "sha256": "6b8030f50b2430098ea8e95a08155409e586a8fa2e851787ee1a29c71724ed14",
+      "mach_timebase": {
+        "numer": 125,
+        "denom": 3
+      },
+      "counter_source": "proc_pid_rusage RUSAGE_INFO_V6; process scope",
+      "worker_counter_group": "simd",
+      "handshake": "stopped-child snapshots bracket the loop plus bounded pipe/signal/format/readMemStats overhead"
+    }
+  },
+  "scheduling_control_samples": 48,
+  "scheduling_control_binary": {
+    "path": "/tmp/jjs-profilecodec-qos",
+    "sha256": "9026fda4b03b9b35bb95563c53ea15ea226cfbaba08b8643ddcf40d58eacd525"
+  },
+  "scheduling_control_status": "36 same-user QoS runs and two six-case privileged smoke conditions; neither privileged condition reached the required 95% P cycles for every case, so no full QoS batch was run",
+  "pmu_state_restored": true
 }
