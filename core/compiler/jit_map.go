@@ -151,7 +151,7 @@ func (frame *jitMapFrame) resetEntries() {
 }
 
 func (frame *jitMapFrame) resolveName(key unsafe.Pointer, keyType reflect.Type) (string, error) {
-	if jitJSONV2Semantics && keyType.Implements(jitTextMarshalerType) {
+	if jitJSONV2TextMapKeysFirst && keyType.Implements(jitTextMarshalerType) {
 		return frame.resolveTextName(key, keyType)
 	}
 	if keyType.Kind() == reflect.String {

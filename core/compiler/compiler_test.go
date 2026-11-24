@@ -125,3 +125,19 @@ func TestTypePointerMatchesInterface(t *testing.T) {
 		t.Fatalf("type pointer mismatch: registry=%p interface=%p", got, actual)
 	}
 }
+
+func TestGo127TextMapKeyPrecedence(t *testing.T) {
+	for version, want := range map[string]bool{
+		"go1.26.9":             false,
+		"go1.27":               false,
+		"go1.27.0":             true,
+		"go1.27.3":             true,
+		"go1.27.4":             false,
+		"go1.27.10 devel test": false,
+		"devel go1.28-abcdef":  false,
+	} {
+		if got := jitGo127TextMapKeysFirst(version); got != want {
+			t.Errorf("%q: got %v, want %v", version, got, want)
+		}
+	}
+}

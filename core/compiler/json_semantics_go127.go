@@ -2,6 +2,6 @@
 
 package compiler
 
-// Go 1.27 enables encoding/json/v2 by default. Its map-key rules take
-// precedence over string and integer defaults and permit floating-point keys.
+// Go 1.27 enables encoding/json/v2 by default, which permits floating-point
+// map keys and clears non-empty interfaces when a decode target is invalid.
 const jitJSONV2Semantics = true

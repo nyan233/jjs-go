@@ -2,4 +2,6 @@
 
 package compiler
 
-const jitJSONV2Semantics = false
+const (
+	jitJSONV2Semantics = false
+)
