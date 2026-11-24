@@ -1,0 +1,51 @@
+goos: windows
+goarch: amd64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Intel(R) Core(TM) i7-14700KF
+BenchmarkAppendQuoted/Unicode/Reuse-16         	  468669	       743.5 ns/op	1032.95 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Unicode/Reuse-16         	  474232	       723.6 ns/op	1061.42 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Unicode/Reuse-16         	  416786	       727.4 ns/op	1055.75 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Unicode/Reuse-16         	  415617	       732.1 ns/op	1049.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Unicode/Reuse-16         	  504505	       729.8 ns/op	1052.40 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/UnicodeThenASCII/Reuse-16         	  865488	       441.1 ns/op	2334.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/UnicodeThenASCII/Reuse-16         	  785340	       443.0 ns/op	2325.26 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/UnicodeThenASCII/Reuse-16         	  714824	       449.0 ns/op	2294.12 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/UnicodeThenASCII/Reuse-16         	  795157	       441.5 ns/op	2332.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/UnicodeThenASCII/Reuse-16         	  765891	       443.1 ns/op	2324.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Escapes/Reuse-16                  	  164307	      2098 ns/op	 152.53 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Escapes/Reuse-16                  	  169500	      2111 ns/op	 151.62 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Escapes/Reuse-16                  	  176076	      2082 ns/op	 153.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Escapes/Reuse-16                  	  172844	      2091 ns/op	 153.07 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/Escapes/Reuse-16                  	  177540	      2081 ns/op	 153.74 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/HTML/Reuse-16                     	   46033	      7838 ns/op	  65.33 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/HTML/Reuse-16                     	   46585	      7858 ns/op	  65.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/HTML/Reuse-16                     	   45661	      7764 ns/op	  65.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/HTML/Reuse-16                     	   46233	      7768 ns/op	  65.91 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/HTML/Reuse-16                     	   47022	      7808 ns/op	  65.57 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII8/Reuse-16                   	63964747	         5.762 ns/op	1388.31 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII8/Reuse-16                   	70217870	         5.711 ns/op	1400.90 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII8/Reuse-16                   	57488701	         5.713 ns/op	1400.35 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII8/Reuse-16                   	58489033	         5.891 ns/op	1357.89 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII8/Reuse-16                   	55149592	         5.808 ns/op	1377.46 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII16/Reuse-16                  	63495422	         5.939 ns/op	2694.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII16/Reuse-16                  	60249894	         5.942 ns/op	2692.51 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII16/Reuse-16                  	54768678	         5.908 ns/op	2708.18 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII16/Reuse-16                  	59044462	         5.911 ns/op	2706.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII16/Reuse-16                  	60754365	         5.923 ns/op	2701.22 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII64/Reuse-16                  	34662044	         9.909 ns/op	6458.70 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII64/Reuse-16                  	40119019	         9.985 ns/op	6409.55 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII64/Reuse-16                  	35078145	         9.934 ns/op	6442.42 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII64/Reuse-16                  	34644698	         9.950 ns/op	6431.95 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII64/Reuse-16                  	35923482	        10.64 ns/op	6014.18 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII256/Reuse-16                 	  895076	       405.1 ns/op	 632.01 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII256/Reuse-16                 	  900404	       405.4 ns/op	 631.55 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII256/Reuse-16                 	  780961	       402.9 ns/op	 635.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII256/Reuse-16                 	 1000000	       405.2 ns/op	 631.72 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII256/Reuse-16                 	  846282	       400.1 ns/op	 639.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII1024/Reuse-16                	  794332	       434.8 ns/op	2355.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII1024/Reuse-16                	  764086	       436.7 ns/op	2344.62 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII1024/Reuse-16                	 1000000	       435.7 ns/op	2350.36 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII1024/Reuse-16                	  878026	       435.4 ns/op	2351.61 MB/s	       0 B/op	       0 allocs/op
+BenchmarkAppendQuoted/ASCII1024/Reuse-16                	  824252	       439.4 ns/op	2330.44 MB/s	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/nyan233/jjs-go/core/compiler	17.696s

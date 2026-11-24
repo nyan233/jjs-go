@@ -1,0 +1,21 @@
+goos: windows
+goarch: amd64
+pkg: github.com/nyan233/jjs-go/benchmark/compare
+cpu: Intel(R) Core(TM) i7-14700KF
+BenchmarkEncoder_Binding/Small/jjs-go-16  	 1469198	       408.1 ns/op	 894.39 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-16  	 1437402	       425.1 ns/op	 858.53 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-16  	 1380560	       411.3 ns/op	 887.51 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-16  	 1464409	       406.8 ns/op	 897.17 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Small/jjs-go-16  	 1470860	       408.4 ns/op	 893.68 MB/s	     608 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-16 	  174062	      3305 ns/op	3940.40 MB/s	    9621 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-16 	  168373	      3437 ns/op	3789.42 MB/s	    9621 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-16 	  185793	      3497 ns/op	3724.52 MB/s	    9621 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-16 	  173478	      3376 ns/op	3858.02 MB/s	    9621 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Medium/jjs-go-16 	  183486	      3383 ns/op	3849.31 MB/s	    9621 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-16  	    3427	    165487 ns/op	3816.09 MB/s	  262432 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-16  	    3510	    166419 ns/op	3794.71 MB/s	  262438 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-16  	    3559	    170391 ns/op	3706.26 MB/s	  262438 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-16  	    3666	    167386 ns/op	3772.81 MB/s	  262441 B/op	       2 allocs/op
+BenchmarkEncoder_Binding/Large/jjs-go-16  	    3492	    175032 ns/op	3607.99 MB/s	  262432 B/op	       2 allocs/op
+PASS
+ok  	github.com/nyan233/jjs-go/benchmark/compare	12.118s

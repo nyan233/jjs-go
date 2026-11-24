@@ -17,11 +17,11 @@ and epilogue directly.
 Encode and decode contexts are reused through `sync.Pool`. The generated code
 reserves output capacity once per static segment and writes compiled literals
 directly with 16/32-byte `VMOVDQU` stores instead of calling a copy helper.
-amd64 string scanning combines SSE4.2 for short encoder strings and AVX2 for
-longer runs. ARM64 uses hand-written NEON quoting that fuses byte classification, copying,
-escaping and UTF-8 validation in one bounded assembly call. NEON handles 8/16-byte
-ASCII blocks and validates non-ASCII blocks with three UTF-8 lookup tables.
-Scalar ARM64 instructions handle escapes, invalid sequences and short tails.
+amd64 and ARM64 both use fused quote kernels that combine byte classification,
+copying, escaping and validation in one bounded assembly call. amd64 handles
+8/16/32-byte AVX2 blocks and scalar UTF-8 range validation. ARM64 handles
+8/16-byte NEON blocks and validates non-ASCII blocks with three UTF-8 lookup
+tables. Scalar instructions handle escapes, invalid sequences and short tails.
 amd64 byte slices use a bounded AVX2 Base64 kernel with exact 12-byte vector
 loads and a scalar tail; ARM64 uses an equivalent generated NEON kernel.
 Decoding retains word scanning based on full-document measurements.
@@ -171,11 +171,11 @@ Binding encoder:
 | --- | ---: | ---: | ---: |
 | `encoding/json` | 1,317 (3) | 15,526 (5) | 452,066 (468) |
 | `encoding/json/v2` | 1,540 (3) | 14,499 (5) | 435,799 (468) |
-| `goccy/go-json` | 590.5 (2) | 4,163 (2) | 215,982 (2) |
-| `json-iterator/go` | 805.5 (2) | 12,261 (2) | 464,880 (1,426) |
-| Sonic (`ConfigStd`) | 552.5 (3) | 4,473 (3) | 169,816 (108) |
-| EasyJSON | 748.5 (6) | 13,244 (69) | 484,477 (3,116) |
-| **jjs-go** | **517.2 (2)** | **7,731 (2)** | **304,442 (2)** |
+| `goccy/go-json` | 481.7 (2) | 3,491 (2) | 208,191 (2) |
+| `json-iterator/go` | 708.1 (2) | 11,461 (2) | 427,640 (1,426) |
+| Sonic (`ConfigStd`) | 421.1 (3) | 3,853 (3) | 160,744 (108) |
+| EasyJSON | 761.7 (6) | 12,268 (69) | 454,361 (3,116) |
+| **jjs-go** | **416.2 (2)** | **3,839 (2)** | **184,672 (2)** |
 
 Binding decoder:
 
@@ -205,12 +205,12 @@ Generic encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json` | 3,611 (26) | 34,131 (8) | 1,622,860 (9) |
-| `encoding/json/v2` | 2,939 (15) | 19,390 (6) | 951,765 (6) |
-| `goccy/go-json` | 1,560 (1) | 22,994 (1) | 1,178,919 (1) |
-| `json-iterator/go` | 4,496 (66) | 68,714 (613) | 2,947,162 (23,833) |
-| Sonic (`ConfigStd`) | 1,565 (7) | 22,233 (40) | 1,010,284 (1,267) |
-| **jjs-go** | **1,371 (1)** | **14,792 (1)** | **948,404 (1)** |
+| `encoding/json` | 3,471 (26) | 32,659 (8) | 1,549,364 (9) |
+| `encoding/json/v2` | 3,259 (15) | 29,369 (6) | 1,372,584 (6) |
+| `goccy/go-json` | 1,475 (1) | 22,275 (1) | 1,135,816 (1) |
+| `json-iterator/go` | 4,309 (66) | 66,086 (613) | 2,731,468 (23,832) |
+| Sonic (`ConfigStd`) | 1,477 (7) | 20,593 (40) | 957,805 (1,267) |
+| **jjs-go** | **1,273 (1)** | **13,576 (1)** | **767,377 (1)** |
 
 Generic decoder:
 
@@ -227,26 +227,28 @@ Unordered Generic encoder:
 
 | Library | Small | Medium | Large |
 | --- | ---: | ---: | ---: |
-| `encoding/json/v2` | 3,232 (15) | 29,585 (6) | 1,373,985 (6) |
-| `goccy/go-json` | 1,231 (1) | 12,024 (1) | 711,338 (1) |
-| Sonic (unsorted, HTML escaping enabled) | 1,237 (7) | 13,057 (40) | 727,125 (1,267) |
-| **jjs-go** | **1,314 (1)** | **15,589 (1)** | **951,546 (1)** |
+| `encoding/json/v2` | 3,212 (15) | 29,674 (6) | 1,383,649 (6) |
+| `goccy/go-json` | 1,242 (1) | 12,093 (1) | 707,808 (1) |
+| Sonic (unsorted, HTML escaping enabled) | 1,262 (7) | 13,034 (40) | 674,897 (1,267) |
+| **jjs-go** | **1,284 (1)** | **13,444 (1)** | **771,760 (1)** |
 
-Typed jjs-go encoding is faster than both v1 and v2 at every size, but goccy
-and Sonic remain faster on Medium and Large. Typed jjs-go decoding is faster
-than v1 and v2 at every size; goccy and Sonic remain ahead, and jsonv2 is
-roughly between Sonic and jjs-go.
+Typed jjs-go encoding is faster than both v1 and v2 at every size. It is also
+slightly ahead of goccy and Sonic on Small, close to them on Medium, and behind
+Sonic and goccy on Large. Typed jjs-go decoding is faster than v1 and v2 at
+every size; goccy and Sonic remain ahead, and jsonv2 is roughly between Sonic
+and jjs-go.
 
-Generic jjs-go encoding has the lowest median at all three sizes, narrowly
-ahead of jsonv2 on Large. Generic jjs-go decoding beats v1, v2 and Sonic on all
-sizes; goccy remains ahead. In the unsorted-map control, jjs-go trails goccy
-and Sonic.
+Generic jjs-go encoding has the lowest median at all three sizes, including a
+1.25x advantage over Sonic and 1.79x over jsonv2 on Large. Generic jjs-go
+decoding beats v1, v2 and Sonic on all sizes; goccy remains ahead. In the
+unsorted-map control, jjs-go trails goccy and Sonic.
 
 See [`benchmark/compare/README.md`](benchmark/compare/README.md) for the full
 methodology and
-[`benchmark/compare/results-windows-amd64-jsonv2.txt`](benchmark/compare/results-windows-amd64-jsonv2.txt)
-for all three raw samples. The unordered family was rerun separately with
-jsonv2 enabled; its raw samples are in
+[`benchmark/compare/results-windows-amd64-quote-jsonv2.txt`](benchmark/compare/results-windows-amd64-quote-jsonv2.txt)
+for the current encoder samples. Decoder and FreshBinding samples are in
+[`benchmark/compare/results-windows-amd64-jsonv2.txt`](benchmark/compare/results-windows-amd64-jsonv2.txt).
+The unordered family was rerun separately with jsonv2 enabled; its raw samples are in
 [`benchmark/compare/results-windows-amd64-jsonv2-unordered.txt`](benchmark/compare/results-windows-amd64-jsonv2-unordered.txt).
 
 The subsequent hot-path changes are measured separately against correctness
@@ -261,6 +263,8 @@ Hardware-counter profiling notes and raw results are in
 and [`benchmark/compare/SHORT_STRING_SCAN.md`](benchmark/compare/SHORT_STRING_SCAN.md).
 The AVX2 byte-slice study is in
 [`benchmark/compare/AMD64_BASE64.md`](benchmark/compare/AMD64_BASE64.md).
+The fused AVX2 quote study is in
+[`benchmark/compare/AMD64_QUOTE.md`](benchmark/compare/AMD64_QUOTE.md).
 
 ### macOS ARM64 — Apple M1 Pro
 

@@ -81,10 +81,47 @@ func (c *jitCodeBuilder) loadFloat(base obj.Addr, offset int64, width int) {
 func (c *jitCodeBuilder) floatBitsArgument(bits int64) { c.movConst(bits, _R8) }
 
 func (g *jitEncoderGenerator) emitString(offset int64) {
-	g.code.loadMem(_R12, offset, _RBX)
-	g.code.loadMem(_R12, offset+8, _RCX)
-	g.code.mov(_R10, _RAX)
-	g.emitHelper(jitHelperString)
+	c := g.code
+	c.loadMem(_R12, offset+8, _RBX)
+	c.addConst(2, _RBX)
+	g.emitReserveVariable()
+	c.movConst('"', _RBX)
+	c.store8(_RBX, mem(_RAX, 0))
+	c.addConst(1, _RAX)
+	// Publish only the initialized opening quote before entering assembly.
+	c.loadMem(_R10, 0, _RCX)
+	c.mov(_RAX, _RDI)
+	c.subtract(_RCX, _RDI)
+	c.mov(_RDI, mem(_R10, 8))
+	c.loadMem(_R10, 16, _RBX)
+	c.subtract(_RDI, _RBX)
+	c.subConst(1, _RBX) // Preserve one byte for the closing quote.
+	c.loadMem(_R12, offset, _RCX)
+	c.loadMem(_R12, offset+8, _RDI)
+	g.emitHelper(jitHelperQuote)
+	// Return values: AX=consumed, BX=written. Reload roots afterward.
+	c.loadMem(_R10, 8, _RCX)
+	c.add(_RBX, _RCX)
+	c.mov(_RCX, mem(_R10, 8))
+	c.loadMem(_R12, offset+8, _RDI)
+	c.compare(_RAX, _RDI)
+	complete, done := c.newLabel(), c.newLabel()
+	c.branch(jitEqual, complete)
+	c.loadMem(_R12, offset, _RBX)
+	c.add(_RAX, _RBX)
+	c.subtract(_RAX, _RDI)
+	c.mov(_RDI, _RCX)
+	c.mov(_R10, _RAX)
+	g.emitHelper(jitHelperQuoteTail)
+	c.branch(jitAlways, done)
+	c.bind(complete)
+	c.loadMem(_R10, 0, _RAX)
+	c.add(_RCX, _RAX)
+	c.movConst('"', _RBX)
+	c.store8(_RBX, mem(_RAX, 0))
+	c.addConst(1, _RCX)
+	c.mov(_RCX, mem(_R10, 8))
+	c.bind(done)
 }
 
 func (g *jitEncoderGenerator) emitByteSlice(offset int64) {

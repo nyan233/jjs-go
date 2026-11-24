@@ -89,12 +89,15 @@ Compare results only on the same machine, Go toolchain, power mode, and
 the native ARM64 backend.
 
 The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
-raw three-sample output behind the Binding, FreshBinding and Generic tables is
+current encoder samples are in
+[`results-windows-amd64-quote-jsonv2.txt`](results-windows-amd64-quote-jsonv2.txt);
+decoder and FreshBinding samples are in
 [`results-windows-amd64-jsonv2.txt`](results-windows-amd64-jsonv2.txt).
 UnorderedGeneric has a separate jsonv2 run in
 [`results-windows-amd64-jsonv2-unordered.txt`](results-windows-amd64-jsonv2-unordered.txt).
 The focused AVX2 byte-slice A/B study is in
 [`AMD64_BASE64.md`](AMD64_BASE64.md).
+The fused AVX2 quoting study is in [`AMD64_QUOTE.md`](AMD64_QUOTE.md).
 
 The latest native Apple M1 Pro comparison uses `main` revision `2813ca6`,
 after typed JIT encoder inlining, typed map encoders and NEON Base64 merged to

@@ -12,7 +12,8 @@ layout, and machine-code emission.
 - Runs the x86 IR simplifier and linear-scan register allocator before
   assembling.
 - Requires AVX2 and SSE4.2. Initialization fails fast on unsupported CPUs.
-- Uses AVX2 for long string runs and SSE4.2 for short encoder strings.
+- Uses a fused AVX2 8/16/32-byte classifier and copy loop for JSON quoting,
+  with scalar UTF-8 range validation, packed escapes and bounded 64 KiB calls.
 - Encodes byte slices with a bounded AVX2 Base64 kernel. The vector loop
   consumes exactly 12 input bytes per iteration and never reads past a chunk;
   a scalar tail handles the remaining 0-11 bytes.
@@ -34,7 +35,7 @@ layout, and machine-code emission.
   All source reads and destination writes are bounded. Calls process at most
   64 KiB plus one complete rune before returning to preemptible Go code.
 - The Go quote wrapper owns allocation and output growth; the assembly has no
-  calls or stack changes. amd64 retains its existing Go/SSE/AVX quote path.
+  calls or stack changes. amd64 uses its own fused AVX2 quote kernel.
   See [the quoting study](benchmark/compare/APPEND_QUOTED_ARM64.md).
   The [UTF-8 follow-up](benchmark/compare/QUOTING_PAPERS_ARM64.md) documents
   the lookup tables, boundary rules and incremental measurements.
