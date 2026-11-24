@@ -1,46 +1,72 @@
 package compiler
 
 import (
+	"cmp"
+	"encoding"
 	"fmt"
 	"reflect"
+	"slices"
+	"strconv"
 	"unsafe"
 
 	"github.com/twitchyliquid64/golang-asm/obj"
 )
 
-// Keep the real reflect iterator so its storage and GC bitmap always match
-// the running Go toolchain. The nodes have stable addresses across recursive
-// growth, and are retained by the pooled context only after Reset clears maps.
+type jitMapEntry struct {
+	name       string
+	valueIndex int
+}
+
+// Frames are retained by the pooled encoder context. Entries are cleared at
+// mapEnd so the backing arrays can be reused without pinning map values.
 type jitMapFrame struct {
-	iterator reflect.MapIter
-	parent   *jitMapFrame
-	next     *jitMapFrame
+	iterator   reflect.MapIter
+	entries    []jitMapEntry
+	names      []byte
+	values     reflect.Value
+	valueCount int
+	name       string
+	elem       unsafe.Pointer
+	index      int
+	parent     *jitMapFrame
+	next       *jitMapFrame
 }
 
 type jitMapIteratorLayout struct {
+	name, elem int64
+	valid      bool
+}
+
+type jitRawMapIteratorLayout struct {
 	key, elem int64
 	valid     bool
 }
 
-var jitMapLayout = inspectJITMapIterator()
+var jitMapLayout = jitMapIteratorLayout{
+	name:  int64(unsafe.Offsetof(jitMapFrame{}.name)),
+	elem:  int64(unsafe.Offsetof(jitMapFrame{}.elem)),
+	valid: true,
+}
 
-func inspectJITMapIterator() jitMapIteratorLayout {
+var jitRawMapLayout = inspectJITMapIterator()
+
+func inspectJITMapIterator() jitRawMapIteratorLayout {
 	if unsafe.Offsetof(jitMapFrame{}.iterator) != 0 {
-		return jitMapIteratorLayout{}
+		return jitRawMapIteratorLayout{}
 	}
 	iterator := reflect.TypeOf(reflect.MapIter{})
 	state, ok := iterator.FieldByName("hiter")
 	if !ok || state.Type.Kind() != reflect.Struct {
-		return jitMapIteratorLayout{}
+		return jitRawMapIteratorLayout{}
 	}
 	key, okKey := state.Type.FieldByName("key")
 	elem, okElem := state.Type.FieldByName("elem")
 	if !okKey || !okElem || key.Type.Kind() != reflect.UnsafePointer || elem.Type.Kind() != reflect.UnsafePointer ||
 		key.Offset != 0 || elem.Offset != unsafe.Sizeof(unsafe.Pointer(nil)) || state.Offset+elem.Offset+elem.Type.Size() > iterator.Size() {
-		return jitMapIteratorLayout{}
+		return jitRawMapIteratorLayout{}
 	}
 	base := unsafe.Offsetof(jitMapFrame{}.iterator) + state.Offset
-	return jitMapIteratorLayout{key: int64(base + key.Offset), elem: int64(base + elem.Offset), valid: true}
+	return jitRawMapIteratorLayout{key: int64(base + key.Offset), elem: int64(base + elem.Offset), valid: true}
 }
 
 //go:noinline
@@ -58,16 +84,181 @@ func jitMapStart(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, typeIndex int) 
 		frame = ctx.mapActive.next
 	}
 	ctx.mapActive = frame
+	frame.resetEntries()
+
 	// Refer to the existing map field/header; boxing a local copy of its map
 	// pointer here would reintroduce an allocation for every map traversal.
-	frame.iterator.Reset(reflect.NewAt(ctx.program.mapTypes[typeIndex], fieldPtr).Elem())
-	frame.iterator.Next()
+	value := reflect.NewAt(ctx.program.mapTypes[typeIndex], fieldPtr).Elem()
+	keyType, elemType := value.Type().Key(), value.Type().Elem()
+	elemTypePtr := runtimeTypePointer(elemType)
+	sliceType := reflect.SliceOf(elemType)
+	length := value.Len()
+	if !frame.values.IsValid() || frame.values.Type() != sliceType || frame.values.Cap() < length {
+		frame.values = reflect.MakeSlice(sliceType, length, length)
+	}
+	frame.valueCount = 0
+	frame.iterator.Reset(value)
+	for frame.iterator.Next() {
+		key := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitRawMapLayout.key))
+		name, err := frame.resolveName(key, keyType)
+		if err != nil {
+			ctx.setError(fmt.Errorf("json: encoding error for type %q: %q", value.Type().String(), err.Error()))
+			return
+		}
+		// Resolve the key before reading the element pointer: a TextMarshaler
+		// callback may grow the map and update the iterator's element cursor.
+		elem := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitRawMapLayout.elem))
+		index := frame.valueCount
+		frame.ensureValueSlot(index)
+		frame.valueCount++
+		runtimeTypedMemmove(
+			elemTypePtr,
+			unsafe.Pointer(frame.values.Index(index).UnsafeAddr()),
+			elem,
+		)
+		frame.entries = append(frame.entries, jitMapEntry{name: name, valueIndex: index})
+	}
+	slices.SortFunc(frame.entries, func(a, b jitMapEntry) int {
+		return cmp.Compare(a.name, b.name)
+	})
+	frame.index = -1
+	jitMapNext(ctx)
+}
+
+func (frame *jitMapFrame) ensureValueSlot(index int) {
+	if index < frame.values.Cap() {
+		return
+	}
+	capacity := max(index+1, frame.values.Cap()*2)
+	values := reflect.MakeSlice(frame.values.Type(), capacity, capacity)
+	elemType := runtimeTypePointer(frame.values.Type().Elem())
+	for slot := 0; slot < frame.valueCount; slot++ {
+		runtimeTypedMemmove(
+			elemType,
+			unsafe.Pointer(values.Index(slot).UnsafeAddr()),
+			unsafe.Pointer(frame.values.Index(slot).UnsafeAddr()),
+		)
+	}
+	frame.values = values
+}
+
+func (frame *jitMapFrame) resetEntries() {
+	clear(frame.entries)
+	frame.entries = frame.entries[:0]
+	frame.names = frame.names[:0]
+	frame.index = 0
+	frame.clearCurrent()
+}
+
+func (frame *jitMapFrame) resolveName(key unsafe.Pointer, keyType reflect.Type) (string, error) {
+	if keyType.Kind() == reflect.String {
+		return *(*string)(key), nil
+	}
+	if keyType.Implements(jitTextMarshalerType) {
+		value := reflect.NewAt(keyType, key).Elem()
+		marshaler := value.Interface().(encoding.TextMarshaler)
+		if keyType.Kind() == reflect.Pointer && value.IsNil() {
+			return "", nil
+		}
+		text, err := marshaler.MarshalText()
+		if err != nil {
+			return "", err
+		}
+		return frame.copyName(text), nil
+	}
+	switch keyType.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		start := len(frame.names)
+		frame.names = strconv.AppendInt(frame.names, loadMapKeyInt(key, keyType.Bits()), 10)
+		return unsafe.String(&frame.names[start], len(frame.names)-start), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		start := len(frame.names)
+		frame.names = strconv.AppendUint(frame.names, loadMapKeyUint(key, keyType.Bits()), 10)
+		return unsafe.String(&frame.names[start], len(frame.names)-start), nil
+	default:
+		panic("json: unexpected map key type")
+	}
+}
+
+func loadMapKeyInt(ptr unsafe.Pointer, bits int) int64 {
+	switch bits {
+	case 8:
+		return int64(*(*int8)(ptr))
+	case 16:
+		return int64(*(*int16)(ptr))
+	case 32:
+		return int64(*(*int32)(ptr))
+	case 64:
+		return *(*int64)(ptr)
+	default:
+		panic("json: unexpected signed map-key width")
+	}
+}
+
+func loadMapKeyUint(ptr unsafe.Pointer, bits int) uint64 {
+	switch bits {
+	case 8:
+		return uint64(*(*uint8)(ptr))
+	case 16:
+		return uint64(*(*uint16)(ptr))
+	case 32:
+		return uint64(*(*uint32)(ptr))
+	case 64:
+		return *(*uint64)(ptr)
+	default:
+		panic("json: unexpected unsigned map-key width")
+	}
+}
+
+func (frame *jitMapFrame) copyName(text []byte) string {
+	if len(text) == 0 {
+		return ""
+	}
+	start := len(frame.names)
+	frame.names = append(frame.names, text...)
+	return unsafe.String(&frame.names[start], len(text))
+}
+
+func (frame *jitMapFrame) clearCurrent() {
+	frame.name = ""
+	frame.elem = nil
+}
+
+//go:noinline
+func jitMapNext(ctx *jitEncodeContext) bool {
+	frame := ctx.mapActive
+	if frame == nil {
+		return false
+	}
+	frame.index++
+	if frame.index >= len(frame.entries) {
+		frame.clearCurrent()
+		return false
+	}
+	entry := &frame.entries[frame.index]
+	frame.name = entry.name
+	frame.elem = unsafe.Pointer(frame.values.Index(entry.valueIndex).UnsafeAddr())
+	return true
 }
 
 //go:noinline
 func jitMapEnd(ctx *jitEncodeContext) {
 	frame := ctx.mapActive
+	frame.clearCurrent()
 	frame.iterator.Reset(reflect.Value{})
+	if frame.values.IsValid() {
+		elemType := runtimeTypePointer(frame.values.Type().Elem())
+		for index := 0; index < frame.valueCount; index++ {
+			runtimeTypedMemclr(
+				elemType,
+				unsafe.Pointer(frame.values.Index(index).UnsafeAddr()),
+			)
+		}
+	}
+	frame.valueCount = 0
+	clear(frame.entries)
+	frame.entries = frame.entries[:0]
+	frame.names = frame.names[:0]
 	ctx.mapActive = frame.parent
 }
 
@@ -105,14 +296,14 @@ func (g *jitEncoderGenerator) emitOutlinedValue(typ reflect.Type, offset int64, 
 
 func (g *jitEncoderGenerator) emitMap(typ reflect.Type, offset int64) error {
 	key := typ.Key()
-	switch key.Kind() {
-	case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-	default:
+	if !supportsJITMapKeyEncode(key) {
 		return fmt.Errorf("json: JIT encoder does not support map key type %s", key)
 	}
 	if !jitMapLayout.valid {
 		return fmt.Errorf("json: unsupported reflect.MapIter layout")
+	}
+	if !jitRawMapLayout.valid {
+		return fmt.Errorf("json: unsupported reflect.MapIter pointer layout")
 	}
 	if g.depth == jitInlineDepth {
 		return g.emitOutlinedValue(typ, offset, g.addressable)
@@ -130,22 +321,21 @@ func (g *jitEncoderGenerator) emitMap(typ reflect.Type, offset int64) error {
 	g.emitRaw([]byte("{"))
 	g.flushRaw()
 	g.loadMapFrame(_RAX)
-	c.loadMem(_RAX, jitMapLayout.key, _RBX)
+	c.loadMem(_RAX, jitMapLayout.elem, _RBX)
 	c.compareConst(0, _RBX)
 	c.branch(jitEqual, closeMap)
 	c.bind(loop)
 	g.loadMapFrame(_RAX)
-	c.loadMem(_RAX, jitMapLayout.key, _R12)
+	// The data slot is only one word wide; the string header needs its own
+	// scratch space so its length cannot overwrite the saved context pointer.
+	c.lea(_RSP, c.scratchSlot(), _R12)
+	c.loadMem(_RAX, jitMapLayout.name, _RCX)
+	c.mov(_RCX, mem(_R12, 0))
+	c.loadMem(_RAX, jitMapLayout.name+8, _RCX)
+	c.mov(_RCX, mem(_R12, 8))
+	// emitHelper restores R12 from dataSlot after the quote assembly call.
 	c.mov(_R12, mem(_RSP, c.dataSlot()))
-	// Map keys use their declared scalar type, not value MarshalJSON methods.
-	if key.Kind() == reflect.String {
-		g.emitString(0)
-	} else {
-		g.emitRaw([]byte("\""))
-		g.flushRaw()
-		g.emitInteger(0, key.Bits()/8, key.Kind() >= reflect.Int && key.Kind() <= reflect.Int64)
-		g.emitRaw([]byte("\""))
-	}
+	g.emitString(0)
 	g.emitRaw([]byte(":"))
 	g.flushRaw()
 	g.loadMapFrame(_RAX)
@@ -167,10 +357,10 @@ func (g *jitEncoderGenerator) emitMap(typ reflect.Type, offset int64) error {
 	c.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.err)), _RBX)
 	c.compareConst(0, _RBX)
 	c.branch(jitNotEqual, g.returnLabel)
-	g.loadMapFrame(_RAX)
+	c.mov(_R10, _RAX)
 	g.emitHelper(jitHelperMapNext)
-	// Next is a public reflect method. It preserves the runtime's map growth,
-	// iteration order and concurrent-write checks without a legacy shim.
+	// Values are captured before sorting, matching encoding/json when a key or
+	// value callback mutates the map during encoding.
 	// A Go bool result occupies one byte. amd64 may only set AL, leaving
 	// arbitrary upper bits in AX; do not interpret those as part of the result.
 	c.mask(255, _RAX)
@@ -196,3 +386,6 @@ func (g *jitEncoderGenerator) emitMap(typ reflect.Type, offset int64) error {
 func (g *jitEncoderGenerator) loadMapFrame(to obj.Addr) {
 	g.code.loadMem(_R10, int64(unsafe.Offsetof(jitEncodeContext{}.mapActive)), to)
 }
+
+//go:linkname runtimeTypedMemmove reflect.typedmemmove
+func runtimeTypedMemmove(typ, dst, src unsafe.Pointer)

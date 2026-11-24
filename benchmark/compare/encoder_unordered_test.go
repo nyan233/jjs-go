@@ -7,11 +7,11 @@ import (
 
 	"github.com/bytedance/sonic"
 	goccyjson "github.com/goccy/go-json"
-	jjs "github.com/nyan233/jjs-go"
 )
 
 func unorderedEncoderCodecs() []bindingCodec[any] {
-	// Match ConfigStd except for key sorting, which jjs does not perform.
+	// Match ConfigStd except for key sorting. jjs-go now matches the standard
+	// library and therefore belongs in the sorted Generic benchmark instead.
 	sonicUnordered := sonic.Config{
 		EscapeHTML:       true,
 		CompactMarshaler: true,
@@ -23,7 +23,6 @@ func unorderedEncoderCodecs() []bindingCodec[any] {
 			return goccyjson.MarshalWithOption(value, goccyjson.UnorderedMap())
 		}},
 		{name: "sonic", marshal: sonicUnordered.Marshal},
-		{name: "jjs-go", marshal: jjs.Marshal},
 	}
 	if jsonV2Available {
 		codecs = append(codecs, bindingCodec[any]{

@@ -43,16 +43,40 @@ func checkMapJSON(t *testing.T, value any) {
 		if !json.Valid(got) {
 			t.Fatalf("%T: invalid JSON %.200q", value, got)
 		}
-		if !reflect.DeepEqual(decodeMapJSON(t, got), decodeMapJSON(t, want)) {
+		if !bytes.Equal(got, want) {
 			t.Fatalf("%T capacity=%d: got %.300s, want %.300s", value, capacity, got, want)
 		}
 	}
 }
 
+func checkMapDecode(t *testing.T, source any) {
+	t.Helper()
+	data, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typ := reflect.TypeOf(source)
+	decoder, err := CompileDecoder(typ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := reflect.New(typ)
+	if err := decoder(data, unsafe.Pointer(got.Pointer())); err != nil {
+		t.Fatalf("%T: %v", source, err)
+	}
+	want := reflect.New(typ)
+	if err := json.Unmarshal(data, want.Interface()); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Interface(), want.Interface()) {
+		t.Fatalf("%T: got %#v, want %#v", source, got.Interface(), want.Interface())
+	}
+}
+
 // Go only promises the low byte of a bool return register. Deliberately leave
 // the upper bits nonzero even when iteration finishes, as amd64 SETNE can do.
-func mapTestNextWide(frame *jitMapFrame) uint64 {
-	if frame.iterator.Next() {
+func mapTestNextWide(ctx *jitEncodeContext) uint64 {
+	if jitMapNext(ctx) {
 		return 0x12340001
 	}
 	return 0x12340000
@@ -75,6 +99,67 @@ type mapJSONKey int
 
 func (mapJSONKey) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("map key must not call MarshalJSON")
+}
+
+type mapTextKey struct {
+	Value string
+}
+
+func (key mapTextKey) MarshalText() ([]byte, error) {
+	return []byte(key.Value), nil
+}
+
+func (key *mapTextKey) UnmarshalText(text []byte) error {
+	if string(text) == "bad" {
+		return errors.New("bad text map key")
+	}
+	key.Value = string(text)
+	return nil
+}
+
+type mapIntTextKey int
+
+func (key mapIntTextKey) MarshalText() ([]byte, error) {
+	return strconv.AppendInt([]byte("x"), int64(key), 10), nil
+}
+
+func (key *mapIntTextKey) UnmarshalText(text []byte) error {
+	value, err := strconv.ParseInt(string(text[1:]), 10, 64)
+	if err != nil {
+		return err
+	}
+	*key = mapIntTextKey(value)
+	return nil
+}
+
+type mapStringTextKey string
+
+func (key mapStringTextKey) MarshalText() ([]byte, error) {
+	return []byte("wrong-" + string(key)), nil
+}
+
+func (key *mapStringTextKey) UnmarshalText(text []byte) error {
+	*key = mapStringTextKey("decoded-" + string(text))
+	return nil
+}
+
+type mapErrorTextKey int
+
+func (mapErrorTextKey) MarshalText() ([]byte, error) {
+	return nil, errors.New("map key marshal error")
+}
+
+type mapMutatingTextKey int
+
+var mapMutatingKeyCallback func()
+
+func (key mapMutatingTextKey) MarshalText() ([]byte, error) {
+	if mapMutatingKeyCallback != nil {
+		callback := mapMutatingKeyCallback
+		mapMutatingKeyCallback = nil
+		callback()
+	}
+	return strconv.AppendInt(nil, int64(key), 10), nil
 }
 
 type mapCustomValue map[string]int
@@ -109,8 +194,86 @@ func TestJITMapKeyTypes(t *testing.T) {
 			v.SetMapIndex(key, reflect.ValueOf(bits&1 == 0))
 		}
 		checkMapJSON(t, v.Interface())
+		checkMapDecode(t, v.Interface())
 	}
 	checkMapJSON(t, map[string]string{"": "empty", "中😀": "中文", "\x00\n\t\"\\<>&\u2028\u2029": "escaped", "bad\xff": "invalid UTF-8"})
+}
+
+func TestJITMapKeyOrderingAndTextCodec(t *testing.T) {
+	pointerKey := &mapTextKey{Value: "a"}
+	for _, value := range []any{
+		map[int]int{2: 2, 10: 10, -1: -1},
+		map[string]int{"10": 10, "2": 2, "": 0},
+		map[mapTextKey]int{{Value: "z"}: 1, {Value: "a"}: 2},
+		map[mapIntTextKey]int{2: 2, 10: 10},
+		map[mapStringTextKey]int{"actual": 1},
+		map[*mapTextKey]int{nil: 1, pointerKey: 2},
+	} {
+		checkMapJSON(t, value)
+		// encoding/json can encode pointer keys through TextMarshaler, but its
+		// decoder cannot allocate the pointed-to TextUnmarshaler key.
+		if reflect.TypeOf(value).Key().Kind() != reflect.Pointer {
+			checkMapDecode(t, value)
+		}
+	}
+}
+
+func TestJITMapTextKeyErrors(t *testing.T) {
+	checkMapJSON(t, map[mapErrorTextKey]int{1: 1})
+
+	decoder, err := CompileDecoder(reflect.TypeOf(map[mapTextKey]int{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[mapTextKey]int
+	standard, standardErr := func() (map[mapTextKey]int, error) {
+		var value map[mapTextKey]int
+		err := json.Unmarshal([]byte(`{"bad":1}`), &value)
+		return value, err
+	}()
+	err = decoder([]byte(`{"bad":1}`), unsafe.Pointer(&got))
+	if err == nil || standardErr == nil {
+		t.Fatalf("got error %v, standard error %v", err, standardErr)
+	}
+	if !reflect.DeepEqual(got, standard) {
+		t.Fatalf("got %#v, want %#v", got, standard)
+	}
+
+	for _, test := range []struct {
+		data   string
+		target any
+	}{
+		{`{"128":1}`, new(map[int8]int)},
+		{`{"-1":1}`, new(map[uint]int)},
+		{`{"not-int":1}`, new(map[int64]int)},
+	} {
+		typ := reflect.TypeOf(test.target).Elem()
+		decoder, err := CompileDecoder(typ)
+		if err != nil {
+			t.Fatal(err)
+		}
+		standard := reflect.New(typ)
+		standardErr := json.Unmarshal([]byte(test.data), standard.Interface())
+		got := reflect.New(typ)
+		err = decoder([]byte(test.data), unsafe.Pointer(got.Pointer()))
+		if err == nil || standardErr == nil {
+			t.Fatalf("%s: got error %v, standard error %v", test.data, err, standardErr)
+		}
+	}
+}
+
+func TestJITMapUnsupportedKeyTypes(t *testing.T) {
+	for _, value := range []any{map[bool]int{true: 1}, map[float64]int{1: 1}} {
+		if _, err := loadCompiledEncoder(reflect.TypeOf(value)); err == nil {
+			t.Fatalf("%T: encoder accepted unsupported key", value)
+		}
+		if _, err := CompileDecoder(reflect.TypeOf(value)); err == nil {
+			t.Fatalf("%T: decoder accepted unsupported key", value)
+		}
+		if _, err := json.Marshal(value); err == nil {
+			t.Fatalf("%T: standard encoder unexpectedly accepted key", value)
+		}
+	}
 }
 
 func TestJITMapValues(t *testing.T) {
@@ -259,7 +422,9 @@ func TestJITMapCleanupAndStackGrowth(t *testing.T) {
 		count := 0
 		for frame := ctx.mapFrames; frame != nil; frame = frame.next {
 			count++
-			if !reflect.DeepEqual(frame.iterator, reflect.MapIter{}) {
+			if !reflect.DeepEqual(frame.iterator, reflect.MapIter{}) ||
+				len(frame.entries) != 0 || frame.valueCount != 0 ||
+				frame.name != "" || frame.elem != nil {
 				t.Fatalf("%s retained map references", mode)
 			}
 		}
@@ -289,6 +454,56 @@ func TestJITMapGrowthDuringCallback(t *testing.T) {
 		runtime.GC()
 	}}
 	program, err := compileJITEncoder(reflect.TypeOf(value))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := program.encode(nil, reflect.ValueOf(value).UnsafePointer())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !called || !json.Valid(got) {
+		t.Fatalf("callback=%v invalid JSON %.100s", called, got)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(got))
+	if _, err := decoder.Token(); err != nil {
+		t.Fatal(err)
+	}
+	seen := make(map[string]bool)
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := key.(string)
+		if seen[name] {
+			t.Fatalf("duplicate key %s", name)
+		}
+		seen[name] = true
+		var number int
+		if err := decoder.Decode(&number); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestJITMapGrowthDuringTextKeyCallback(t *testing.T) {
+	value := make(map[mapMutatingTextKey]int)
+	for i := 0; i < 64; i++ {
+		value[mapMutatingTextKey(i)] = i
+	}
+	called := false
+	mapMutatingKeyCallback = func() {
+		called = true
+		for i := 0; i < 32; i++ {
+			delete(value, mapMutatingTextKey(i))
+		}
+		for i := 0; i < 128; i++ {
+			value[mapMutatingTextKey(1000+i)] = i
+		}
+		runtime.GC()
+	}
+	defer func() { mapMutatingKeyCallback = nil }()
+	program, err := loadCompiledEncoder(reflect.TypeOf(value))
 	if err != nil {
 		t.Fatal(err)
 	}

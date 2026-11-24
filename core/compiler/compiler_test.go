@@ -86,38 +86,34 @@ func TestEncodeJITPointer(t *testing.T) {
 
 func TestMapIteratorLayout(t *testing.T) {
 	if !jitMapLayout.valid {
-		t.Fatal("unsupported reflect.MapIter pointer fields")
+		t.Fatal("invalid map frame layout")
 	}
-	if jitMapLayout.elem != jitMapLayout.key+int64(unsafe.Sizeof(unsafe.Pointer(nil))) {
-		t.Fatalf("unexpected iterator layout: %+v", jitMapLayout)
+	if !jitRawMapLayout.valid {
+		t.Fatal("invalid reflect map iterator layout")
+	}
+	if jitMapLayout.name != int64(unsafe.Offsetof(jitMapFrame{}.name)) ||
+		jitMapLayout.elem != int64(unsafe.Offsetof(jitMapFrame{}.elem)) {
+		t.Fatalf("unexpected map frame layout: %+v", jitMapLayout)
 	}
 }
 
 func TestMapIteratorRuntime(t *testing.T) {
-	value := map[string]int{"answer": 42}
-	frame := new(jitMapFrame)
-	frame.iterator.Reset(reflect.ValueOf(value))
-	if !frame.iterator.Next() {
-		t.Fatal("missing map entry")
+	value := map[string]int{"b": 2, "a": 1}
+	ctx := &jitEncodeContext{program: &jitEncodeProgram{mapTypes: []reflect.Type{reflect.TypeOf(value)}}}
+	jitMapStart(ctx, unsafe.Pointer(&value), 0)
+	frame := ctx.mapActive
+	if frame == nil || frame.name != "a" || *(*int)(frame.elem) != 1 {
+		t.Fatalf("first sorted entry = %+v", frame)
 	}
-	key := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.key))
-	elem := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.elem))
-	if key == nil || elem == nil {
-		t.Fatal("runtime iterator returned nil key or elem")
+	if !jitMapNext(ctx) || frame.name != "b" || *(*int)(frame.elem) != 2 {
+		t.Fatalf("second sorted entry = %+v", frame)
 	}
-	if got := *(*string)(key); got != "answer" {
-		t.Fatalf("key = %q", got)
-	}
-	if got := *(*int)(elem); got != 42 {
-		t.Fatalf("element = %d", got)
-	}
-	if frame.iterator.Next() {
+	if jitMapNext(ctx) {
 		t.Fatal("unexpected additional entry")
 	}
-	frame.iterator.Reset(reflect.Value{})
-	if *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.key)) != nil ||
-		*(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(frame), jitMapLayout.elem)) != nil {
-		t.Fatal("Reset retained key/element")
+	jitMapEnd(ctx)
+	if frame.name != "" || frame.elem != nil || len(frame.entries) != 0 || len(frame.names) != 0 {
+		t.Fatal("mapEnd retained key or value")
 	}
 }
 

@@ -23,6 +23,7 @@ type directDecodePlan struct {
 	typePtr    unsafe.Pointer
 	size       uintptr
 	nonEmpty   bool
+	keyText    bool
 	custom     jitCustomCallKind
 	customType reflect.Type
 	customItab unsafe.Pointer
@@ -155,9 +156,10 @@ func buildDirectDecodePlan(typ reflect.Type, cache map[reflect.Type]*directDecod
 		plan.elem = child
 		plan.elemSize = typ.Elem().Size()
 	case reflect.Map:
-		if typ.Key().Kind() != reflect.String {
-			return nil, fmt.Errorf("json: direct decoder requires string map keys")
+		if !supportsJITMapKeyDecode(typ.Key()) {
+			return nil, fmt.Errorf("json: direct decoder does not support map key type %s", typ.Key())
 		}
+		plan.keyText = reflect.PointerTo(typ.Key()).Implements(jitTextUnmarshalerType)
 		child, err := buildDirectDecodePlan(typ.Elem(), cache)
 		if err != nil {
 			return nil, err
@@ -502,6 +504,7 @@ func (p *jitJSONParser) decodeDirectMap(plan *directDecodePlan, dst unsafe.Point
 	if p.consumeByte('}') {
 		return nil
 	}
+	keyType := plan.typ.Key()
 	for {
 		p.skipSpace()
 		if p.index >= len(p.data) || p.data[p.index] != '"' {
@@ -515,12 +518,10 @@ func (p *jitJSONParser) decodeDirectMap(plan *directDecodePlan, dst unsafe.Point
 		if !p.consumeByte(':') {
 			return p.errorf("expected ':'")
 		}
-		header := sliceHeader{
-			Ptr: unsafe.Pointer(unsafe.StringData(key)),
-			Len: len(key),
-			Cap: len(key),
+		element, err := assignDecodedMapKey(plan.typePtr, hmap, keyType, plan.keyText, key)
+		if err != nil {
+			return err
 		}
-		element := runtimeMapAssign(plan.typePtr, hmap, unsafe.Pointer(&header))
 		// Each map value starts from zero, including repeated keys. Reusing the
 		// map's buckets must not merge a new value into an old struct or pointer.
 		runtimeTypedMemclr(plan.elem.typePtr, element)

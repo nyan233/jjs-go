@@ -84,7 +84,7 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperFloatFormat] = reflect.ValueOf(strconv.AppendFloat).Pointer()
 	program.helpers[jitHelperYield] = reflect.ValueOf(runtime.Gosched).Pointer()
 	program.helpers[jitHelperMapStart] = reflect.ValueOf(jitMapStart).Pointer()
-	program.helpers[jitHelperMapNext] = reflect.ValueOf((*reflect.MapIter).Next).Pointer()
+	program.helpers[jitHelperMapNext] = reflect.ValueOf(jitMapNext).Pointer()
 	program.helpers[jitHelperMapEnd] = reflect.ValueOf(jitMapEnd).Pointer()
 	program.helpers[jitHelperValue] = reflect.ValueOf(jitEncodeValue).Pointer()
 	initJITQuoteHelpers(program)

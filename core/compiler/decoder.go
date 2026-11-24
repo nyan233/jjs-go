@@ -72,13 +72,14 @@ func (d *Decoder) Compile(typ reflect.Type) (DecodeHandler, error) {
 }
 
 type jitDecodeProgram struct {
-	helpers   [8]uintptr
-	static    []byte
-	functions []func(*jitDecodeContext) uintptr
-	types     []uintptr
-	typeSizes []uintptr
-	elemSizes []uintptr
-	elemTypes []uintptr
+	helpers      [8]uintptr
+	static       []byte
+	functions    []func(*jitDecodeContext) uintptr
+	types        []uintptr
+	reflectTypes []reflect.Type
+	typeSizes    []uintptr
+	elemSizes    []uintptr
+	elemTypes    []uintptr
 }
 
 type jitDecodeContext struct {
@@ -137,6 +138,7 @@ func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 	}
 	program := newJITDecodeProgram(compiler.static)
 	program.types = compiler.types
+	program.reflectTypes = compiler.reflectTypes
 	program.typeSizes = compiler.typeSizes
 	program.elemSizes = compiler.elemSizes
 	program.elemTypes = compiler.elemTypes
@@ -162,13 +164,14 @@ func compileJITDecoder(typ reflect.Type) (*jitCompiledDecoder, error) {
 }
 
 type jitDecoderCompiler struct {
-	static     []byte
-	units      []*jitDecoderUnit
-	unitByType map[reflect.Type]int
-	types      []uintptr
-	typeSizes  []uintptr
-	elemSizes  []uintptr
-	elemTypes  []uintptr
+	static       []byte
+	units        []*jitDecoderUnit
+	unitByType   map[reflect.Type]int
+	types        []uintptr
+	reflectTypes []reflect.Type
+	typeSizes    []uintptr
+	elemSizes    []uintptr
+	elemTypes    []uintptr
 }
 
 type jitDecoderUnit struct {
@@ -192,6 +195,7 @@ func (c *jitDecoderCompiler) unitIndex(typ reflect.Type) (int, error) {
 
 func (c *jitDecoderCompiler) typeIndex(typ reflect.Type) int {
 	c.types = append(c.types, typePointer(typ))
+	c.reflectTypes = append(c.reflectTypes, typ)
 	c.typeSizes = append(c.typeSizes, typ.Size())
 	elemSize := uintptr(0)
 	elemType := uintptr(0)
@@ -311,8 +315,8 @@ func (g *jitDecoderGenerator) emitSlice(typ reflect.Type, offset int64, path []j
 }
 
 func (g *jitDecoderGenerator) emitMap(typ reflect.Type, offset int64, path []jitPathSegment) error {
-	if typ.Key().Kind() != reflect.String {
-		return fmt.Errorf("json: JIT decoder currently requires string map keys, got %s", typ.Key())
+	if !supportsJITMapKeyDecode(typ.Key()) {
+		return fmt.Errorf("json: JIT decoder does not support map key type %s", typ.Key())
 	}
 	child, err := g.compiler.unitIndex(typ.Elem())
 	if err != nil {
@@ -643,9 +647,16 @@ func jitDecodeMapField(ctx *jitDecodeContext, dst unsafe.Pointer, path unsafe.Po
 	mapType := unsafe.Pointer(ctx.program.types[typeIndex])
 	hmap := runtimeMakeMap(mapType, len(node.object), nil)
 	*(*unsafe.Pointer)(dst) = hmap
+	keyType := ctx.program.reflectTypes[typeIndex].Key()
+	keyText := reflect.PointerTo(keyType).Implements(jitTextUnmarshalerType)
 	for _, field := range node.object {
-		key := sliceHeader{Ptr: unsafe.Pointer(unsafe.StringData(field.name)), Len: len(field.name), Cap: len(field.name)}
-		elem := runtimeMapAssign(mapType, hmap, unsafe.Pointer(&key))
+		elem, err := assignDecodedMapKey(mapType, hmap, keyType, keyText, field.name)
+		if err != nil {
+			if ctx.err == nil {
+				ctx.err = err
+			}
+			return
+		}
 		previousRoot := ctx.root
 		previousData := ctx.data
 		ctx.root = field.value

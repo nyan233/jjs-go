@@ -1,5 +1,8 @@
 # Apple M1 Pro ARM64 benchmark results
 
+> Historical measurement from before standard-compatible map-key sorting.
+> Encoder results, especially Generic encoding, are not current `main` results.
+
 Measured on 2026-11-24 with macOS 27.0.1 (26A434), Go 1.25.0,
 Apple M1 Pro (10 cores, 32 GiB RAM), and `GOMAXPROCS=10`, on AC power
 with Low Power Mode disabled. The measured `main` revision is **`2813ca6`**,

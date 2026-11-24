@@ -46,11 +46,10 @@ include `ns/op`, `B/op`, `allocs/op`, and MB/s based on fixture bytes.
 its results include allocating the decoded slices, maps and pointers.
 Generic decoding resets the destination to `nil` on every iteration.
 
-Map key ordering is not normalized across codecs. In particular, jjs-go and
-default jsonv2 encode maps without deterministic sorting, while
-`encoding/json` and Sonic `ConfigStd` sort them. Generic encoding results
-include this behavior difference. The UnorderedGeneric control applies
-explicit unsorted options to goccy and Sonic.
+Map key ordering is normalized for jjs-go: its encoder sorts the same
+formatted map-key strings as `encoding/json`. The UnorderedGeneric control
+applies explicit unsorted options to goccy and Sonic; jjs-go is intentionally
+excluded because it no longer has unordered default behavior.
 
 ## Run
 
@@ -88,8 +87,8 @@ Compare results only on the same machine, Go toolchain, power mode, and
 `GOMAXPROCS`. On amd64, jjs-go requires AVX2 and SSE4.2; Apple Silicon uses
 the native ARM64 backend.
 
-The Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md). The
-current encoder samples are in
+The refreshed Windows amd64 results are summarized in [`RESULTS.md`](RESULTS.md).
+Detailed raw files from the earlier run are in
 [`results-windows-amd64-quote-jsonv2.txt`](results-windows-amd64-quote-jsonv2.txt);
 decoder and FreshBinding samples are in
 [`results-windows-amd64-jsonv2.txt`](results-windows-amd64-jsonv2.txt).
@@ -99,10 +98,9 @@ The focused AVX2 byte-slice A/B study is in
 [`AMD64_BASE64.md`](AMD64_BASE64.md).
 The fused AVX2 quoting study is in [`AMD64_QUOTE.md`](AMD64_QUOTE.md).
 
-The latest native Apple M1 Pro comparison uses `main` revision `2813ca6`,
-after typed JIT encoder inlining, typed map encoders and NEON Base64 merged to
-`main`. It is summarized in [`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all
-558 samples in
+The native Apple M1 Pro tables use `main` revision `2813ca6`, before the
+standard-compatible map sorting change. They are retained as optimization
+history in [`RESULTS_ARM64.md`](RESULTS_ARM64.md), with all 558 samples in
 [`results-darwin-arm64-main-2813ca6.txt`](results-darwin-arm64-main-2813ca6.txt).
 It includes the original four comparison families, fresh-destination decode and
 unsorted-map encoder controls. The host control that temporarily demoted the
