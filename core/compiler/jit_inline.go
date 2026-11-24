@@ -253,18 +253,32 @@ func (g *jitEncoderGenerator) emitPointer(elem reflect.Type, offset int64) error
 	c.loadMem(_R12, offset, _RBX)
 	c.compareConst(0, _RBX)
 	c.branch(jitEqual, nilPointer)
-	g.pushRoot()
-	c.mov(_RBX, _R12)
-	c.mov(_R12, mem(_RSP, c.dataSlot()))
-	previous := g.addressable
-	g.addressable = true
-	err := g.emitValue(elem, 0)
-	g.addressable = previous
-	if err != nil {
-		return err
+	if g.canInline(elem) {
+		g.pushRoot()
+		c.mov(_RBX, _R12)
+		c.mov(_R12, mem(_RSP, c.dataSlot()))
+		previous := g.addressable
+		g.addressable = true
+		err := g.emitValue(elem, 0)
+		g.addressable = previous
+		if err != nil {
+			return err
+		}
+		g.flushRaw()
+		g.popRoot()
+	} else {
+		// The pointer operation is still static even when its target must be
+		// outlined. BX already holds the dereferenced, non-nil pointer. Keep
+		// the parent in its existing root slot, including at the depth limit.
+		// The Go bridge supplies the ctx.data write barrier and stack check.
+		index, err := g.compiler.unitIndex(elem, true)
+		if err != nil {
+			return err
+		}
+		c.mov(_R10, _RAX)
+		c.movConst(int64(index), _RCX)
+		g.emitHelper(jitHelperValue)
 	}
-	g.flushRaw()
-	g.popRoot()
 	c.branch(jitAlways, done)
 	c.bind(nilPointer)
 	g.emitRaw([]byte("null"))

@@ -32,7 +32,7 @@ func TestJITInlineAvoidsTypeHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	indices := []int{jitHelperBool, jitHelperInt, jitHelperFloat, jitHelperNull, jitHelperPointer, jitHelperSlice}
+	indices := []int{jitHelperBool, jitHelperInt, jitHelperFloat, jitHelperNull, jitHelperValue, jitHelperSlice}
 	if runtime.GOARCH == "arm64" {
 		indices = append(indices, jitHelperByteSlice)
 	}

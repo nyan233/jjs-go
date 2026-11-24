@@ -337,17 +337,7 @@ func (g *jitEncoderGenerator) emitValue(typ reflect.Type, offset int64) error {
 	case reflect.String:
 		g.emitString(offset)
 	case reflect.Pointer:
-		if g.canInline(typ.Elem()) {
-			return g.emitPointer(typ.Elem(), offset)
-		}
-		childUnit, err := g.compiler.unitIndex(typ.Elem(), true)
-		if err != nil {
-			return err
-		}
-		g.code.mov(_R10, _RAX)
-		g.code.lea(_R12, offset, _RBX)
-		g.code.movConst(int64(childUnit), _RCX)
-		g.emitHelper(jitHelperPointer)
+		return g.emitPointer(typ.Elem(), offset)
 	case reflect.Struct:
 		return g.emitStruct(typ, offset)
 	case reflect.Array:

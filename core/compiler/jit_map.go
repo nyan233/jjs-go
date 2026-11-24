@@ -78,7 +78,8 @@ func (ctx *jitEncodeContext) releaseMaps() {
 }
 
 // Recursive or oversized values get their own generated unit. This bridge
-// performs the heap pointer write with Go's write barrier; ordinary map values
+// performs the heap pointer write with Go's write barrier and supplies a Go
+// stack check before calling the child. Small map values and pointer targets
 // are emitted inline and do not use it.
 //
 //go:noinline

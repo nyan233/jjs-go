@@ -15,7 +15,6 @@ const (
 	jitHelperFloat
 	jitHelperBool
 	jitHelperNull
-	jitHelperPointer
 	jitHelperSlice
 	jitHelperInterface
 	jitHelperReserve
@@ -75,7 +74,6 @@ func newJITEncodeProgram(static []byte) *jitEncodeProgram {
 	program.helpers[jitHelperFloat] = reflect.ValueOf(jitAppendFloatPtr).Pointer()
 	program.helpers[jitHelperBool] = reflect.ValueOf(jitAppendBoolPtr).Pointer()
 	program.helpers[jitHelperNull] = reflect.ValueOf(jitAppendNull).Pointer()
-	program.helpers[jitHelperPointer] = reflect.ValueOf(jitEncodePointer).Pointer()
 	program.helpers[jitHelperSlice] = reflect.ValueOf(jitEncodeSlice).Pointer()
 	program.helpers[jitHelperInterface] = reflect.ValueOf(jitEncodeInterface).Pointer()
 	program.helpers[jitHelperReserve] = reflect.ValueOf(jitReserveRaw).Pointer()
@@ -310,23 +308,6 @@ func jitAppendNull(ctx *jitEncodeContext) {
 	if ctx != nil {
 		ctx.dst = append(ctx.dst, "null"...)
 	}
-}
-
-//go:noinline
-func jitEncodePointer(ctx *jitEncodeContext, fieldPtr unsafe.Pointer, childIndex int) {
-	ptr := *(*unsafe.Pointer)(fieldPtr)
-	if ptr == nil {
-		jitAppendNull(ctx)
-		return
-	}
-	if childIndex < 0 || childIndex >= len(ctx.program.functions) {
-		ctx.setError(errors.New("json: invalid pointer encoder index"))
-		return
-	}
-	previous := ctx.data
-	ctx.data = ptr
-	ctx.program.functions[childIndex](ctx)
-	ctx.data = previous
 }
 
 //go:noinline

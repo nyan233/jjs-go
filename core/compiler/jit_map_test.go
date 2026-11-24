@@ -156,7 +156,7 @@ func TestJITMapInlineAvoidsValueHelpers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		indices := []int{jitHelperValue, jitHelperInt, jitHelperBool, jitHelperPointer}
+		indices := []int{jitHelperValue, jitHelperInt, jitHelperBool}
 		if runtime.GOARCH == "arm64" {
 			indices = append(indices, jitHelperString)
 		}
