@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-24",
+  "cpu": "Apple M1 Pro",
+  "logical_cpus": 10,
+  "memory_gib": 32,
+  "os": "macOS 27.0.1 (26A434)",
+  "go": "go1.25.0 darwin/arm64",
+  "power": "AC",
+  "gomaxprocs": 10,
+  "baseline": "2813ca6957cf1797a9ef294e2221de9d6f857181",
+  "implementation": "7ae18585c78cfc2c9a4f366dbbc24c32d8bc258f",
+  "branch": "codex/jit-inline-pointer-fallback",
+  "rounds": 5,
+  "order": [
+    [
+      "before",
+      "after"
+    ],
+    [
+      "after",
+      "before"
+    ],
+    [
+      "before",
+      "after"
+    ],
+    [
+      "after",
+      "before"
+    ],
+    [
+      "before",
+      "after"
+    ]
+  ],
+  "commands": [
+    "GOMAXPROCS=10 <binary> -test.run=^$ -test.bench=^BenchmarkJITPointer$ -test.benchtime=300ms -test.count=1 -test.cpu=10 -test.benchmem",
+    "GOMAXPROCS=10 <binary> -test.run=^$ -test.bench=^BenchmarkJITPointerCompile$ -test.benchtime=50x -test.count=1 -test.cpu=10 -test.benchmem"
+  ],
+  "binaries": {
+    "before": {
+      "path": "/tmp/jjs-pointer-before.test",
+      "sha256": "d280261f70ebab85d4527bd85681395c22cce191c17c3586694f899c9f632137"
+    },
+    "after": {
+      "path": "/tmp/jjs-pointer-after.test",
+      "sha256": "97a17661aa962faf68f405e6883c5c89ff8366c573cc4411f06cd5300950a04d"
+    }
+  },
+  "sample_count": 140,
+  "notes": "Baseline binary includes the new harness with main production code. Implementation binary differs from 7ae1858 only in a comment. Warm encoding reuses capacity. Cold samples include generation and loading, not process startup. No samples removed."
+}

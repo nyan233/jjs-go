@@ -1,0 +1,125 @@
+# round 1
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointer/InlineScalar-10         	13499894	        25.29 ns/op	      1136 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilRecursive-10         	13412794	        27.64 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Recursive32-10          	  583436	       517.8 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilLarge-10             	12013598	        26.95 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Large-10                	  989905	       363.1 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilSlice128-10          	  459578	       764.4 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Leaves128-10            	  203263	      1715 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointerCompile/InlineScalar-10         	      50	     19787 ns/op	   19582 B/op	     172 allocs/op
+BenchmarkJITPointerCompile/NilRecursive-10         	      50	     29534 ns/op	   30482 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/Recursive32-10          	      50	     26098 ns/op	   30616 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/NilLarge-10             	      50	    248498 ns/op	  433192 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/Large-10                	      50	    260498 ns/op	  434110 B/op	    2706 allocs/op
+BenchmarkJITPointerCompile/NilSlice128-10          	      50	     30014 ns/op	   17436 B/op	     236 allocs/op
+BenchmarkJITPointerCompile/Leaves128-10            	      50	     27045 ns/op	   17436 B/op	     236 allocs/op
+PASS
+# round 2
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointer/InlineScalar-10         	14375538	        24.74 ns/op	      1136 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilRecursive-10         	12591153	        27.96 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Recursive32-10          	  602320	       504.8 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilLarge-10             	13274396	        27.07 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Large-10                	  997740	       534.3 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilSlice128-10          	  409393	       797.6 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Leaves128-10            	  191088	      1733 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointerCompile/InlineScalar-10         	      50	     18822 ns/op	   19582 B/op	     172 allocs/op
+BenchmarkJITPointerCompile/NilRecursive-10         	      50	     25938 ns/op	   30482 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/Recursive32-10          	      50	     35314 ns/op	   30611 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/NilLarge-10             	      50	    322880 ns/op	  433096 B/op	    2706 allocs/op
+BenchmarkJITPointerCompile/Large-10                	      50	    284342 ns/op	  434064 B/op	    2706 allocs/op
+BenchmarkJITPointerCompile/NilSlice128-10          	      50	     29824 ns/op	   17441 B/op	     236 allocs/op
+BenchmarkJITPointerCompile/Leaves128-10            	      50	     27611 ns/op	   17436 B/op	     236 allocs/op
+PASS
+# round 3
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointer/InlineScalar-10         	13589862	        27.80 ns/op	      1136 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilRecursive-10         	13217293	        28.34 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Recursive32-10          	  755085	       522.8 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilLarge-10             	13299775	        27.20 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Large-10                	  983886	       381.7 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilSlice128-10          	  495213	       768.2 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Leaves128-10            	  192150	      1803 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointerCompile/InlineScalar-10         	      50	     16338 ns/op	   19577 B/op	     172 allocs/op
+BenchmarkJITPointerCompile/NilRecursive-10         	      50	     27729 ns/op	   30482 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/Recursive32-10          	      50	     23730 ns/op	   30617 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/NilLarge-10             	      50	    241163 ns/op	  433099 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/Large-10                	      50	    259158 ns/op	  434112 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/NilSlice128-10          	      50	     26220 ns/op	   17441 B/op	     236 allocs/op
+BenchmarkJITPointerCompile/Leaves128-10            	      50	     26582 ns/op	   17441 B/op	     236 allocs/op
+PASS
+# round 4
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointer/InlineScalar-10         	14606980	        24.61 ns/op	      1136 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilRecursive-10         	13611507	        27.52 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Recursive32-10          	  692490	       526.2 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilLarge-10             	13641487	        27.87 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Large-10                	 1000000	       368.3 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilSlice128-10          	  463762	       745.0 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Leaves128-10            	  195291	      1723 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointerCompile/InlineScalar-10         	      50	     16505 ns/op	   19582 B/op	     172 allocs/op
+BenchmarkJITPointerCompile/NilRecursive-10         	      50	     29869 ns/op	   30483 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/Recursive32-10          	      50	     27879 ns/op	   30616 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/NilLarge-10             	      50	    279912 ns/op	  433104 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/Large-10                	      50	    461614 ns/op	  434108 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/NilSlice128-10          	      50	     27824 ns/op	   17441 B/op	     236 allocs/op
+BenchmarkJITPointerCompile/Leaves128-10            	      50	     30492 ns/op	   17441 B/op	     236 allocs/op
+PASS
+# round 5
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointer/InlineScalar-10         	14741108	        24.86 ns/op	      1136 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilRecursive-10         	12906618	        28.23 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Recursive32-10          	  677332	       519.9 ns/op	      1840 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilLarge-10             	13574383	        26.87 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Large-10                	  964557	       372.8 ns/op	     27408 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/NilSlice128-10          	  480218	       775.1 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+BenchmarkJITPointer/Leaves128-10            	  205071	      1695 ns/op	       928.0 code-B	       0 B/op	       0 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/nyan233/jjs-go/core/compiler
+cpu: Apple M1 Pro
+BenchmarkJITPointerCompile/InlineScalar-10         	      50	     15510 ns/op	   19582 B/op	     172 allocs/op
+BenchmarkJITPointerCompile/NilRecursive-10         	      50	     29598 ns/op	   30483 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/Recursive32-10          	      50	     27264 ns/op	   30617 B/op	     293 allocs/op
+BenchmarkJITPointerCompile/NilLarge-10             	      50	    270824 ns/op	  433149 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/Large-10                	      50	    303554 ns/op	  434114 B/op	    2707 allocs/op
+BenchmarkJITPointerCompile/NilSlice128-10          	      50	     31809 ns/op	   17441 B/op	     236 allocs/op
+BenchmarkJITPointerCompile/Leaves128-10            	      50	     28773 ns/op	   17441 B/op	     236 allocs/op
+PASS

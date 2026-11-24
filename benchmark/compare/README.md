@@ -109,6 +109,10 @@ The subsequent typed-map JIT and direct NEON quoting changes are measured in
 Large-fixture rechecks and code-size costs. Runtime compatibility details
 are in [`MAP_ITERATOR_RESEARCH.md`](MAP_ITERATOR_RESEARCH.md).
 
+Static pointer checks for recursive, large and deep pointees are measured in
+[`JIT_POINTER_ARM64.md`](JIT_POINTER_ARM64.md), including the remaining Go
+call bridge, regression coverage and compilation costs.
+
 ## Code generation metrics
 
 The compiler exposes `EncoderCodegenStats` and `DecoderCodegenStats` from
